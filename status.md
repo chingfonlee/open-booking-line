@@ -53,6 +53,12 @@
 - [x] `packages/backend`：Hono 路由、D1 遷移腳本、LINE Push Notification (Flex Message) 模組。
 - [x] `packages/frontend`：React 18 + Tailwind SPA，包含顧客填單頁與幹部管理後台。
 
+### 6. 程式碼版本控制 (Git / GitHub)
+- [x] 建立標準 `.gitignore`（排除 `node_modules/`、`dist/`、`.wrangler/` 本地快取）。
+- [x] 成功初始化 Git 本地儲存庫並關聯遠端 GitHub。
+- [x] **GitHub 專案位址**：[https://github.com/chingfonlee/biz-resource-reservation](https://github.com/chingfonlee/biz-resource-reservation)
+- [x] 完成初次 Commit 並推送到 `main` 分支。
+
 ---
 
 ## 🚀 伺服器運行與測試位址
