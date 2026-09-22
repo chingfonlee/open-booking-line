@@ -1,0 +1,13 @@
+name = "line-bot-farm-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = [ "nodejs_compat" ]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "xingnong-db"
+database_id = "local-d1-id"
+
+[vars]
+STATION_NAME = "高雄服務站"
+ADMIN_NOTIFY_USER_ID = ""

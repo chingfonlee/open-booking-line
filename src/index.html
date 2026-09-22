@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2a5937">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  <title>行農合作社｜服務申請管理</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 頂部切換條 -->
+  <header class="demo-bar">
+    <div class="demo-bar-left">
+      <div class="demo-bar-title">
+        <strong>行農合作社｜服務申請管理</strong>
+        <small>查看客戶需求並聯絡處理</small>
+      </div>
+    </div>
+    <nav aria-label="Demo 畫面切換">
+      <button class="view-switch active" data-view="mobile">顧客手機（LINE）</button>
+      <button class="view-switch" data-view="admin-mobile">合作社端（手機）</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 顧客手機視角 -->
+    <section id="mobile-view" class="demo-stage" aria-label="顧客手機 Demo">
+      <aside class="stage-note">
+        <p class="eyebrow">CLIENT LINE WALKTHROUGH</p>
+        <h1>從 LINE 開始，<br>一次填完整。</h1>
+        <p>顧客在 LINE 官方帳號一次填寫清楚作物、地點、面積、枝條數量、希望日期與電話。送出後立即同步至右側合作社端！</p>
+        <ol>
+          <li>選擇服務項目與作物</li>
+          <li>填寫施工資訊、電話與希望日期</li>
+          <li>送出申請，合作社立即收到並致電</li>
+        </ol>
+      </aside>
+
+      <div class="phone" role="application" aria-label="行農合作社手機原型">
+        <div class="phone-status"><span>9:41</span><span>◉ ◔ ▰</span></div>
+        <div class="line-header">
+          <button class="icon-btn" id="back-btn" aria-label="返回" hidden>‹</button>
+          <div class="avatar">🌱</div>
+          <div><strong>行農合作社</strong><small>官方帳號 · 服務申請</small></div>
+          <button class="icon-btn" aria-label="選單">≡</button>
+        </div>
+        <div class="screen" id="app-screen" aria-live="polite"></div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- 合作社端手機視角 -->
+    <section id="admin-mobile-view" class="demo-stage admin-mobile-stage" aria-label="合作社管理端手機 Demo" hidden>
+      <aside class="stage-note">
+        <p class="eyebrow">CO-OP SERVICE MANAGEMENT</p>
+        <h1>看資料 ➔ 打電話 ➔<br>標記處理狀態。</h1>
+        <p>不必再用 LINE 來回追問地點與面積。農友一送出需求，合作社幹部打開手機就能看清全部資料，一鍵外撥電話聯繫，省時省力。</p>
+        <ol>
+          <li>查看最新收到的服務申請</li>
+          <li>點擊「📞 撥打電話」直接聯繫農友</li>
+          <li>快速切換處理狀態（待聯絡 / 處理中 / 已結案）</li>
+        </ol>
+      </aside>
+
+      <div class="phone admin-phone" role="application" aria-label="合作社管理端手機原型">
+        <div class="phone-status"><span>9:41</span><span>◉ ◔ ▰</span></div>
+        
+        <div class="admin-mobile-header">
+          <div class="admin-mobile-brand">
+            <div class="avatar admin-avatar">🌱</div>
+            <div>
+              <strong>行農合作社 · 服務申請</strong>
+              <small>查看客戶需求並聯絡處理</small>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button class="icon-btn-small" id="admin-notice-btn" title="待聯絡通知">🔔<span class="badge-dot"></span></button>
+          </div>
+        </div>
+
+        <div class="admin-mobile-screen" id="admin-mobile-screen">
+          <!-- 申請單列表主分頁 -->
+          <div id="tab-panel-bookings">
+            <!-- 統計篩選 Chips (全部、待聯絡、處理中、已結案) -->
+            <div class="admin-stat-chips" id="admin-stat-chips">
+              <button class="stat-chip active" data-filter="all">
+                <span>全部</span>
+                <strong id="stat-count-all">06</strong>
+              </button>
+              <button class="stat-chip highlight" data-filter="to_contact">
+                <span>待聯絡</span>
+                <strong id="stat-count-to_contact">03</strong>
+              </button>
+              <button class="stat-chip" data-filter="processing">
+                <span>處理中</span>
+                <strong id="stat-count-processing">02</strong>
+              </button>
+              <button class="stat-chip" data-filter="closed">
+                <span>已結案</span>
+                <strong id="stat-count-closed">01</strong>
+              </button>
+            </div>
+
+            <!-- 搜尋欄 -->
+            <div class="admin-search-bar">
+              <span class="search-icon">🔍</span>
+              <input type="search" id="admin-mobile-search" placeholder="搜尋申請人、電話或地區">
+            </div>
+
+            <!-- 卡片容器 -->
+            <div class="admin-cards-list" id="admin-cards-container">
+              <!-- 由 app.js 渲染 -->
+            </div>
+          </div>
+
+          <!-- 說明分頁面板 -->
+          <div id="tab-panel-other" class="tab-content-panel" hidden>
+            <div class="info-card">
+              <h4>🌱 行農合作社｜服務申請管理</h4>
+              <p>本系統專為合作社第一線幹部設計，解決過往在 LINE 來回確認農地位置、作物與枝條數量的溝通痛點。</p>
+              <p><strong>核心操作流程：</strong></p>
+              <ol style="padding-left:20px;margin:0 0 12px;line-height:1.8">
+                <li>農友在官方 LINE 一次填齊需求</li>
+                <li>幹部在手機查看完整資料</li>
+                <li>點擊「撥打電話」與農友聯繫確認</li>
+                <li>更新狀態為「處理中」或「已結案」</li>
+              </ol>
+              <p style="font-size:13px;color:var(--muted);margin:0">服務站所：高雄服務站<br>服務專線：07-616-XXXX</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部導覽列 (僅保留 服務申請 與 系統說明) -->
+        <nav class="admin-bottom-nav" id="admin-bottom-nav">
+          <button class="bottom-tab active" data-tab="bookings">
+            <span class="tab-icon">📋</span>
+            <span class="tab-label">服務申請</span>
+            <span class="tab-badge" id="nav-badge-count">3</span>
+          </button>
+          <button class="bottom-tab" data-tab="info">
+            <span class="tab-icon">ℹ️</span>
+            <span class="tab-label">系統說明</span>
+          </button>
+        </nav>
+
+        <!-- 服務申請詳情 Sheet Modal -->
+        <div class="admin-modal-overlay" id="detail-modal" hidden>
+          <div class="detail-sheet" role="dialog" aria-labelledby="modal-detail-title" aria-modal="true">
+            <div class="sheet-drag-handle"></div>
+            <div class="sheet-header">
+              <h3 id="modal-detail-title">服務申請詳情</h3>
+              <button class="icon-btn-close" id="btn-close-detail" aria-label="關閉">✕</button>
+            </div>
+            
+            <div class="sheet-content" id="detail-modal-body" style="display:flex;flex-direction:column;gap:12px">
+              <!-- 由 app.js 動態填入完整資料 -->
+            </div>
+          </div>
+        </div>
+
+        <div class="toast" id="admin-mobile-toast" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 載入設定、Mock 資料與單一基礎核心邏輯 -->
+  <script src="config/plans.js"></script>
+  <script src="data/mockData.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
