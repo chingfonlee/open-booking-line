@@ -149,6 +149,26 @@ npx wrangler pages deploy dist --project-name xingnong-farm
 
 ---
 
+## 📱 LINE 設定與開放一般農友預約指引
+
+部署完成後，請務必確認以下 LINE 後台設定，確保外部農民能正常開啟表單並接收推播：
+
+### 1. 將 LINE Login 頻道切換為「Published（已發布）」
+> ⚠️ **關鍵開關**：LINE Developers Console 中新建的頻道預設為 **`Developing`（開發中）**。此時只有管理員與開發者帳號能開啟，**一般非測試人員點開會出現「此服務目前正在開發中」的錯誤**。
+> - **發布步驟**：開啟 [LINE Developers Console](https://developers.line.biz/console/) ➡️ 點入您的 **LINE Login Channel** ➡️ 在頁面頂部將 **`Developing`** 點擊切換為 **`Published`** 即可對全網開放。
+
+### 2. LIFF 應用必要設定
+- **Scopes**：勾選 `profile` 與 `openid`（以支援自動帶入農民 LINE 暱稱與身分防偽校驗）。
+- **Endpoint URL**：填入您的 Cloudflare Pages 正式網址（例如 `https://xingnong-farm.pages.dev`）。
+- **Bot prompt**：選擇 `Normal`（在農民首次開啟表單授權時，主動引導將官方帳號加入好友）。
+
+### 3. 如何分享給農民使用
+- **取得專屬 LIFF 連結**：在 LIFF 設定頁複製 `https://liff.line.me/<YOUR_LIFF_ID>`。
+- **整合官方帳號圖文選單**：登入 [LINE Official Account Manager](https://manager.line.biz/)，於「圖文選單 (Rich Menu)」或「加入好友歡迎訊息」新增按鈕，將點擊動作設為連結並填入您的 LIFF URL，農民即可在手機 LINE 內以原生全螢幕極速開啟預約表單！
+- **免費推播額度**：LINE 官方提供每月 **200 則免費 Push 訊息**（每送出一筆預約通知扣 1 則）。超過 200 則時推播會暫停，但 **Cloudflare D1 資料庫仍會 100% 完整儲存所有預約單**，幹部依然可於管理後台查閱。
+
+---
+
 ## 📄 開源授權
 
 本專案採用 [MIT License](LICENSE) 開源授權，歡迎在地合作社、農會與各類產銷組織自由使用、修改與二次開發。

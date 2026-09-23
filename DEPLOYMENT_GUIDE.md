@@ -8,8 +8,9 @@
 2. [技術規格與架構規範](#2-技術規格與架構規範)
 3. [使用者前置準備（需人工操作清單）](#3-使用者前置準備需人工操作清單)
 4. [Agent 自動化執行 SOP（逐步操作）](#4-agent-自動化執行-sop逐步操作)
-5. [部署後驗證與設定收尾](#5-部署後驗證與設定收尾)
-6. [常見問題與故障排除](#6-常見問題與故障排除)
+5. [部署後驗證與設定收尾（含 Published 切換）](#5-部署後驗證與設定收尾)
+6. [LINE 官方帳號（OA）整合與對外推廣指引](#6-line-官方帳號oa整合與對外推廣指引)
+7. [常見問題與故障排除](#7-常見問題與故障排除)
 
 ---
 
@@ -284,18 +285,57 @@ curl -s https://<YOUR_PAGES_DOMAIN>/api/health
 ```
 若回傳包含 `{"status":"ok","station":"..."}` 即表示前端 Pages Proxy 與後端 Workers API 連線正常！
 
-### 驗證 2：提醒使用者更新 LIFF Endpoint URL
+### 驗證 2：更新 LIFF Endpoint URL
 Agent 向使用者提示：
-> 📢 **最後一步：請回 LINE Developers 綁定網址**
+> 📢 **步驟 A：請回 LINE Developers 綁定網址**
 > 1. 開啟 [LINE Developers Console](https://developers.line.biz/console/)。
 > 2. 進入先前建立的 **LINE Login Channel** ➡️ **LIFF** 標籤。
 > 3. 點擊進入您的 LIFF App，將 **Endpoint URL** 修改為剛才部署完成的 Pages 網址：
 >    `https://<YOUR_PAGES_DOMAIN>`（例如 `https://xingnong-farm.pages.dev`）。
 > 4. 點擊 **Update** 儲存。
 
+### 驗證 3：將 LINE Login 頻道切換為 Published（開放給一般大眾）
+> 🚨 **關鍵步驟：若未切換，外部一般用戶將無法開啟 LIFF！**
+> - **原因**：LINE 平台新建立的 Channel 預設皆為 **`Developing`（開發中）** 狀態。在開發中狀態下，**只有頻道擁有者或在「Roles」內的使用者可以開啟**；其他一般用戶開啟時會出現「此服務目前正在開發中 / 無法使用」錯誤。
+> - **操作方式**：
+>   1. 在 [LINE Developers Console](https://developers.line.biz/console/) 點進您的 **LINE Login Channel**。
+>   2. 查看頁面最頂部、頻道名稱旁邊的狀態膠囊標籤。
+>   3. 將 **`Developing`** 點擊並切換為 **`Published`**。
+>   4. 切換後，任何一般 LINE 使用者點擊您的 LIFF 連結皆能順暢開啟並預約！
+
 ---
 
-## 6. 常見問題與故障排除
+## 6. LINE 官方帳號（OA）整合與對外推廣指引
+
+當系統部署完成並切換為 `Published` 後，您可以透過以下方式讓農友快速進入預約表單：
+
+### 1. 取得農友專用 LIFF 連結
+在 LINE Developers 的 LIFF 分頁中，複製 **LIFF URL**，格式如下：
+```text
+https://liff.line.me/<YOUR_LIFF_ID>
+```
+（在 LINE 聊天室中點擊此連結，會直接在手機以原生全螢幕 Webview 開啟，體驗極佳）。
+
+### 2. 放置於官方帳號「圖文選單」(Rich Menu)
+1. 登入 [LINE Official Account Manager (官方帳號管理後台)](https://manager.line.biz/)。
+2. 進入 **聊天室管理** ➡️ **圖文選單** ➡️ 點擊 **建立圖文選單**。
+3. 上傳選單背景圖，將其中一格動作類型設定為 **連結**。
+4. 網址填入您的 **`https://liff.line.me/<YOUR_LIFF_ID>`**。
+5. 儲存並發布後，所有加入官方帳號的農民只要點擊聊天室底部的圖文按鈕，就能一秒喚起預約表單！
+
+### 3. 設定「加入好友歡迎訊息」
+在官方帳號後台設定：
+> 「歡迎加入！若您有果樹枝條粉碎、代耕或農機租借需求，請點擊下方連結立即預約：
+> https://liff.line.me/<YOUR_LIFF_ID>」
+
+### 4. LINE Messaging API 每月免費推播額度說明
+- **免費配額**：LINE 官方提供所有帳號每個月 **200 則免費 Push 訊息**。
+- **扣額時機**：每當有農友送出一筆申請單，系統會發送 **1 則 Flex Message 推播通知** 給幹部的 LINE，因此每個月前 200 筆預約的通知完全免費。
+- **額度超出保護**：若單月超過 200 筆，LINE 推播雖會暫停，但 **Cloudflare D1 資料庫依然 100% 完整保存每一筆預約**，幹部依然可直接進入後台（`/?view=admin`）查看所有新進案件。
+
+---
+
+## 7. 常見問題與故障排除
 
 | 問題情境 | 排查與修復方式 |
 | :--- | :--- |
