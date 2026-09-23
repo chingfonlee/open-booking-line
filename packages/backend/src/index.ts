@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { generateFlexNotification, pushLineMessage, verifyLineIdToken } from './line';
+import { generateFlexNotification, generateCustomerConfirmationFlex, pushLineMessage, verifyLineIdToken } from './line';
 import { verifyTurnstileToken } from './turnstile';
 import { CreateServiceRequestDto, UpdateServiceRequestDto, RequestStatus } from '../../shared/types';
 
@@ -183,14 +183,27 @@ app.post('/api/requests', async (c) => {
       verifiedLineUserId
     ).run();
 
+    // 1. 推播給站所幹部（通知有新案件需求，附農民電話一鍵撥打按鈕）
     if (c.env.LINE_CHANNEL_ACCESS_TOKEN && c.env.ADMIN_NOTIFY_USER_ID) {
-      const flexMsg = generateFlexNotification({
+      const adminFlexMsg = generateFlexNotification({
         ...body,
         area_size: computedAreaSize,
         id
       });
       c.executionCtx.waitUntil(
-        pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, flexMsg)
+        pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg)
+      );
+    }
+
+    // 2. 推播給申請農民（發送服務申請確認收據卡片）
+    if (c.env.LINE_CHANNEL_ACCESS_TOKEN && verifiedLineUserId) {
+      const customerFlexMsg = generateCustomerConfirmationFlex({
+        ...body,
+        area_size: computedAreaSize,
+        id
+      });
+      c.executionCtx.waitUntil(
+        pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg)
       );
     }
 
