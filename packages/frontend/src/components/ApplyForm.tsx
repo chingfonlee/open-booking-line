@@ -13,7 +13,7 @@ import {
 } from '../../../shared/types';
 import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock } from 'lucide-react';
 
-const LIFF_ID = '2011709076-09FdfkjH';
+const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
 
 export const ApplyForm: React.FC = () => {
   const [formData, setFormData] = useState<CreateServiceRequestDto>({

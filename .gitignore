@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .output/
+*.tsbuildinfo
 
 # Cloudflare Wrangler local state & SQLite DB
 .wrangler/

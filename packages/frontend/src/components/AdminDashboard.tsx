@@ -3,7 +3,7 @@ import liff from '@line/liff';
 import { ServiceRequest, RequestStatus } from '../../../shared/types';
 import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
 
-const LIFF_ID = '2011709076-09FdfkjH';
+const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
 const ADMIN_PIN_KEY = 'xingnong_admin_pin';
 const ADMIN_TOKEN_KEY = 'xingnong_admin_token';
 
