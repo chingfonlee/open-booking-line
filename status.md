@@ -59,25 +59,37 @@
 - [x] **GitHub 專案位址**：[https://github.com/chingfonlee/biz-resource-reservation](https://github.com/chingfonlee/biz-resource-reservation)
 - [x] 完成初次 Commit 並推送到 `main` 分支。
 
+### 7. Cloudflare 雲端生產部署 (已完成)
+- [x] **Cloudflare D1 資料庫**：`xingnong-db` (亞太區域 APAC，資料表 `service_requests`、`blocked_dates` 已建立)。
+- [x] **後端 API 伺服器 (Workers)**：`https://line-bot-farm-api.chingfon-lee.workers.dev`
+- [x] **前端應用 (Pages)**：`https://xingnong-farm.pages.dev`
+- [x] **API 穿透代理 (Pages Functions)**：解決手機與 LIFF 跨域（CORS）問題，已通過端對端送單與管理查詢測試。
+
 ---
 
 ## 🚀 伺服器運行與測試位址
 
+### 🌐 雲端正式線上環境 (手機 / 任何網路皆可直接開啟)
+| 服務項目 | 正式網址 | 說明 |
+| :--- | :--- | :--- |
+| **農友預約填單 (顧客端)** | [https://xingnong-farm.pages.dev](https://xingnong-farm.pages.dev) | 手機/LINE LIFF 直接開啟使用 |
+| **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | 站所人員查看與一鍵撥號 |
+| **後端 API 服務** | `https://line-bot-farm-api.chingfon-lee.workers.dev` | Cloudflare Workers API |
+
+### 💻 本地端開發環境 (Local Dev)
 | 服務項目 | 本機運行端點 | 說明 |
 | :--- | :--- | :--- |
 | **前端應用 (顧客端)** | `http://localhost:5173/` | 農友預約申請表單 |
 | **前端應用 (管理端)** | `http://localhost:5173/?view=admin` | 幹部服務申請管理儀表板 |
 | **真機區域網路測試** | `http://192.168.16.215:5173/` | 同 Wi-Fi 實體手機瀏覽器測試 |
-| **後端 API 伺服器** | `http://127.0.0.1:8787` | Cloudflare Workers API |
+| **後端 API 伺服器** | `http://127.0.0.1:8787` | 本機 Worker API |
 
 ---
 
 ## 📋 下一步規劃待辦清單 (Backlog)
 
-1. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
-2. **LINE 官方帳號正式對接**：
-   - 建立 LINE Developers LIFF App 綁定生產 URL。
-   - 配置 LINE Bot Channel Access Token 與幹部 Admin User ID。
-3. **雲端生產部署**：
-   - 前端發佈至 Cloudflare Pages / Netlify。
-   - 後端部署至 Cloudflare Workers + Remote D1 Database。
+1. **LINE 官方帳號正式對接 (LIFF)**：
+   - 在 LINE Developers Console 建立 LIFF App，Endpoint URL 填入 `https://xingnong-farm.pages.dev`。
+   - 取得 `line_user_id` 自動綁定與設定 Rich Menu (圖文選單)。
+2. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
+3. **LINE 官方帳號通知設定**：於 Worker 環境變數填入 `LINE_CHANNEL_ACCESS_TOKEN` 與幹部 `ADMIN_NOTIFY_USER_ID`。

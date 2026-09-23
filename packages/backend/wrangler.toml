@@ -6,7 +6,7 @@ compatibility_flags = [ "nodejs_compat" ]
 [[d1_databases]]
 binding = "DB"
 database_name = "xingnong-db"
-database_id = "local-d1-id"
+database_id = "9ab7d6d6-6e29-421b-8674-6e6bf0d3e770"
 
 [vars]
 STATION_NAME = "高雄服務站"
