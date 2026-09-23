@@ -71,7 +71,8 @@ export const POPULAR_CROPS = [
   '芭樂',
   '蜜棗',
   '芒果',
-  '竹子'
+  '竹子',
+  '其他(在備註內填寫作物種類)'
 ] as const;
 
 export const KAOHSIUNG_DISTRICTS = [

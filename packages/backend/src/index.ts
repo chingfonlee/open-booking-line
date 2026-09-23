@@ -28,6 +28,18 @@ app.post('/api/requests', async (c) => {
       return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
     }
 
+    const cleanPhone = (body.phone || '').replace(/[-\s]/g, '');
+    const isMobile = /^09\d{8}$/.test(cleanPhone);
+    const isLandline = /^0[2-8]\d{7}$/.test(cleanPhone);
+
+    if (!isMobile && !isLandline) {
+      return c.json({ success: false, message: '電話格式錯誤：手機需為 09 開頭 10 碼，市話需為 02-08 開頭 9 碼數字' }, 400);
+    }
+
+    if ((body.crop_type || '').includes('其他') && !body.notes?.trim()) {
+      return c.json({ success: false, message: '選擇其他作物種類時，請在補充備註填寫作物種類' }, 400);
+    }
+
     const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
     const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const id = 'REQ-' + datePrefix + '-' + randomSuffix;
@@ -44,7 +56,7 @@ app.post('/api/requests', async (c) => {
     await c.env.DB.prepare(insertSql).bind(
       id, now, now,
       body.contact_name.trim(),
-      body.phone.trim(),
+      cleanPhone,
       body.service_type,
       body.crop_type || '其他',
       computedAreaSize,

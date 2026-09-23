@@ -74,7 +74,8 @@ export const POPULAR_CROPS = [
   '芭樂',
   '蜜棗',
   '芒果',
-  '竹子'
+  '竹子',
+  '其他(在備註內填寫作物種類)'
 ] as const;
 
 export const KAOHSIUNG_DISTRICTS = [
@@ -145,6 +146,26 @@ export const ApplyForm: React.FC = () => {
       return;
     }
 
+    const cleanPhone = formData.phone.replace(/[-\\s]/g, '');
+    const isMobile = /^09\\d{8}$/.test(cleanPhone);
+    const isLandline = /^0[2-8]\\d{7}$/.test(cleanPhone);
+
+    if (!isMobile && !isLandline) {
+      if (cleanPhone.startsWith('09')) {
+        alert('手機號碼格式錯誤：需為 10 碼數字且以 09 開頭（目前為 ' + cleanPhone.length + ' 碼）');
+      } else if (/^0[2-8]/.test(cleanPhone)) {
+        alert('市話號碼格式錯誤：02~08 開頭需為 9 碼數字（目前為 ' + cleanPhone.length + ' 碼）');
+      } else {
+        alert('電話格式不正確：手機需為 09 開頭 10 碼，市話需為 02-08 開頭 9 碼數字');
+      }
+      return;
+    }
+
+    if (formData.crop_type.includes('其他') && !formData.notes?.trim()) {
+      alert('您選擇了「其他」作物，請在下方「補充備註」填寫您的作物種類！');
+      return;
+    }
+
     if (blockedDates.includes(formData.preferred_date)) {
       alert('您選擇的希望施工日期目前服務站已額滿或暫停排程，請選擇其他日期！');
       return;
@@ -154,6 +175,7 @@ export const ApplyForm: React.FC = () => {
     try {
       const payload = {
         ...formData,
+        phone: cleanPhone,
         area_size: formData.area_value + ' ' + formData.area_unit
       };
       const res = await fetch('/api/requests', {
@@ -267,12 +289,21 @@ export const ApplyForm: React.FC = () => {
                     type="button"
                     key={crop}
                     onClick={() => setFormData({ ...formData, crop_type: crop })}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-[#eee2cf] text-[#20271f] hover:bg-[#e2d4bd] font-medium transition"
+                    className={'text-xs px-2.5 py-1 rounded-lg font-medium transition ' + (
+                      formData.crop_type === crop
+                        ? 'bg-[#2a5937] text-white shadow-sm'
+                        : 'bg-[#eee2cf] text-[#20271f] hover:bg-[#e2d4bd]'
+                    )}
                   >
                     {crop}
                   </button>
                 ))}
               </div>
+              {formData.crop_type.includes('其他') && (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-lg mt-2 font-medium">
+                  💡 請在下方「補充備註」填寫您實際施作的作物種類。
+                </p>
+              )}
             </div>
 
             <div className="min-w-0">
@@ -463,23 +494,29 @@ export const ApplyForm: React.FC = () => {
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="09xx-xxx-xxx"
+                  placeholder="手機 09xx (10碼) 或 市話 02~08 (9碼)"
+                  maxLength={12}
                   className="w-full px-3.5 py-2.5 border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none text-sm font-medium bg-white text-[#20271f]"
                   required
                 />
+                <p className="text-[11px] text-[#657061] mt-1">
+                  格式：手機 09 開頭 10 碼數字，或市話 02~08 開頭 9 碼數字
+                </p>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-[#657061] mb-1">
-                補充備註 (選填)
+                補充備註 {formData.crop_type.includes('其他') ? <span className="text-[#a33] font-bold">（選擇其他作物請在此填寫作物種類 *）</span> : '(選填)'}
               </label>
               <textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="若有特殊進出路況、水源位置或其他需求可在此註明"
+                placeholder={formData.crop_type.includes('其他') ? "請在此填寫作物種類，以及進出路況、水源等特殊需求" : "若有特殊進出路況、水源位置或其他需求可在此註明"}
                 rows={2}
-                className="w-full px-3.5 py-2 border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none text-sm font-medium bg-white text-[#20271f]"
+                className={'w-full px-3.5 py-2 border rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:outline-none text-sm font-medium bg-white text-[#20271f] ' + (
+                  formData.crop_type.includes('其他') ? 'border-amber-400 focus:border-amber-500' : 'border-[#bfb8aa] focus:border-[#2a5937]'
+                )}
               />
             </div>
           </div>
@@ -980,6 +1017,18 @@ app.post('/api/requests', async (c) => {
       return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
     }
 
+    const cleanPhone = (body.phone || '').replace(/[-\\s]/g, '');
+    const isMobile = /^09\\d{8}$/.test(cleanPhone);
+    const isLandline = /^0[2-8]\\d{7}$/.test(cleanPhone);
+
+    if (!isMobile && !isLandline) {
+      return c.json({ success: false, message: '電話格式錯誤：手機需為 09 開頭 10 碼，市話需為 02-08 開頭 9 碼數字' }, 400);
+    }
+
+    if ((body.crop_type || '').includes('其他') && !body.notes?.trim()) {
+      return c.json({ success: false, message: '選擇其他作物種類時，請在補充備註填寫作物種類' }, 400);
+    }
+
     const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
     const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const id = 'REQ-' + datePrefix + '-' + randomSuffix;
@@ -996,7 +1045,7 @@ app.post('/api/requests', async (c) => {
     await c.env.DB.prepare(insertSql).bind(
       id, now, now,
       body.contact_name.trim(),
-      body.phone.trim(),
+      cleanPhone,
       body.service_type,
       body.crop_type || '其他',
       computedAreaSize,
