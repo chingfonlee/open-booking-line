@@ -196,7 +196,7 @@ export function generateCustomerConfirmationFlex(request: any) {
             contents: [
               {
                 type: 'text',
-                text: '📞 服務站幹部已收到您的預約，將儘速撥打電話確認確切施工排程細節。',
+                text: '📞 服務人員已收到您的預約，將儘速撥打電話確認確切施工排程細節。',
                 size: 'xs',
                 color: '#657061',
                 wrap: true
@@ -403,7 +403,7 @@ export function generateProgressQueryFlex(requests: any[]) {
   let statusBadgeColor = '#856200';
   let statusBadgeBg = '#fef3c7';
   let statusText = '🟡 待聯絡 (服務站已受理，專人排程中)';
-  let statusNote = '服務站幹部已收到您的申請，將儘速致電確認確切施工排程。';
+  let statusNote = '服務人員已收到您的申請，將儘速致電確認確切施工排程。';
 
   if (latest.status === 'processing') {
     statusBadgeColor = '#1e40af';

@@ -191,7 +191,7 @@ app.post('/api/requests', async (c) => {
       verifiedLineUserId
     ).run();
 
-    // 1. 推播給站所幹部（通知有新案件需求，附農民電話一鍵撥打按鈕）
+    // 1. 推播給服務人員（通知有新案件需求，附農民電話一鍵撥打按鈕）
     if (c.env.LINE_CHANNEL_ACCESS_TOKEN && c.env.ADMIN_NOTIFY_USER_ID) {
       const adminFlexMsg = generateFlexNotification({
         ...body,
@@ -227,7 +227,7 @@ app.post('/api/requests', async (c) => {
 
 const DEFAULT_ADMIN_PIN = '20241718';
 
-// 站所幹部 LINE 白名單身分驗證端點
+// 服務人員 LINE 白名單身分驗證端點
 app.post('/api/admin/auth/line', async (c) => {
   try {
     const body = await c.req.json<{ id_token: string }>().catch(() => ({ id_token: '' }));
@@ -248,13 +248,13 @@ app.post('/api/admin/auth/line', async (c) => {
     if (!allowedIds.includes(profile.sub)) {
       return c.json({
         success: false,
-        message: '存取受限：您的 LINE 帳號不在站所授權幹部白名單內。',
+        message: '存取受限：您的 LINE 帳號不在授權服務人員白名單內。',
         userId: profile.sub,
         displayName: profile.name
       }, 403);
     }
 
-    // 加入幹部 Session 快取
+    // 加入服務人員 Session 快取
     verifiedAdminTokens.set(body.id_token, {
       sub: profile.sub,
       name: profile.name,
@@ -264,7 +264,7 @@ app.post('/api/admin/auth/line', async (c) => {
 
     return c.json({
       success: true,
-      message: '站所幹部身分驗證成功',
+      message: '服務人員身分驗證成功',
       user: {
         userId: profile.sub,
         displayName: profile.name,
@@ -302,13 +302,13 @@ app.post('/api/admin/verify', async (c) => {
   return c.json({ success: true, message: '驗證成功' });
 });
 
-// 站所管理員權限檢核 (優先檢驗 LINE 幹部白名單 Token，備援檢驗 PIN 碼)
+// 站所管理員權限檢核 (優先檢驗 LINE 服務人員白名單 Token，備援檢驗 PIN 碼)
 app.use('/api/admin/*', async (c, next) => {
   if (c.req.path === '/api/admin/auth/line' || c.req.path === '/api/admin/verify') {
     return next();
   }
 
-  // 1. 優先檢驗 LINE 幹部白名單 Token
+  // 1. 優先檢驗 LINE 服務人員白名單 Token
   const admin = await getAdminFromToken(c);
   if (admin) {
     return next();
@@ -321,7 +321,7 @@ app.use('/api/admin/*', async (c, next) => {
     return next();
   }
 
-  return c.json({ success: false, message: '未經授權：請透過站所幹部 LINE 帳號登入或提供正確授權憑證' }, 401);
+  return c.json({ success: false, message: '未經授權：請透過授權服務人員 LINE 帳號登入或提供正確授權憑證' }, 401);
 });
 
 // 2. 站所人員查詢申請單列表

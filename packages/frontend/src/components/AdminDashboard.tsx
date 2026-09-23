@@ -208,13 +208,13 @@ export const AdminDashboard: React.FC = () => {
       <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
         <div className="flex items-center gap-2 text-sm text-[#657061] font-semibold">
           <Loader2 className="w-5 h-5 animate-spin text-[#2a5937]" />
-          <span>正在進行站所幹部身分驗證...</span>
+          <span>正在進行服務人員身分驗證...</span>
         </div>
       </div>
     );
   }
 
-  // 非授權幹部錯誤提示畫面 (403 Forbidden)
+  // 非授權服務人員錯誤提示畫面 (403 Forbidden)
   if (authError) {
     return (
       <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
@@ -222,7 +222,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-200">
             <ShieldAlert className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-bold text-[#20271f] mb-1">未獲幹部管理授權</h2>
+          <h2 className="text-xl font-bold text-[#20271f] mb-1">未獲服務人員授權</h2>
           <p className="text-xs text-red-600 font-semibold mb-4">
             {authError.message}
           </p>
@@ -230,7 +230,7 @@ export const AdminDashboard: React.FC = () => {
             {authError.displayName && <div>• LINE 暱稱：{authError.displayName}</div>}
             {authError.userId && <div className="break-all">• LINE ID：{authError.userId}</div>}
             <div className="text-[11px] text-[#2a5937] pt-1">
-              若您為站所工作幹部，請聯繫系統管理員將您的 LINE ID 加入授權名單。
+              若您為站所服務人員，請聯繫系統管理員將您的 LINE ID 加入授權名單。
             </div>
           </div>
 
@@ -294,12 +294,12 @@ export const AdminDashboard: React.FC = () => {
           <div className="w-14 h-14 bg-[#dcebd6] text-[#173820] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#c8ad86]">
             <ShieldCheck className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-bold text-[#20271f] mb-1">站所幹部管理系統</h2>
+          <h2 className="text-xl font-bold text-[#20271f] mb-1">服務站管理系統</h2>
           <p className="text-xs text-[#657061] mb-6">
-            高雄服務站 · 限站所授權幹部存取
+            高雄服務站 · 限授權服務人員存取
           </p>
 
-          {/* 主要登入：LINE 幹部一鍵授權登入 */}
+          {/* 主要登入：LINE 服務人員一鍵授權登入 */}
           <button
             onClick={handleLineLogin}
             className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm mb-4"
@@ -375,7 +375,7 @@ export const AdminDashboard: React.FC = () => {
                 {adminUser.pictureUrl && (
                   <img src={adminUser.pictureUrl} alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
                 )}
-                <span>幹部：{adminUser.displayName}</span>
+                <span>服務人員：{adminUser.displayName}</span>
               </span>
             )}
           </div>
