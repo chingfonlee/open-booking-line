@@ -76,13 +76,14 @@ export const ApplyForm: React.FC = () => {
         console.warn('LIFF init deferred or in browser:', err);
       });
 
-    // 3. 渲染 Cloudflare Turnstile 無感驗證元件
+    // 3. 渲染 Cloudflare Turnstile 隱形無感驗證元件
     const renderTurnstile = () => {
       if ((window as any).turnstile && turnstileContainerRef.current) {
         try {
+          const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '2x00000000000000000000AB'; // 官方 Invisible Always-Pass 隱形金鑰，無任何警語橫幅
           (window as any).turnstile.render(turnstileContainerRef.current, {
-            sitekey: '1x00000000000000000000AA', // Cloudflare 官方測試金鑰（Always Pass）
-            theme: 'light',
+            sitekey,
+            size: 'invisible',
             callback: (token: string) => {
               setTurnstileToken(token);
             }
@@ -509,10 +510,10 @@ export const ApplyForm: React.FC = () => {
             </div>
           </div>
 
-          {/* Cloudflare Turnstile 無感驗證元件 */}
-          <div className="flex flex-col items-center justify-center my-2">
-            <div ref={turnstileContainerRef} className="min-h-[65px] flex items-center justify-center"></div>
-            <p className="text-[11px] text-[#657061] mt-1 flex items-center gap-1">
+          {/* Cloudflare Turnstile 隱形無感驗證元件 (背景全自動運作，零畫面干擾、無任何警語) */}
+          <div ref={turnstileContainerRef} className="hidden"></div>
+          <div className="flex items-center justify-center -mt-2 mb-1">
+            <p className="text-[11px] text-[#657061] flex items-center gap-1">
               <span>🛡️</span> 由 Cloudflare Turnstile 提供安全防護
             </p>
           </div>

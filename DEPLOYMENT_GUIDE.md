@@ -328,10 +328,22 @@ https://liff.line.me/<YOUR_LIFF_ID>
 > 「歡迎加入！若您有果樹枝條粉碎、代耕或農機租借需求，請點擊下方連結立即預約：
 > https://liff.line.me/<YOUR_LIFF_ID>」
 
-### 4. LINE Messaging API 每月免費推播額度說明
-- **免費配額**：LINE 官方提供所有帳號每個月 **200 則免費 Push 訊息**。
-- **扣額時機**：每當有農友送出一筆申請單，系統會發送 **1 則 Flex Message 推播通知** 給幹部的 LINE，因此每個月前 200 筆預約的通知完全免費。
-- **額度超出保護**：若單月超過 200 筆，LINE 推播雖會暫停，但 **Cloudflare D1 資料庫依然 100% 完整保存每一筆預約**，幹部依然可直接進入後台（`/?view=admin`）查看所有新進案件。
+### 5. Cloudflare Turnstile 真人防護模式與正式金鑰申請（重要提醒）
+
+本專案預設已配置 Cloudflare 官方 **Invisible 隱形測試金鑰**（`2x00000000000000000000AB`），此模式下：
+- **零干擾體驗**：表單下方完全不會出現任何灰色方塊或「僅用於測試」等警告橫幅。
+- **背景自動鑑權**：農友送單時全自動通過檢核，體驗清爽順暢。
+
+> 💡 **若要取得正式專屬防爬蟲保護（推薦生產環境申請，完全免費）：**
+> 1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選左側選單的 **Turnstile**。
+> 2. 點擊 **Add site**（新增網站）：
+>    - **Site name**：輸入專案名稱（例如 `行農合作社預約`）
+>    - **Domain**：填入您的 Pages 網址（例如 `xingnong-farm.pages.dev`）
+>    - **Widget Mode**：強烈推薦選擇 **Invisible（隱形無感模式）**，畫面完全乾淨無任何方塊！
+> 3. 點擊 **Create**，複製產生的：
+>    - **Site Key** ➡️ 填入前端 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`
+>    - **Secret Key** ➡️ 填入後端 `packages/backend/wrangler.toml` 的 `TURNSTILE_SECRET_KEY`
+> 4. 重新執行 `npm run build:frontend` 與 `npx wrangler deploy` 即可生效。
 
 ---
 
@@ -342,4 +354,4 @@ https://liff.line.me/<YOUR_LIFF_ID>
 | **管理後台顯示 403 Forbidden（未獲幹部授權）** | 代表當前登入的 LINE 帳號不在白名單中。請將該使用者的 LINE ID 加入 `packages/backend/wrangler.toml` 的 `ADMIN_LINE_IDS`（逗號隔開），並重新執行 `npx wrangler deploy`。 |
 | **農民送出表單後，LINE 未收到推播訊息** | 1. 檢查 `packages/backend` 是否已成功執行 `wrangler secret put LINE_CHANNEL_ACCESS_TOKEN`。<br>2. 檢查 `ADMIN_NOTIFY_USER_ID` 是否與欲接收通知的 LINE 帳號一致。<br>3. 確保管理者已加入該 LINE 官方帳號為好友。 |
 | **LIFF 開啟時畫面空白或提示 URL 不合法** | 確認 LINE Developers 後台 LIFF 的 **Endpoint URL** 是否完全匹配 Cloudflare Pages 網址（包含 `https://`，不可有多餘斜線）。 |
-| **更換正式 Cloudflare Turnstile 金鑰** | 前往 [Cloudflare Dashboard](https://dash.cloudflare.com/) 點選 **Turnstile** 建立 Site，取得 Site Key（填入前端 `VITE_TURNSTILE_SITE_KEY`）與 Secret Key（填入後端 `wrangler.toml` 之 `TURNSTILE_SECRET_KEY`）後重新 deploy。 |
+| **表單畫面出現「僅用於測試」字樣？** | 本專案已升級為 Invisible 隱形模式。若您切換自訂金鑰時出現此字樣，代表使用了測試金鑰；請參考上方「第 5 點」至 Cloudflare Turnstile 申請正式免費金鑰並設定為 Invisible 模式。 |

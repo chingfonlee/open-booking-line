@@ -167,6 +167,14 @@ npx wrangler pages deploy dist --project-name xingnong-farm
 - **整合官方帳號圖文選單**：登入 [LINE Official Account Manager](https://manager.line.biz/)，於「圖文選單 (Rich Menu)」或「加入好友歡迎訊息」新增按鈕，將點擊動作設為連結並填入您的 LIFF URL，農民即可在手機 LINE 內以原生全螢幕極速開啟預約表單！
 - **免費推播額度**：LINE 官方提供每月 **200 則免費 Push 訊息**（每送出一筆預約通知扣 1 則）。超過 200 則時推播會暫停，但 **Cloudflare D1 資料庫仍會 100% 完整儲存所有預約單**，幹部依然可於管理後台查閱。
 
+### 4. Cloudflare Turnstile 真人防護設定（去除警語橫幅）
+- **預設狀態**：本專案預設採用 Cloudflare 官方 **Invisible 隱形模式**（`2x00000000000000000000AB`），表單完全不顯示灰色方塊與「僅用於測試」字樣，背景自動鑑權。
+- **正式營運推薦（申請免費專屬金鑰）**：
+  1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選 **Turnstile** ➡️ **Add site**。
+  2. 填入網站名稱與網域（例如 `xingnong-farm.pages.dev`）。
+  3. **Widget Mode 強烈推薦選擇「Invisible（隱形無感）」**。
+  4. 取得 Site Key（填入前端 `VITE_TURNSTILE_SITE_KEY`）與 Secret Key（填入後端 `TURNSTILE_SECRET_KEY`）後重新部署即可。
+
 ---
 
 ## 📄 開源授權
