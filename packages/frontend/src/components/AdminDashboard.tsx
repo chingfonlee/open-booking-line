@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import liff from '@line/liff';
 import { ServiceRequest, RequestStatus } from '../../../shared/types';
-import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut, Loader2 } from 'lucide-react';
+import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
 
+const LIFF_ID = '2011709076-09FdfkjH';
 const ADMIN_PIN_KEY = 'xingnong_admin_pin';
+const ADMIN_TOKEN_KEY = 'xingnong_admin_token';
+
+interface AdminUserProfile {
+  userId: string;
+  displayName: string;
+  pictureUrl?: string;
+}
 
 export const AdminDashboard: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
+  const [adminUser, setAdminUser] = useState<AdminUserProfile | null>(null);
+  const [authError, setAuthError] = useState<{ message: string; userId?: string; displayName?: string } | null>(null);
+
+  // 備援 PIN 模式
+  const [showPinBackup, setShowPinBackup] = useState<boolean>(false);
   const [inputPin, setInputPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -18,48 +32,86 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
 
-  // 1. 頁面載入時向後端確認本機儲存的 PIN 是否仍有效
+  // 1. 初始化 LIFF 與 LINE 幹部白名單自動驗證
   useEffect(() => {
-    const savedPin = localStorage.getItem(ADMIN_PIN_KEY);
-    if (!savedPin) {
-      setIsCheckingAuth(false);
-      return;
-    }
-
-    fetch('/api/admin/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: savedPin })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem(ADMIN_PIN_KEY);
-          setIsAuthenticated(false);
+    liff.init({ liffId: LIFF_ID })
+      .then(async () => {
+        if (liff.isLoggedIn()) {
+          const idToken = liff.getIDToken();
+          if (idToken) {
+            try {
+              const res = await fetch('/api/admin/auth/line', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_token: idToken })
+              });
+              const data = await res.json();
+              if (res.ok && data.success) {
+                sessionStorage.setItem(ADMIN_TOKEN_KEY, idToken);
+                setAdminUser(data.user);
+                setIsAuthenticated(true);
+                setIsCheckingAuth(false);
+                return;
+              } else if (res.status === 403) {
+                setAuthError({
+                  message: data.message || '您非授權幹部',
+                  userId: data.userId,
+                  displayName: data.displayName
+                });
+                setIsCheckingAuth(false);
+                return;
+              }
+            } catch (err) {
+              console.error('LINE admin auth error:', err);
+            }
+          }
         }
+
+        // 檢查備援已存 PIN 碼
+        const savedPin = localStorage.getItem(ADMIN_PIN_KEY);
+        if (savedPin) {
+          const res = await fetch('/api/admin/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: savedPin })
+          }).catch(() => null);
+          if (res && res.ok) {
+            setIsAuthenticated(true);
+            setIsCheckingAuth(false);
+            return;
+          } else {
+            localStorage.removeItem(ADMIN_PIN_KEY);
+          }
+        }
+
+        setIsCheckingAuth(false);
       })
-      .catch(() => {
-        // 離線情況下保留已存狀態
-        setIsAuthenticated(true);
-      })
-      .finally(() => {
+      .catch((err) => {
+        console.warn('LIFF init warning:', err);
         setIsCheckingAuth(false);
       });
   }, []);
 
-  const fetchRequests = async () => {
+  const getAuthHeaders = (): Record<string, string> => {
+    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY) || (liff.isLoggedIn() ? liff.getIDToken() : '');
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
     const pin = localStorage.getItem(ADMIN_PIN_KEY) || '';
-    if (!pin) return;
+    if (pin) {
+      return { 'x-admin-pin': pin };
+    }
+    return {};
+  };
 
+  const fetchRequests = async () => {
     setLoading(true);
     try {
       const url = currentFilter === 'all' 
         ? '/api/admin/requests' 
         : `/api/admin/requests?status=${currentFilter}`;
       const res = await fetch(url, {
-        headers: { 'x-admin-pin': pin }
+        headers: getAuthHeaders()
       });
       const data = await res.json();
       if (data.success) {
@@ -67,8 +119,9 @@ export const AdminDashboard: React.FC = () => {
         if (data.counts) {
           setCounts(data.counts);
         }
-      } else if (res.status === 401) {
+      } else if (res.status === 401 || res.status === 403) {
         setIsAuthenticated(false);
+        sessionStorage.removeItem(ADMIN_TOKEN_KEY);
         localStorage.removeItem(ADMIN_PIN_KEY);
       }
     } catch (err) {
@@ -85,14 +138,13 @@ export const AdminDashboard: React.FC = () => {
   }, [currentFilter, isAuthenticated]);
 
   const handleUpdateStatus = async (id: string, newStatus: RequestStatus, memo?: string) => {
-    const pin = localStorage.getItem(ADMIN_PIN_KEY) || '';
     setSavingStatus(true);
     try {
       const res = await fetch(`/api/admin/requests/${id}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
-          'x-admin-pin': pin
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ status: newStatus, admin_memo: memo })
       });
@@ -103,8 +155,9 @@ export const AdminDashboard: React.FC = () => {
           setSelectedReq({ ...selectedReq, status: newStatus, admin_memo: memo ?? selectedReq.admin_memo });
         }
         fetchRequests();
-      } else if (res.status === 401) {
+      } else if (res.status === 401 || res.status === 403) {
         setIsAuthenticated(false);
+        sessionStorage.removeItem(ADMIN_TOKEN_KEY);
         localStorage.removeItem(ADMIN_PIN_KEY);
       }
     } catch (err) {
@@ -131,19 +184,80 @@ export const AdminDashboard: React.FC = () => {
     return '皆可';
   };
 
+  const handleLineLogin = () => {
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: window.location.href });
+    }
+  };
+
+  const handleLogout = () => {
+    if (confirm('確定要登出管理端嗎？')) {
+      if (liff.isLoggedIn()) {
+        liff.logout();
+      }
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      localStorage.removeItem(ADMIN_PIN_KEY);
+      setIsAuthenticated(false);
+      setAdminUser(null);
+      setAuthError(null);
+    }
+  };
+
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
         <div className="flex items-center gap-2 text-sm text-[#657061] font-semibold">
           <Loader2 className="w-5 h-5 animate-spin text-[#2a5937]" />
-          <span>正在確認管理權限...</span>
+          <span>正在進行站所幹部身分驗證...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 非授權幹部錯誤提示畫面 (403 Forbidden)
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
+        <div className="bg-[#fffdf7] max-w-sm w-full rounded-2xl shadow-xl border border-red-200 p-6 sm:p-8 text-center">
+          <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-200">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-[#20271f] mb-1">未獲幹部管理授權</h2>
+          <p className="text-xs text-red-600 font-semibold mb-4">
+            {authError.message}
+          </p>
+          <div className="bg-[#f8f3e7] border border-[#e0d9cb] rounded-xl p-3 text-left text-xs text-[#657061] mb-6 space-y-1 font-mono">
+            {authError.displayName && <div>• LINE 暱稱：{authError.displayName}</div>}
+            {authError.userId && <div className="break-all">• LINE ID：{authError.userId}</div>}
+            <div className="text-[11px] text-[#2a5937] pt-1">
+              若您為站所工作幹部，請聯繫系統管理員將您的 LINE ID 加入授權名單。
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                if (liff.isLoggedIn()) liff.logout();
+                setAuthError(null);
+              }}
+              className="w-full py-2.5 bg-[#eee2cf] hover:bg-[#e2d4bd] text-[#20271f] font-semibold rounded-xl text-xs transition"
+            >
+              切換其他 LINE 帳號
+            </button>
+            <a
+              href="/"
+              className="block w-full py-2.5 text-center text-xs text-[#657061] hover:text-[#20271f] font-medium"
+            >
+              ← 返回農友預約表單
+            </a>
+          </div>
         </div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    const handleLogin = async (e: React.FormEvent) => {
+    const handlePinLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       const trimmed = inputPin.trim();
       if (!trimmed) {
@@ -177,50 +291,63 @@ export const AdminDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
         <div className="bg-[#fffdf7] max-w-sm w-full rounded-2xl shadow-xl border border-[#c8ad86] p-6 sm:p-8 text-center">
-          <div className="w-14 h-14 bg-[#eee2cf] text-[#173820] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#c8ad86]">
-            <KeyRound className="w-7 h-7" />
+          <div className="w-14 h-14 bg-[#dcebd6] text-[#173820] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#c8ad86]">
+            <ShieldCheck className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-bold text-[#20271f] mb-1">站所幹部管理登入</h2>
+          <h2 className="text-xl font-bold text-[#20271f] mb-1">站所幹部管理系統</h2>
           <p className="text-xs text-[#657061] mb-6">
-            高雄服務站 · 請輸入站所通行密碼以保護農友資料隱私
+            高雄服務站 · 限站所授權幹部存取
           </p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={12}
-                value={inputPin}
-                onChange={(e) => {
-                  setInputPin(e.target.value);
-                  setPinError('');
-                }}
-                placeholder="請輸入站所密碼"
-                autoFocus
-                disabled={isVerifying}
-                className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none bg-white text-[#20271f] disabled:opacity-50"
-              />
-              {pinError && (
-                <p className="text-xs text-red-600 font-semibold mt-2">{pinError}</p>
-              )}
-            </div>
+          {/* 主要登入：LINE 幹部一鍵授權登入 */}
+          <button
+            onClick={handleLineLogin}
+            className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm mb-4"
+          >
+            <span className="text-lg">💬</span>
+            <span>使用 LINE 帳號登入驗證</span>
+          </button>
+          <p className="text-[11px] text-[#657061] mb-6">
+            手機開啟將自動鑑權；電腦開啟可直接使用手機鏡頭掃描 QR Code 登入
+          </p>
 
+          {/* 備援密碼折疊區塊 */}
+          <div className="border-t border-[#e0d9cb] pt-4 text-left">
             <button
-              type="submit"
-              disabled={isVerifying}
-              className="w-full py-3 bg-[#2a5937] hover:bg-[#173820] disabled:bg-[#657061] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2"
+              type="button"
+              onClick={() => setShowPinBackup(!showPinBackup)}
+              className="text-xs text-[#657061] hover:text-[#20271f] font-medium flex items-center justify-between w-full"
             >
-              {isVerifying ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>驗證中...</span>
-                </>
-              ) : (
-                <span>驗證進入管理後台</span>
-              )}
+              <span>備援通道：輸入站所通行密碼</span>
+              <span>{showPinBackup ? '▲' : '▼'}</span>
             </button>
-          </form>
+
+            {showPinBackup && (
+              <form onSubmit={handlePinLogin} className="space-y-3 mt-3">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={12}
+                  value={inputPin}
+                  onChange={(e) => {
+                    setInputPin(e.target.value);
+                    setPinError('');
+                  }}
+                  placeholder="輸入通行密碼"
+                  disabled={isVerifying}
+                  className="w-full px-3 py-2 text-center tracking-widest text-sm font-bold border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:outline-none bg-white text-[#20271f]"
+                />
+                {pinError && <p className="text-xs text-red-600 font-semibold">{pinError}</p>}
+                <button
+                  type="submit"
+                  disabled={isVerifying}
+                  className="w-full py-2 bg-[#2a5937] hover:bg-[#173820] text-white font-bold rounded-xl text-xs transition"
+                >
+                  {isVerifying ? '驗證中...' : '密碼驗證進入'}
+                </button>
+              </form>
+            )}
+          </div>
 
           <div className="mt-6 pt-4 border-t border-[#e0d9cb]">
             <a
@@ -243,6 +370,14 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#2a5937]"></span>
             <span className="text-xs font-bold text-[#657061]">高雄服務站</span>
+            {adminUser && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f3e5] text-[#2a5937] border border-[#c5e3bd]">
+                {adminUser.pictureUrl && (
+                  <img src={adminUser.pictureUrl} alt="" className="w-3.5 h-3.5 rounded-full object-cover" />
+                )}
+                <span>幹部：{adminUser.displayName}</span>
+              </span>
+            )}
           </div>
           <h1 className="text-lg font-black text-[#173820]">服務申請管理</h1>
         </div>
@@ -257,12 +392,7 @@ export const AdminDashboard: React.FC = () => {
             <span className="hidden sm:inline">重整</span>
           </button>
           <button
-            onClick={() => {
-              if (confirm('確定要登出管理端嗎？')) {
-                localStorage.removeItem(ADMIN_PIN_KEY);
-                setIsAuthenticated(false);
-              }
-            }}
+            onClick={handleLogout}
             className="p-2 text-red-700 hover:text-red-900 rounded-lg hover:bg-red-50 border border-red-200 text-xs font-semibold flex items-center gap-1 transition"
             title="登出站所管理"
           >

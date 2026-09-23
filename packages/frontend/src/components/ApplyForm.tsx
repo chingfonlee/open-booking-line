@@ -38,6 +38,8 @@ export const ApplyForm: React.FC = () => {
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [lineProfile, setLineProfile] = useState<{ displayName: string; pictureUrl?: string; userId: string } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
+  const turnstileContainerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 1. 抓取額滿黑名單
@@ -73,6 +75,26 @@ export const ApplyForm: React.FC = () => {
       .catch((err) => {
         console.warn('LIFF init deferred or in browser:', err);
       });
+
+    // 3. 渲染 Cloudflare Turnstile 無感驗證元件
+    const renderTurnstile = () => {
+      if ((window as any).turnstile && turnstileContainerRef.current) {
+        try {
+          (window as any).turnstile.render(turnstileContainerRef.current, {
+            sitekey: '1x00000000000000000000AA', // Cloudflare 官方測試金鑰（Always Pass）
+            theme: 'light',
+            callback: (token: string) => {
+              setTurnstileToken(token);
+            }
+          });
+        } catch (e) {
+          console.warn('Turnstile init note:', e);
+        }
+      } else {
+        setTimeout(renderTurnstile, 600);
+      }
+    };
+    renderTurnstile();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,10 +131,13 @@ export const ApplyForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const idToken = liff.isLoggedIn() ? (liff.getIDToken() || undefined) : undefined;
       const payload = {
         ...formData,
         phone: cleanPhone,
-        area_size: formData.area_value + ' ' + formData.area_unit
+        area_size: formData.area_value + ' ' + formData.area_unit,
+        id_token: idToken,
+        turnstile_token: turnstileToken || undefined
       };
       const res = await fetch('/api/requests', {
         method: 'POST',
@@ -482,6 +507,14 @@ export const ApplyForm: React.FC = () => {
                 )}
               />
             </div>
+          </div>
+
+          {/* Cloudflare Turnstile 無感驗證元件 */}
+          <div className="flex flex-col items-center justify-center my-2">
+            <div ref={turnstileContainerRef} className="min-h-[65px] flex items-center justify-center"></div>
+            <p className="text-[11px] text-[#657061] mt-1 flex items-center gap-1">
+              <span>🛡️</span> 由 Cloudflare Turnstile 提供安全防護
+            </p>
           </div>
 
           <button

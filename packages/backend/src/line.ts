@@ -122,3 +122,43 @@ export async function pushLineMessage(token: string, targetId: string, flexMessa
     console.error('Failed to push LINE message:', err);
   }
 }
+
+export interface VerifiedLineProfile {
+  sub: string; // LINE User ID
+  name?: string;
+  picture?: string;
+  email?: string;
+}
+
+export async function verifyLineIdToken(idToken: string, channelId?: string): Promise<VerifiedLineProfile | null> {
+  if (!idToken) return null;
+  try {
+    const params = new URLSearchParams();
+    params.append('id_token', idToken);
+    if (channelId) {
+      params.append('client_id', channelId);
+    }
+    const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn('LINE ID token verification failed:', res.status, errText);
+      return null;
+    }
+    const data = await res.json() as any;
+    return {
+      sub: data.sub,
+      name: data.name,
+      picture: data.picture,
+      email: data.email
+    };
+  } catch (err) {
+    console.error('Failed to verify LINE ID token:', err);
+    return null;
+  }
+}

@@ -1,0 +1,22 @@
+name = "line-bot-farm-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = [ "nodejs_compat" ]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "xingnong-db"
+database_id = "your-cloudflare-d1-database-id"
+
+[vars]
+STATION_NAME = "你的服務站名稱 (例如：高雄服務站)"
+# 管理員 LINE User ID (接收新申請推播通知)
+ADMIN_NOTIFY_USER_ID = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# 授權管理幹部 LINE User ID 白名單 (多個請用英文逗號隔開)
+ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# LINE Login Channel ID (LIFF 所屬的 Channel ID，前幾碼數字，用於後端驗證 ID Token)
+LINE_LOGIN_CHANNEL_ID = "2000000000"
+# Cloudflare Turnstile 密鑰 (預設為 Cloudflare 官方測試 Always-Pass 金鑰)
+TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
+# 備援通行密碼 (當無法使用 LINE 登入時的應急通行碼)
+ADMIN_PIN = "20241718"

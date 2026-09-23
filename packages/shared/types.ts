@@ -43,6 +43,8 @@ export interface CreateServiceRequestDto {
   date_flexibility?: string;
   notes?: string;
   line_user_id?: string;
+  id_token?: string;
+  turnstile_token?: string;
 }
 
 export interface UpdateServiceRequestDto {

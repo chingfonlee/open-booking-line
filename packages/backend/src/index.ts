@@ -1,19 +1,25 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { generateFlexNotification, pushLineMessage } from './line';
+import { generateFlexNotification, pushLineMessage, verifyLineIdToken } from './line';
+import { verifyTurnstileToken } from './turnstile';
 import { CreateServiceRequestDto, UpdateServiceRequestDto, RequestStatus } from '../../shared/types';
 
 type Bindings = {
   DB: D1Database;
   LINE_CHANNEL_ACCESS_TOKEN?: string;
   ADMIN_NOTIFY_USER_ID?: string;
+  ADMIN_LINE_IDS?: string;
   STATION_NAME?: string;
   ADMIN_PIN?: string;
+  TURNSTILE_SECRET_KEY?: string;
+  LINE_LOGIN_CHANNEL_ID?: string;
 };
 
 // 頻率限制記憶體快取 (Sliding Window Rate Limiter)
 const submissionRateMap = new Map<string, number[]>(); // key: IP, value: timestamps
 const pinFailedAttemptsMap = new Map<string, { count: number; lockedUntil: number }>(); // key: IP
+// 已授權的幹部 LINE Token 快取
+const verifiedAdminTokens = new Map<string, { sub: string; name?: string; picture?: string; exp: number }>();
 
 function isSubmissionRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -55,6 +61,39 @@ function clearPinFailure(ip: string) {
   pinFailedAttemptsMap.delete(ip);
 }
 
+async function getAdminFromToken(c: any): Promise<{ sub: string; name?: string; picture?: string } | null> {
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : (c.req.header('x-line-token') || c.req.query('token'));
+  if (!token) return null;
+
+  const now = Date.now();
+  const cached = verifiedAdminTokens.get(token);
+  if (cached && cached.exp > now) {
+    return cached;
+  }
+
+  const profile = await verifyLineIdToken(token, c.env.LINE_LOGIN_CHANNEL_ID);
+  if (!profile) return null;
+
+  const allowedIds = [
+    ...(c.env.ADMIN_LINE_IDS ? c.env.ADMIN_LINE_IDS.split(',').map((s: string) => s.trim()) : []),
+    c.env.ADMIN_NOTIFY_USER_ID
+  ].filter(Boolean);
+
+  if (!allowedIds.includes(profile.sub)) {
+    return null;
+  }
+
+  const adminData = {
+    sub: profile.sub,
+    name: profile.name,
+    picture: profile.picture,
+    exp: now + 30 * 60 * 1000
+  };
+  verifiedAdminTokens.set(token, adminData);
+  return adminData;
+}
+
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use('*', cors());
@@ -64,7 +103,7 @@ app.get('/api/health', (c) => {
   return c.json({ status: 'ok', station: c.env.STATION_NAME || '高雄服務站', time: new Date().toISOString() });
 });
 
-// 1. 農友送出服務申請 (含 IP 頻率限制防刷)
+// 1. 農友送出服務申請 (含 IP 頻率限制、Turnstile 無感真人驗證與 LINE ID Token 簽名驗證)
 app.post('/api/requests', async (c) => {
   try {
     const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
@@ -76,6 +115,15 @@ app.post('/api/requests', async (c) => {
     }
 
     const body = await c.req.json<CreateServiceRequestDto>();
+
+    // 1-1. Cloudflare Turnstile 無感真人驗證
+    const turnstileSecret = c.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+    if (body.turnstile_token) {
+      const turnstileRes = await verifyTurnstileToken(body.turnstile_token, turnstileSecret, clientIp);
+      if (!turnstileRes.success) {
+        return c.json({ success: false, message: '真人安全驗證未通過，請重新整理頁面後再試。' }, 403);
+      }
+    }
     
     if (!body.contact_name || !body.phone || !body.service_type || !body.preferred_date) {
       return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
@@ -91,6 +139,15 @@ app.post('/api/requests', async (c) => {
 
     if ((body.crop_type || '').includes('其他') && !body.notes?.trim()) {
       return c.json({ success: false, message: '選擇其他作物種類時，請在補充備註填寫作物種類' }, 400);
+    }
+
+    // 1-2. LINE ID Token 簽名驗證（防偽身分）
+    let verifiedLineUserId = body.line_user_id || null;
+    if (body.id_token) {
+      const lineProfile = await verifyLineIdToken(body.id_token, c.env.LINE_LOGIN_CHANNEL_ID);
+      if (lineProfile) {
+        verifiedLineUserId = lineProfile.sub;
+      }
     }
 
     const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -123,7 +180,7 @@ app.post('/api/requests', async (c) => {
       body.date_flexibility || '前後 3 天皆可',
       body.notes || '',
       'to_contact',
-      body.line_user_id || null
+      verifiedLineUserId
     ).run();
 
     if (c.env.LINE_CHANNEL_ACCESS_TOKEN && c.env.ADMIN_NOTIFY_USER_ID) {
@@ -149,7 +206,56 @@ app.post('/api/requests', async (c) => {
 
 const DEFAULT_ADMIN_PIN = '20241718';
 
-// 站所管理密碼驗證端點 (含防暴力破解暫時鎖定)
+// 站所幹部 LINE 白名單身分驗證端點
+app.post('/api/admin/auth/line', async (c) => {
+  try {
+    const body = await c.req.json<{ id_token: string }>().catch(() => ({ id_token: '' }));
+    if (!body.id_token) {
+      return c.json({ success: false, message: '缺少 LINE ID 憑證' }, 400);
+    }
+
+    const profile = await verifyLineIdToken(body.id_token, c.env.LINE_LOGIN_CHANNEL_ID);
+    if (!profile) {
+      return c.json({ success: false, message: 'LINE 身分憑證無效或已過期，請重新登入' }, 401);
+    }
+
+    const allowedIds = [
+      ...(c.env.ADMIN_LINE_IDS ? c.env.ADMIN_LINE_IDS.split(',').map((s: string) => s.trim()) : []),
+      c.env.ADMIN_NOTIFY_USER_ID
+    ].filter(Boolean);
+
+    if (!allowedIds.includes(profile.sub)) {
+      return c.json({
+        success: false,
+        message: '存取受限：您的 LINE 帳號不在站所授權幹部白名單內。',
+        userId: profile.sub,
+        displayName: profile.name
+      }, 403);
+    }
+
+    // 加入幹部 Session 快取
+    verifiedAdminTokens.set(body.id_token, {
+      sub: profile.sub,
+      name: profile.name,
+      picture: profile.picture,
+      exp: Date.now() + 30 * 60 * 1000
+    });
+
+    return c.json({
+      success: true,
+      message: '站所幹部身分驗證成功',
+      user: {
+        userId: profile.sub,
+        displayName: profile.name,
+        pictureUrl: profile.picture
+      }
+    });
+  } catch (err: any) {
+    return c.json({ success: false, message: err.message || '身分驗證程序異常' }, 500);
+  }
+});
+
+// 站所管理密碼驗證端點 (備援 PIN 模式，含防暴力破解暫時鎖定)
 app.post('/api/admin/verify', async (c) => {
   const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
   
@@ -175,17 +281,26 @@ app.post('/api/admin/verify', async (c) => {
   return c.json({ success: true, message: '驗證成功' });
 });
 
-// 站所管理員權限檢核 (方案 A: PIN 碼驗證；後續正式上線可擴充 LINE 幹部白名單)
+// 站所管理員權限檢核 (優先檢驗 LINE 幹部白名單 Token，備援檢驗 PIN 碼)
 app.use('/api/admin/*', async (c, next) => {
-  if (c.req.path === '/api/admin/verify') {
+  if (c.req.path === '/api/admin/auth/line' || c.req.path === '/api/admin/verify') {
     return next();
   }
-  const pin = c.req.header('x-admin-pin') || c.req.header('Authorization')?.replace('Bearer ', '') || c.req.query('pin');
-  const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
-  if (pin !== validPin) {
-    return c.json({ success: false, message: '未經授權：請輸入正確的站所管理密碼' }, 401);
+
+  // 1. 優先檢驗 LINE 幹部白名單 Token
+  const admin = await getAdminFromToken(c);
+  if (admin) {
+    return next();
   }
-  await next();
+
+  // 2. 備援檢驗 PIN 碼
+  const pin = c.req.header('x-admin-pin') || c.req.query('pin');
+  const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
+  if (pin && pin === validPin) {
+    return next();
+  }
+
+  return c.json({ success: false, message: '未經授權：請透過站所幹部 LINE 帳號登入或提供正確授權憑證' }, 401);
 });
 
 // 2. 站所人員查詢申請單列表
