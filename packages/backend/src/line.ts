@@ -227,14 +227,20 @@ export function generateCustomerConfirmationFlex(request: any) {
   };
 }
 
+function sanitizeToken(token?: string): string {
+  if (!token) return '';
+  return token.replace(/[^\x21-\x7E]/g, '').trim();
+}
+
 export async function pushLineMessage(token: string, targetId: string, flexMessage: any) {
-  if (!token || !targetId) return;
+  const cleanToken = sanitizeToken(token);
+  if (!cleanToken || !targetId) return;
   try {
     const res = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
+        Authorization: 'Bearer ' + cleanToken
       },
       body: JSON.stringify({
         to: targetId,
@@ -250,14 +256,18 @@ export async function pushLineMessage(token: string, targetId: string, flexMessa
   }
 }
 
-export async function replyLineMessage(token: string, replyToken: string, messages: any[]) {
-  if (!token || !replyToken || !messages.length) return;
+export async function replyLineMessage(token: string, replyToken: string, messages: any[]): Promise<boolean> {
+  const cleanToken = sanitizeToken(token);
+  if (!cleanToken || !replyToken || !messages.length) {
+    console.warn('replyLineMessage skipped: missing parameters', { hasToken: !!cleanToken, replyToken, msgCount: messages?.length });
+    return false;
+  }
   try {
     const res = await fetch('https://api.line.me/v2/bot/message/reply', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + token
+        Authorization: 'Bearer ' + cleanToken
       },
       body: JSON.stringify({
         replyToken,
@@ -267,10 +277,71 @@ export async function replyLineMessage(token: string, replyToken: string, messag
     if (!res.ok) {
       const err = await res.text();
       console.error('Failed to reply LINE message:', res.status, err);
+      return false;
     }
+    console.log('Successfully replied LINE message to token:', replyToken);
+    return true;
   } catch (err) {
-    console.error('Failed to reply LINE message:', err);
+    console.error('Failed to reply LINE message exception:', err);
+    return false;
   }
+}
+
+export function generateWelcomeGuideFlex() {
+  return {
+    type: 'flex',
+    altText: '【服務選單】行農合作社服務選單',
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#173820',
+        paddingAll: '18px',
+        contents: [
+          { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+          { type: 'text', text: '服務專屬選單', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '18px',
+        spacing: 'sm',
+        contents: [
+          { type: 'text', text: '您好！歡迎使用行農合作社智慧服務系統。', size: 'sm', color: '#20271f', weight: 'bold' },
+          { type: 'text', text: '請點選下方功能，即可進行線上預約或查詢您目前的申請進度：', size: 'xs', color: '#657061', wrap: true }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '🌱 線上預約申請',
+              uri: 'https://liff.line.me/2011709076-09FdfkjH'
+            },
+            style: 'primary',
+            color: '#173820'
+          },
+          {
+            type: 'button',
+            action: {
+              type: 'message',
+              label: '📋 查詢我的預約進度',
+              text: '查詢預約'
+            },
+            style: 'secondary'
+          }
+        ]
+      }
+    }
+  };
 }
 
 export function generateProgressQueryFlex(requests: any[]) {

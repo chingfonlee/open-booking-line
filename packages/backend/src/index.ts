@@ -1,6 +1,14 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { generateFlexNotification, generateCustomerConfirmationFlex, generateProgressQueryFlex, pushLineMessage, replyLineMessage, verifyLineIdToken } from './line';
+import {
+  generateFlexNotification,
+  generateCustomerConfirmationFlex,
+  generateProgressQueryFlex,
+  generateWelcomeGuideFlex,
+  pushLineMessage,
+  replyLineMessage,
+  verifyLineIdToken
+} from './line';
 import { verifyTurnstileToken } from './turnstile';
 import { CreateServiceRequestDto, UpdateServiceRequestDto, RequestStatus } from '../../shared/types';
 
@@ -423,43 +431,66 @@ app.get('/api/line/webhook', (c) => {
 
 app.post('/api/line/webhook', async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({}));
+    const rawBody = await c.req.text();
+    console.log('LINE Webhook received raw body:', rawBody);
+    
+    let body: any = {};
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      console.warn('Failed to parse Webhook JSON');
+    }
+    
     const events: any[] = body.events || [];
 
     if (!events.length) {
-      // LINE Developers Console 驗證 Webhook 時發送空 events
+      console.log('LINE Webhook: Empty events (Verify request)');
       return c.text('OK', 200);
     }
 
     const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
     if (!token) {
-      console.warn('LINE_CHANNEL_ACCESS_TOKEN is not configured');
+      console.error('LINE_CHANNEL_ACCESS_TOKEN is not configured');
       return c.text('OK', 200);
     }
 
     for (const event of events) {
+      console.log('Processing LINE event:', JSON.stringify(event));
       const replyToken = event.replyToken;
       const userId = event.source?.userId;
-      if (!replyToken || !userId) continue;
+      if (!replyToken) {
+        console.warn('Skipping event without replyToken');
+        continue;
+      }
 
       let isQuery = false;
       let isBooking = false;
 
       if (event.type === 'message' && event.message?.type === 'text') {
         const text = (event.message.text || '').trim();
-        if (/^(我要預約|預約|預約服務|線上預約|申請|我要申請|枝條粉碎|預約粉碎|代耕預約)$/i.test(text) || text === '預約') {
-          isBooking = true;
-        } else if (
-          /^(查詢|查預約|查詢預約|我的預約|進度|預約進度|查單|預約狀態|status|query)$/i.test(text) ||
-          text.includes('查預約') ||
-          text.includes('我的預約') ||
-          text.includes('預約進度') ||
-          text.includes('查詢')
+        console.log('Received user text:', text, 'from userId:', userId);
+
+        if (
+          text.includes('查') ||
+          text.includes('進度') ||
+          text.includes('單號') ||
+          text.includes('紀錄') ||
+          text.includes('狀態') ||
+          /^(query|status|list)$/i.test(text)
         ) {
           isQuery = true;
+        } else if (
+          text.includes('預約') ||
+          text.includes('申請') ||
+          text.includes('粉碎') ||
+          text.includes('代耕') ||
+          /^(book|apply)$/i.test(text)
+        ) {
+          isBooking = true;
         }
       } else if (event.type === 'postback') {
         const data = event.postback?.data || '';
+        console.log('Received postback data:', data);
         if (data.includes('query')) {
           isQuery = true;
         } else if (data.includes('book')) {
@@ -469,14 +500,16 @@ app.post('/api/line/webhook', async (c) => {
 
       if (isQuery) {
         // 從資料庫查詢該 LINE 用戶最新的預約紀錄
-        const records = await c.env.DB.prepare(
-          'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
-        ).bind(userId).all();
+        let records: any = { results: [] };
+        if (userId) {
+          records = await c.env.DB.prepare(
+            'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
+          ).bind(userId).all();
+        }
 
+        console.log('Found records count for query:', records.results?.length || 0);
         const flexMsg = generateProgressQueryFlex(records.results || []);
-        c.executionCtx.waitUntil(
-          replyLineMessage(token, replyToken, [flexMsg])
-        );
+        await replyLineMessage(token, replyToken, [flexMsg]);
       } else if (isBooking) {
         const bookingCard = {
           type: 'flex',
@@ -523,17 +556,40 @@ app.post('/api/line/webhook', async (c) => {
           }
         };
 
-        c.executionCtx.waitUntil(
-          replyLineMessage(token, replyToken, [bookingCard])
-        );
+        await replyLineMessage(token, replyToken, [bookingCard]);
+      } else {
+        // 其他任何訊息（包含打招呼、測試等），主動回覆功能導覽卡片
+        const welcomeFlex = generateWelcomeGuideFlex();
+        await replyLineMessage(token, replyToken, [welcomeFlex]);
       }
     }
 
     return c.text('OK', 200);
   } catch (error: any) {
-    console.error('Webhook error:', error);
+    console.error('Webhook processing error:', error);
     return c.text('OK', 200);
   }
+});
+
+// 7. 診斷端點：手動推播測試卡片至特定 LINE User ID
+app.get('/api/debug/test-card', async (c) => {
+  const userId = c.req.query('userId') || 'Ub799ecd073a5b090bf7a7ceee8eeef83';
+  const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) return c.json({ error: 'Missing LINE_CHANNEL_ACCESS_TOKEN' }, 500);
+
+  const records = await c.env.DB.prepare(
+    'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
+  ).bind(userId).all();
+
+  const flexMsg = generateProgressQueryFlex(records.results || []);
+  await pushLineMessage(token, userId, flexMsg);
+
+  return c.json({
+    success: true,
+    message: 'Test card pushed to ' + userId,
+    recordsCount: records.results?.length || 0,
+    latestRecord: records.results?.[0] || null
+  });
 });
 
 export default app;
