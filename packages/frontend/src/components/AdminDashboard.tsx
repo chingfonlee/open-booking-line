@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { ServiceRequest, RequestStatus } from '../../../shared/types';
-import { Phone, CheckCircle2, RefreshCw, X, MapPin } from 'lucide-react';
+import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut } from 'lucide-react';
+
+const ADMIN_PIN_KEY = 'xingnong_admin_pin';
+const VALID_PIN = '20241718';
 
 export const AdminDashboard: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem(ADMIN_PIN_KEY) === VALID_PIN;
+  });
+  const [inputPin, setInputPin] = useState('');
+  const [pinError, setPinError] = useState('');
+
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [selectedReq, setSelectedReq] = useState<ServiceRequest | null>(null);
   const [currentFilter, setCurrentFilter] = useState<RequestStatus | 'all'>('to_contact');
@@ -11,18 +20,26 @@ export const AdminDashboard: React.FC = () => {
   const [savingStatus, setSavingStatus] = useState(false);
 
   const fetchRequests = async () => {
+    const pin = localStorage.getItem(ADMIN_PIN_KEY) || '';
+    if (pin !== VALID_PIN) return;
+
     setLoading(true);
     try {
       const url = currentFilter === 'all' 
         ? '/api/admin/requests' 
         : `/api/admin/requests?status=${currentFilter}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { 'x-admin-pin': pin }
+      });
       const data = await res.json();
       if (data.success) {
         setRequests(data.data || []);
         if (data.counts) {
           setCounts(data.counts);
         }
+      } else if (res.status === 401) {
+        setIsAuthenticated(false);
+        localStorage.removeItem(ADMIN_PIN_KEY);
       }
     } catch (err) {
       console.error('Failed to fetch requests', err);
@@ -32,15 +49,21 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, [currentFilter]);
+    if (isAuthenticated) {
+      fetchRequests();
+    }
+  }, [currentFilter, isAuthenticated]);
 
   const handleUpdateStatus = async (id: string, newStatus: RequestStatus, memo?: string) => {
+    const pin = localStorage.getItem(ADMIN_PIN_KEY) || '';
     setSavingStatus(true);
     try {
       const res = await fetch(`/api/admin/requests/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-pin': pin
+        },
         body: JSON.stringify({ status: newStatus, admin_memo: memo })
       });
       const data = await res.json();
@@ -50,6 +73,9 @@ export const AdminDashboard: React.FC = () => {
           setSelectedReq({ ...selectedReq, status: newStatus, admin_memo: memo ?? selectedReq.admin_memo });
         }
         fetchRequests();
+      } else if (res.status === 401) {
+        setIsAuthenticated(false);
+        localStorage.removeItem(ADMIN_PIN_KEY);
       }
     } catch (err) {
       alert('更新失敗');
@@ -75,6 +101,70 @@ export const AdminDashboard: React.FC = () => {
     return '皆可';
   };
 
+  if (!isAuthenticated) {
+    const handleLogin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (inputPin.trim() === VALID_PIN) {
+        localStorage.setItem(ADMIN_PIN_KEY, VALID_PIN);
+        setIsAuthenticated(true);
+        setPinError('');
+      } else {
+        setPinError('密碼錯誤，請輸入正確的站所管理密碼');
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
+        <div className="bg-[#fffdf7] max-w-sm w-full rounded-2xl shadow-xl border border-[#c8ad86] p-6 sm:p-8 text-center">
+          <div className="w-14 h-14 bg-[#eee2cf] text-[#173820] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#c8ad86]">
+            <KeyRound className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-[#20271f] mb-1">站所幹部管理登入</h2>
+          <p className="text-xs text-[#657061] mb-6">
+            高雄服務站 · 請輸入站所通行密碼以保護農友資料隱私
+          </p>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={12}
+                value={inputPin}
+                onChange={(e) => {
+                  setInputPin(e.target.value);
+                  setPinError('');
+                }}
+                placeholder="請輸入站所密碼"
+                autoFocus
+                className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none bg-white text-[#20271f]"
+              />
+              {pinError && (
+                <p className="text-xs text-red-600 font-semibold mt-2">{pinError}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-[#2a5937] hover:bg-[#173820] text-white font-bold rounded-xl transition shadow-md"
+            >
+              驗證進入管理後台
+            </button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-[#e0d9cb]">
+            <a
+              href="/"
+              className="text-xs text-[#657061] hover:text-[#20271f] font-medium"
+            >
+              ← 返回農友預約表單
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f3f0e8] pb-20 text-[#20271f]">
       <header className="bg-white border-b border-[#e7e3da] sticky top-0 z-10 px-4 py-3 sm:px-6 shadow-sm flex items-center justify-between">
@@ -85,14 +175,30 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <h1 className="text-lg font-black text-[#173820]">服務申請管理</h1>
         </div>
-        <button
-          onClick={fetchRequests}
-          disabled={loading}
-          className="p-2 text-[#657061] hover:text-[#20271f] rounded-lg hover:bg-[#eee2cf] border border-[#d8d1c3] text-xs font-semibold flex items-center gap-1 transition"
-        >
-          <RefreshCw className={'w-3.5 h-3.5 ' + (loading ? 'animate-spin' : '')} />
-          <span>重整</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchRequests}
+            disabled={loading}
+            className="p-2 text-[#657061] hover:text-[#20271f] rounded-lg hover:bg-[#eee2cf] border border-[#d8d1c3] text-xs font-semibold flex items-center gap-1 transition"
+            title="重新整理資料"
+          >
+            <RefreshCw className={'w-3.5 h-3.5 ' + (loading ? 'animate-spin' : '')} />
+            <span className="hidden sm:inline">重整</span>
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('確定要登出管理端嗎？')) {
+                localStorage.removeItem(ADMIN_PIN_KEY);
+                setIsAuthenticated(false);
+              }
+            }}
+            className="p-2 text-red-700 hover:text-red-900 rounded-lg hover:bg-red-50 border border-red-200 text-xs font-semibold flex items-center gap-1 transition"
+            title="登出站所管理"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">登出</span>
+          </button>
+        </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-4 mt-4">

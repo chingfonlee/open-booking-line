@@ -94,6 +94,17 @@ app.post('/api/requests', async (c) => {
   }
 });
 
+const ADMIN_PIN = '20241718';
+
+// 站所管理員權限檢核 (方案 A: PIN 碼驗證；後續正式上線可擴充 LINE 幹部白名單)
+app.use('/api/admin/*', async (c, next) => {
+  const pin = c.req.header('x-admin-pin') || c.req.header('Authorization')?.replace('Bearer ', '') || c.req.query('pin');
+  if (pin !== ADMIN_PIN) {
+    return c.json({ success: false, message: '未經授權：請輸入正確的站所管理密碼' }, 401);
+  }
+  await next();
+});
+
 // 2. 站所人員查詢申請單列表
 app.get('/api/admin/requests', async (c) => {
   try {

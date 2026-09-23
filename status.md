@@ -80,6 +80,12 @@
 - [x] **原生體驗優化**：送單成功畫面提供「**關閉視窗 (返回 LINE)**」按鈕，提升使用流暢度。
 - [x] **前台顧客與幹部後台畫面徹底分離**：預設完全隱藏頂部「示範切換列」，LIFF 與前台專屬顯示農友預約表單；幹部管理端（`?view=admin`）專屬顯示管理儀表板，符合真實上線運作模式（若簡報需切換可帶入 `?demo=1`）。
 
+### 9. 站所幹部管理端安全防護 (已上線)
+- [x] **方案 A：PIN 碼密碼鎖雙層防護**：
+  - **站所管理密碼**：`20241718`
+  - **前端介面防護**：進入管理頁面時自動攔截，必須輸入正確 8 碼密碼方可載入名單；支援瀏覽器記住登入狀態與隨時手動「登出」。
+  - **後端 API 防護**：所有 `/api/admin/*` 介面皆受 `x-admin-pin` 權限檢核保護，未帶密碼直接回傳 401 拒絕存取，杜絕外人窺探農友個資。
+
 ---
 
 ## 🚀 伺服器運行與測試位址
@@ -89,14 +95,14 @@
 | :--- | :--- | :--- |
 | **LINE 官方專用入口 (LIFF)** | [https://liff.line.me/2011709076-09FdfkjH](https://liff.line.me/2011709076-09FdfkjH) | **LINE 內直接全螢幕開啟，自動抓取暱稱** |
 | **農友預約填單 (一般網頁)** | [https://xingnong-farm.pages.dev](https://xingnong-farm.pages.dev) | 一般手機/電腦瀏覽器直接開啟 |
-| **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | 站所人員查看與一鍵撥號 |
+| **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | **站所幹部管理 (通行密碼：`20241718`)** |
 | **後端 API 服務** | `https://line-bot-farm-api.chingfon-lee.workers.dev` | Cloudflare Workers API |
 
 ### 💻 本地端開發環境 (Local Dev)
 | 服務項目 | 本機運行端點 | 說明 |
 | :--- | :--- | :--- |
 | **前端應用 (顧客端)** | `http://localhost:5173/` | 農友預約申請表單 |
-| **前端應用 (管理端)** | `http://localhost:5173/?view=admin` | 幹部服務申請管理儀表板 |
+| **前端應用 (管理端)** | `http://localhost:5173/?view=admin` | 幹部服務申請管理儀表板 (密碼：`20241718`) |
 | **真機區域網路測試** | `http://192.168.16.215:5173/` | 同 Wi-Fi 實體手機瀏覽器測試 |
 | **後端 API 伺服器** | `http://127.0.0.1:8787` | 本機 Worker API |
 
@@ -104,5 +110,6 @@
 
 ## 📋 下一步規劃待辦清單 (Backlog)
 
-1. **LINE 官方帳號圖文選單 (Rich Menu)**：在 LINE Official Account Manager 設定底部常駐選單按鈕，點擊直通 LIFF 預約。
-2. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
+1. **正式上線安全升級（幹部 LINE 白名單驗證）**：客戶正式商轉上線後，將管理端身分驗證改為「限定特定幹部 LINE 帳號（依據 `line_user_id`）登入」，全面免除手動輸入密碼且具備最高防偽安全性。
+2. **LINE 官方帳號圖文選單 (Rich Menu)**：在 LINE Official Account Manager 設定底部常駐選單按鈕，點擊直通 LIFF 預約。
+3. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
