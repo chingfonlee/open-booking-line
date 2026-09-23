@@ -8,7 +8,52 @@ type Bindings = {
   LINE_CHANNEL_ACCESS_TOKEN?: string;
   ADMIN_NOTIFY_USER_ID?: string;
   STATION_NAME?: string;
+  ADMIN_PIN?: string;
 };
+
+// 頻率限制記憶體快取 (Sliding Window Rate Limiter)
+const submissionRateMap = new Map<string, number[]>(); // key: IP, value: timestamps
+const pinFailedAttemptsMap = new Map<string, { count: number; lockedUntil: number }>(); // key: IP
+
+function isSubmissionRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000; // 10 分鐘
+  const maxSubmissions = 5; // 10 分鐘內最多 5 次
+
+  const timestamps = (submissionRateMap.get(ip) || []).filter(t => now - t < windowMs);
+  if (timestamps.length >= maxSubmissions) {
+    return true;
+  }
+  timestamps.push(now);
+  submissionRateMap.set(ip, timestamps);
+  return false;
+}
+
+function checkPinBruteForce(ip: string): { locked: boolean; waitMinutes?: number } {
+  const now = Date.now();
+  const record = pinFailedAttemptsMap.get(ip);
+  if (!record) return { locked: false };
+  if (record.lockedUntil > now) {
+    const waitMinutes = Math.ceil((record.lockedUntil - now) / 60000);
+    return { locked: true, waitMinutes };
+  }
+  return { locked: false };
+}
+
+function recordPinFailure(ip: string) {
+  const now = Date.now();
+  const record = pinFailedAttemptsMap.get(ip) || { count: 0, lockedUntil: 0 };
+  record.count += 1;
+  if (record.count >= 5) {
+    record.lockedUntil = now + 15 * 60 * 1000; // 鎖定 15 分鐘
+    record.count = 0; // 重置計數
+  }
+  pinFailedAttemptsMap.set(ip, record);
+}
+
+function clearPinFailure(ip: string) {
+  pinFailedAttemptsMap.delete(ip);
+}
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -19,9 +64,17 @@ app.get('/api/health', (c) => {
   return c.json({ status: 'ok', station: c.env.STATION_NAME || '高雄服務站', time: new Date().toISOString() });
 });
 
-// 1. 農友送出服務申請
+// 1. 農友送出服務申請 (含 IP 頻率限制防刷)
 app.post('/api/requests', async (c) => {
   try {
+    const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+    if (isSubmissionRateLimited(clientIp)) {
+      return c.json({
+        success: false,
+        message: '送單頻率過高，為保護系統資源請於 10 分鐘後再試，或直接電話聯繫服務站。'
+      }, 429);
+    }
+
     const body = await c.req.json<CreateServiceRequestDto>();
     
     if (!body.contact_name || !body.phone || !body.service_type || !body.preferred_date) {
@@ -94,12 +147,42 @@ app.post('/api/requests', async (c) => {
   }
 });
 
-const ADMIN_PIN = '20241718';
+const DEFAULT_ADMIN_PIN = '20241718';
+
+// 站所管理密碼驗證端點 (含防暴力破解暫時鎖定)
+app.post('/api/admin/verify', async (c) => {
+  const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+  
+  // 防暴力破解檢核
+  const lockStatus = checkPinBruteForce(clientIp);
+  if (lockStatus.locked) {
+    return c.json({
+      success: false,
+      message: `密碼連續錯誤次數過多，為維護安全已暫時鎖定，請於 ${lockStatus.waitMinutes} 分鐘後再試。`
+    }, 429);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const pin = body.pin || c.req.header('x-admin-pin');
+  const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
+
+  if (pin !== validPin) {
+    recordPinFailure(clientIp);
+    return c.json({ success: false, message: '密碼錯誤，請輸入正確的站所管理密碼' }, 401);
+  }
+
+  clearPinFailure(clientIp);
+  return c.json({ success: true, message: '驗證成功' });
+});
 
 // 站所管理員權限檢核 (方案 A: PIN 碼驗證；後續正式上線可擴充 LINE 幹部白名單)
 app.use('/api/admin/*', async (c, next) => {
+  if (c.req.path === '/api/admin/verify') {
+    return next();
+  }
   const pin = c.req.header('x-admin-pin') || c.req.header('Authorization')?.replace('Bearer ', '') || c.req.query('pin');
-  if (pin !== ADMIN_PIN) {
+  const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
+  if (pin !== validPin) {
     return c.json({ success: false, message: '未經授權：請輸入正確的站所管理密碼' }, 401);
   }
   await next();

@@ -592,17 +592,16 @@ export const ApplyForm: React.FC = () => {
 
 const adminDashboard = `import React, { useState, useEffect } from 'react';
 import { ServiceRequest, RequestStatus } from '../../../shared/types';
-import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut } from 'lucide-react';
+import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut, Loader2 } from 'lucide-react';
 
 const ADMIN_PIN_KEY = 'xingnong_admin_pin';
-const VALID_PIN = '20241718';
 
 export const AdminDashboard: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem(ADMIN_PIN_KEY) === VALID_PIN;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [inputPin, setInputPin] = useState('');
   const [pinError, setPinError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [selectedReq, setSelectedReq] = useState<ServiceRequest | null>(null);
@@ -611,9 +610,38 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
 
+  useEffect(() => {
+    const savedPin = localStorage.getItem(ADMIN_PIN_KEY);
+    if (!savedPin) {
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    fetch('/api/admin/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: savedPin })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem(ADMIN_PIN_KEY);
+          setIsAuthenticated(false);
+        }
+      })
+      .catch(() => {
+        setIsAuthenticated(true);
+      })
+      .finally(() => {
+        setIsCheckingAuth(false);
+      });
+  }, []);
+
   const fetchRequests = async () => {
     const pin = localStorage.getItem(ADMIN_PIN_KEY) || '';
-    if (pin !== VALID_PIN) return;
+    if (!pin) return;
 
     setLoading(true);
     try {
@@ -693,15 +721,46 @@ export const AdminDashboard: React.FC = () => {
     return '皆可';
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
+        <div className="flex items-center gap-2 text-sm text-[#657061] font-semibold">
+          <Loader2 className="w-5 h-5 animate-spin text-[#2a5937]" />
+          <span>正在確認管理權限...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (inputPin.trim() === VALID_PIN) {
-        localStorage.setItem(ADMIN_PIN_KEY, VALID_PIN);
-        setIsAuthenticated(true);
-        setPinError('');
-      } else {
-        setPinError('密碼錯誤，請輸入正確的站所管理密碼');
+      const trimmed = inputPin.trim();
+      if (!trimmed) {
+        setPinError('請輸入管理密碼');
+        return;
+      }
+
+      setIsVerifying(true);
+      setPinError('');
+      try {
+        const res = await fetch('/api/admin/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: trimmed })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          localStorage.setItem(ADMIN_PIN_KEY, trimmed);
+          setIsAuthenticated(true);
+          setPinError('');
+        } else {
+          setPinError(data.message || '密碼錯誤，請輸入正確的站所管理密碼');
+        }
+      } catch {
+        setPinError('連線異常，請檢查網路連線');
+      } finally {
+        setIsVerifying(false);
       }
     };
 
@@ -729,7 +788,8 @@ export const AdminDashboard: React.FC = () => {
                 }}
                 placeholder="請輸入站所密碼"
                 autoFocus
-                className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none bg-white text-[#20271f]"
+                disabled={isVerifying}
+                className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none bg-white text-[#20271f] disabled:opacity-50"
               />
               {pinError && (
                 <p className="text-xs text-red-600 font-semibold mt-2">{pinError}</p>
@@ -738,9 +798,17 @@ export const AdminDashboard: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 bg-[#2a5937] hover:bg-[#173820] text-white font-bold rounded-xl transition shadow-md"
+              disabled={isVerifying}
+              className="w-full py-3 bg-[#2a5937] hover:bg-[#173820] disabled:bg-[#657061] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2"
             >
-              驗證進入管理後台
+              {isVerifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>驗證中...</span>
+                </>
+              ) : (
+                <span>驗證進入管理後台</span>
+              )}
             </button>
           </form>
 
@@ -756,6 +824,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen bg-[#f3f0e8] pb-20 text-[#20271f]">
