@@ -1,0 +1,126 @@
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const ROOT_DIR = path.resolve(__dirname, '..');
+const EXPORT_DIR = process.argv[2] 
+  ? path.resolve(process.cwd(), process.argv[2])
+  : path.resolve(ROOT_DIR, '../biz-resource-reservation-public');
+
+console.log('🚀 開始執行開源版本導出程序...');
+console.log(`📁 來源目錄: ${ROOT_DIR}`);
+console.log(`📦 目標開源目錄: ${EXPORT_DIR}`);
+
+// 排除的檔案與資料夾
+const IGNORE_LIST = [
+  '.git',
+  '.codex',
+  '.netlify',
+  '.wrangler',
+  '.playwright-cli',
+  '.playwright-mcp',
+  'node_modules',
+  'dist',
+  '.output',
+  'build',
+  'status.md',
+  'DEMO_HANDOFF.md',
+  '.env',
+  '.env.local'
+];
+
+function copyAndSanitize(srcDir, destDir) {
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+  }
+
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (IGNORE_LIST.includes(entry.name)) {
+      continue;
+    }
+
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+
+    if (entry.isDirectory()) {
+      copyAndSanitize(srcPath, destPath);
+    } else {
+      let content = fs.readFileSync(srcPath, 'utf8');
+
+      // 針對特定檔案進行去識別化清理
+      if (srcPath.endsWith('wrangler.toml') && !srcPath.endsWith('.example')) {
+        content = content
+          .replace(/database_id\s*=\s*"[^"]*"/, 'database_id = "your-cloudflare-d1-database-id"')
+          .replace(/ADMIN_NOTIFY_USER_ID\s*=\s*"[^"]*"/, 'ADMIN_NOTIFY_USER_ID = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"')
+          .replace(/ADMIN_LINE_IDS\s*=\s*"[^"]*"/, 'ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"')
+          .replace(/LINE_LOGIN_CHANNEL_ID\s*=\s*"[^"]*"/, 'LINE_LOGIN_CHANNEL_ID = "2000000000"');
+      }
+
+      if (srcPath.endsWith('AdminDashboard.tsx') || srcPath.endsWith('ApplyForm.tsx')) {
+        content = content.replace(
+          /const LIFF_ID = \(import\.meta\.env\.VITE_LIFF_ID as string\) \|\| '[^']*';/,
+          "const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';"
+        );
+      }
+
+      if (srcPath.endsWith('[[path]].ts')) {
+        content = content.replace(
+          /const targetUrl = 'https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev' \+ url\.pathname \+ url\.search;/,
+          "const backendUrl = (context.env.BACKEND_API_URL as string) || 'https://line-bot-farm-api.your-subdomain.workers.dev';\n  const targetUrl = backendUrl.replace(/\\/$/, '') + url.pathname + url.search;"
+        );
+      }
+
+      if (srcPath.endsWith('_redirects')) {
+        content = content.replace(
+          /https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev/,
+          'https://line-bot-farm-api.your-subdomain.workers.dev'
+        );
+      }
+
+      if (srcPath.endsWith('README.md') || srcPath.endsWith('DEPLOYMENT_GUIDE.md')) {
+        content = content
+          .replace(/U7c0c955[a-zA-Z0-9]+/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+          .replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX')
+          .replace(/2011709076/g, '2000000000')
+          .replace(/9ab7d6d6-6e29-421b-8674-6e6bf0d3e770/g, 'your-cloudflare-d1-database-id');
+      }
+
+      fs.writeFileSync(destPath, content, 'utf8');
+    }
+  }
+}
+
+copyAndSanitize(ROOT_DIR, EXPORT_DIR);
+console.log('✅ 檔案已成功複製並完成隱私去識別化清理！');
+
+// 初始化開源獨立 Git 倉庫
+try {
+  const isGitRepo = fs.existsSync(path.join(EXPORT_DIR, '.git'));
+  if (!isGitRepo) {
+    console.log('🌱 初始化全新開源 Git 倉庫...');
+    execSync('git init', { cwd: EXPORT_DIR, stdio: 'ignore' });
+    execSync('git branch -M main', { cwd: EXPORT_DIR, stdio: 'ignore' });
+  }
+
+  execSync('git add .', { cwd: EXPORT_DIR, stdio: 'ignore' });
+  try {
+    execSync('git commit -m "feat: initial open source release (v1.0.0)"', { cwd: EXPORT_DIR, stdio: 'ignore' });
+    console.log('✅ 已建立乾淨的初始開源 Commit！');
+  } catch {
+    console.log('ℹ️ 目標倉庫無檔案變更需要 commit。');
+  }
+
+  console.log('\n======================================================');
+  console.log('🎉 開源版本已準備就緒！');
+  console.log(`目錄位置：${EXPORT_DIR}`);
+  console.log('後續發布至公開 GitHub 倉庫步驟：');
+  console.log('1. 在 GitHub 建立一個全新的 Public 倉庫（例如 biz-resource-reservation）');
+  console.log(`2. cd "${EXPORT_DIR}"`);
+  console.log('3. git remote add origin https://github.com/chingfonlee/biz-resource-reservation.git');
+  console.log('4. git push -u origin main --force');
+  console.log('======================================================\n');
+} catch (err) {
+  console.warn('Git 初始化提示:', err.message);
+}
