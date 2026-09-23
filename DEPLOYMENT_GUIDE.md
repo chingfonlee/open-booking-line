@@ -307,7 +307,7 @@ Agent 向使用者提示：
 
 ## 6. LINE 官方帳號（OA）整合與對外推廣指引
 
-當系統部署完成並切換為 `Published` 後，您可以透過以下方式讓農友快速進入預約表單：
+當系統部署完成並切換為 `Published` 後，您可以透過以下方式讓農友快速進入預約表單與查詢進度：
 
 ### 1. 取得農友專用 LIFF 連結
 在 LINE Developers 的 LIFF 分頁中，複製 **LIFF URL**，格式如下：
@@ -316,17 +316,52 @@ https://liff.line.me/<YOUR_LIFF_ID>
 ```
 （在 LINE 聊天室中點擊此連結，會直接在手機以原生全螢幕 Webview 開啟，體驗極佳）。
 
-### 2. 放置於官方帳號「圖文選單」(Rich Menu)
-1. 登入 [LINE Official Account Manager (官方帳號管理後台)](https://manager.line.biz/)。
-2. 進入 **聊天室管理** ➡️ **圖文選單** ➡️ 點擊 **建立圖文選單**。
-3. 上傳選單背景圖，將其中一格動作類型設定為 **連結**。
-4. 網址填入您的 **`https://liff.line.me/<YOUR_LIFF_ID>`**。
-5. 儲存並發布後，所有加入官方帳號的農民只要點擊聊天室底部的圖文按鈕，就能一秒喚起預約表單！
+---
 
-### 3. 設定「加入好友歡迎訊息」
+### 2. 放置於官方帳號「圖文選單」(Rich Menu) 推薦配置
+登入 [LINE Official Account Manager (官方帳號管理後台)](https://manager.line.biz/) ➡️ **聊天室相關** ➡️ **圖文選單** ➡️ 點擊 **建立圖文選單**：
+
+| 按鈕區域 | 動作類型 (Action) | 設定內容 | 說明 |
+| :--- | :--- | :--- | :--- |
+| **按鈕 A：申請預約** | **連結 (URL)** | `https://liff.line.me/<YOUR_LIFF_ID>` | 點擊秒開原生預約表單，乾淨清爽 |
+| **按鈕 B：查詢進度** | **文字 (Text)** | `查詢預約` | 點擊在對話室發送文字，機器人秒回進度 Flex 卡片 |
+
+---
+
+### 3. 🚨 LINE Webhook 雙開關啟用設定（非常關鍵！）
+> ⚠️ **若漏掉以下任一開關，農民在 LINE 對話框輸入「查詢預約」時，系統將完全收不到訊息且無法回傳卡片！**
+> 本查詢功能採用 LINE 原生 **Reply API（被動回覆）**，**100% 免費且不扣除每月 200 則免費推播額度**。
+
+#### 🔹 開關 1：LINE 官方帳號管理後台「開啟 Webhook」（最容易漏掉！）
+1. 登入 [LINE Official Account Manager](https://manager.line.biz/)。
+2. 點擊右上角 **「設定」**（齒輪圖示） ➡️ 左側選單 **「回應設定」**。
+3. 檢查以下兩項：
+   - **回應模式**：選擇 **「聊天」** 或 **「聊天機器人」**。
+   - **Webhook**：👉 **務必勾選為「開啟」**！（系統預設多為關閉，若關閉則 LINE 會在前端攔截訊息，不會轉交給後端 API）。
+
+#### 🔹 開關 2：LINE Developers 後台「開啟 Use webhook」
+1. 登入 [LINE Developers Console](https://developers.line.biz/console/)。
+2. 點進您的 **Messaging API Channel**。
+3. 切換至 **Messaging API** 分頁，滑至 **Webhook settings**：
+   - **Webhook URL** 點擊 Edit 輸入：
+     ```text
+     https://<YOUR_WORKER_DOMAIN>/api/line/webhook
+     ```
+     （例如 `https://line-bot-farm-api.<your-account>.workers.dev/api/line/webhook`）。
+   - 點擊 **Verify** 按鈕（應顯示 Success）。
+   - 👉 **務必將「Use webhook」切換為開啟（綠色 Enabled）**（預設為 Disabled 關閉）。
+
+---
+
+### 4. 設定「加入好友歡迎訊息」
 在官方帳號後台設定：
-> 「歡迎加入！若您有果樹枝條粉碎、代耕或農機租借需求，請點擊下方連結立即預約：
-> https://liff.line.me/<YOUR_LIFF_ID>」
+> 「您好！歡迎加入行農合作社服務專區 🌾
+> 
+> 若您有果樹枝條粉碎、代耕或農機租借需求：
+> 🌱 **線上申請預約**：請點選下方選單或開啟 https://liff.line.me/<YOUR_LIFF_ID>
+> 📋 **查詢預約進度**：請在對話框直接輸入【查詢預約】或點選選單，即可查看最新排程狀態！」
+
+---
 
 ### 5. Cloudflare Turnstile 真人防護模式與正式金鑰申請（重要提醒）
 
@@ -351,6 +386,8 @@ https://liff.line.me/<YOUR_LIFF_ID>
 
 | 問題情境 | 排查與修復方式 |
 | :--- | :--- |
+| **農民輸入「查詢預約」或點擊圖文選單，聊天室沒有出現進度卡片？** | **100% 為 Webhook 兩道開關未開：**<br>1. 至 [LINE OA Manager](https://manager.line.biz/) 的「設定」➡️「回應設定」確認 **Webhook 已切換為「開啟」**。<br>2. 至 [LINE Developers](https://developers.line.biz/) 的 Messaging API 頁籤確認 **Use webhook 為 Enabled（綠色）** 且 URL 結尾包含 `/api/line/webhook`。<br>3. 圖文選單按鈕類型必須為 **「文字 (Text)」**，不可為空白連結。 |
+| **如何自我診斷 LINE 推播與卡片是否正常？** | 可在瀏覽器直接開啟後端診斷端點：<br>`https://<YOUR_WORKER_DOMAIN>/api/debug/test-card`<br>系統會即時從 D1 抓取最新一筆預約並直接推播一張 Flex 卡片給申請農友，若手機有收到卡片，代表後端金鑰與卡片格式完全正常。 |
 | **管理後台顯示 403 Forbidden（未獲幹部授權）** | 代表當前登入的 LINE 帳號不在白名單中。請將該使用者的 LINE ID 加入 `packages/backend/wrangler.toml` 的 `ADMIN_LINE_IDS`（逗號隔開），並重新執行 `npx wrangler deploy`。 |
 | **農民送出表單後，LINE 未收到推播訊息** | 1. 檢查 `packages/backend` 是否已成功執行 `wrangler secret put LINE_CHANNEL_ACCESS_TOKEN`。<br>2. 檢查 `ADMIN_NOTIFY_USER_ID` 是否與欲接收通知的 LINE 帳號一致。<br>3. 確保管理者已加入該 LINE 官方帳號為好友。 |
 | **LIFF 開啟時畫面空白或提示 URL 不合法** | 確認 LINE Developers 後台 LIFF 的 **Endpoint URL** 是否完全匹配 Cloudflare Pages 網址（包含 `https://`，不可有多餘斜線）。 |

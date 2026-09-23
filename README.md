@@ -162,12 +162,21 @@ npx wrangler pages deploy dist --project-name xingnong-farm
 - **Endpoint URL**：填入您的 Cloudflare Pages 正式網址（例如 `https://xingnong-farm.pages.dev`）。
 - **Bot prompt**：選擇 `Normal`（在農民首次開啟表單授權時，主動引導將官方帳號加入好友）。
 
-### 3. 如何分享給農民使用
+### 3. 如何分享給農民使用與圖文選單雙功能配置
 - **取得專屬 LIFF 連結**：在 LIFF 設定頁複製 `https://liff.line.me/<YOUR_LIFF_ID>`。
-- **整合官方帳號圖文選單**：登入 [LINE Official Account Manager](https://manager.line.biz/)，於「圖文選單 (Rich Menu)」或「加入好友歡迎訊息」新增按鈕，將點擊動作設為連結並填入您的 LIFF URL，農民即可在手機 LINE 內以原生全螢幕極速開啟預約表單！
-- **免費推播額度**：LINE 官方提供每月 **200 則免費 Push 訊息**（每送出一筆預約通知扣 1 則）。超過 200 則時推播會暫停，但 **Cloudflare D1 資料庫仍會 100% 完整儲存所有預約單**，幹部依然可於管理後台查閱。
+- **圖文選單 (Rich Menu) 推薦配置**：
+  - **預約按鈕**：動作類型設為「連結 (URL)」，網址填入 `https://liff.line.me/<YOUR_LIFF_ID>`。
+  - **查詢進度按鈕**：動作類型設為「文字 (Text)」，文字填入 `查詢預約`。
+- **免費用量優勢**：
+  - 農友點擊「查詢預約」時，系統採用 LINE 原生 **Reply API** 被動回覆最新排程卡片，**完全免費且 100% 不計入每月 200 則推播額度**！
+  - 只有新預約成立時的主動推播會扣除額度（每月 200 則免費 Push）。
 
-### 4. Cloudflare Turnstile 真人防護設定（去除警語橫幅）
+### 4. 🚨 LINE 聊天室查詢進度 Webhook 必備雙開關（未開啟將無反應）
+若要讓農友在 LINE 聊天室輸入「查詢預約」或點擊圖文選單時能收到進度卡片，務必確認以下兩處開關：
+1. **[LINE OA 後台 (manager.line.biz)](https://manager.line.biz/)**：右上角「設定」➡️「回應設定」➡️ **「Webhook」務必切換為「開啟」**（預設為關閉！）。
+2. **[LINE Developers 後台](https://developers.line.biz/)**：Messaging API 分頁 ➡️ **Webhook settings** 填入 `https://<YOUR_WORKER_DOMAIN>/api/line/webhook`，點擊 Verify，並將 **「Use webhook」切換為「開啟（綠色 Enabled）」**。
+
+### 5. Cloudflare Turnstile 真人防護設定（去除警語橫幅）
 - **預設狀態**：本專案預設採用 Cloudflare 官方 **Invisible 隱形模式**（`2x00000000000000000000AB`），表單完全不顯示灰色方塊與「僅用於測試」字樣，背景自動鑑權。
 - **正式營運推薦（申請免費專屬金鑰）**：
   1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選 **Turnstile** ➡️ **Add site**。
