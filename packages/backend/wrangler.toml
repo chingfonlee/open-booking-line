@@ -10,4 +10,4 @@ database_id = "9ab7d6d6-6e29-421b-8674-6e6bf0d3e770"
 
 [vars]
 STATION_NAME = "高雄服務站"
-ADMIN_NOTIFY_USER_ID = ""
+ADMIN_NOTIFY_USER_ID = "U7c0c955efaa9de76a104e62082e1799c"

@@ -93,6 +93,7 @@ export const KAOHSIUNG_DISTRICTS = [
 `;
 
 const applyForm = `import React, { useState, useEffect } from 'react';
+import liff from '@line/liff';
 import { 
   SERVICE_OPTIONS, 
   POPULAR_CROPS, 
@@ -105,6 +106,8 @@ import {
   TimeSlot 
 } from '../../../shared/types';
 import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock } from 'lucide-react';
+
+const LIFF_ID = '2011709076-09FdfkjH';
 
 export const ApplyForm: React.FC = () => {
   const [formData, setFormData] = useState<CreateServiceRequestDto>({
@@ -121,12 +124,14 @@ export const ApplyForm: React.FC = () => {
     preferred_date: '',
     preferred_time_slot: 'morning',
     date_flexibility: '前後 3 天皆可',
-    notes: ''
+    notes: '',
+    line_user_id: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [lineProfile, setLineProfile] = useState<{ displayName: string; pictureUrl?: string; userId: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/config/blocked-dates')
@@ -137,6 +142,29 @@ export const ApplyForm: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    liff.init({ liffId: LIFF_ID })
+      .then(() => {
+        if (liff.isLoggedIn()) {
+          liff.getProfile().then(profile => {
+            if (profile) {
+              setLineProfile({
+                displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl,
+                userId: profile.userId
+              });
+              setFormData(prev => ({
+                ...prev,
+                contact_name: prev.contact_name || profile.displayName,
+                line_user_id: profile.userId
+              }));
+            }
+          }).catch(() => {});
+        }
+      })
+      .catch((err) => {
+        console.warn('LIFF init deferred or in browser:', err);
+      });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -211,21 +239,36 @@ export const ApplyForm: React.FC = () => {
             <div>• 高雄服務站已收到您的需求通知。</div>
             <div>• 人員將儘速<span className="text-[#2a5937] font-bold">撥打電話</span>與您確認細節與確切施工時程。</div>
           </div>
-          <button
-            onClick={() => {
-              setSubmittedId(null);
-              setFormData({
-                ...formData,
-                area_value: '',
-                area_unit: '分',
-                preferred_date: '',
-                notes: ''
-              });
-            }}
-            className="w-full py-3.5 bg-[#2a5937] hover:bg-[#173820] text-white font-bold rounded-xl transition shadow-md"
-          >
-            再填寫一筆申請
-          </button>
+          <div className="space-y-2.5">
+            {liff.isInClient() && (
+              <button
+                type="button"
+                onClick={() => liff.closeWindow()}
+                className="w-full py-3.5 bg-[#173820] hover:bg-[#0f2415] text-white font-bold rounded-xl transition shadow-md"
+              >
+                關閉視窗 (返回 LINE)
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setSubmittedId(null);
+                setFormData({
+                  ...formData,
+                  area_value: '',
+                  area_unit: '分',
+                  preferred_date: '',
+                  notes: ''
+                });
+              }}
+              className={'w-full py-3 font-semibold rounded-xl transition ' + (
+                liff.isInClient()
+                  ? 'bg-[#e0d9cb] hover:bg-[#d0c7b5] text-[#20271f]'
+                  : 'bg-[#2a5937] hover:bg-[#173820] text-white shadow-md'
+              )}
+            >
+              再填寫一筆申請
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -246,6 +289,18 @@ export const ApplyForm: React.FC = () => {
       </header>
 
       <main className="max-w-xl mx-auto px-4 mt-4">
+        {lineProfile && (
+          <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#e8f3e5] border border-[#b8d6ae] rounded-2xl text-xs text-[#173820] font-medium mb-3 shadow-xs">
+            {lineProfile.pictureUrl ? (
+              <img src={lineProfile.pictureUrl} alt="LINE avatar" className="w-6 h-6 rounded-full object-cover border border-[#2a5937]/30" />
+            ) : (
+              <span className="w-5 h-5 rounded-full bg-[#2a5937] text-white flex items-center justify-center font-bold text-[9px]">LINE</span>
+            )}
+            <div>
+              已透過 LINE 自動辨識：<strong className="font-bold text-[#173820]">{lineProfile.displayName}</strong>
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="bg-[#fffdf7] rounded-2xl shadow-sm border border-[#e0d9cb] p-5 sm:p-6 space-y-6">
           <div>
             <label className="flex items-center gap-1.5 text-sm font-bold text-[#20271f] mb-2">

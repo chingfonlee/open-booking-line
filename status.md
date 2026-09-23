@@ -72,14 +72,22 @@
 - [x] **前端應用 (Pages)**：`https://xingnong-farm.pages.dev`
 - [x] **API 穿透代理 (Pages Functions)**：解決手機與 LIFF 跨域（CORS）問題，已通過端對端送單與管理查詢測試。
 
+### 8. LINE Bot 與 LIFF 應用程式對接 (已上線驗證)
+- [x] **官方帳號與 Messaging API**：建立「**行農服務示範帳號**」，設定推播權限。
+- [x] **LIFF 內嵌網頁應用**：建立「**行農服務示範-LIFF**」，LIFF ID：`2011709076-09FdfkjH`。
+- [x] **自動身分識別 (LINE Profile)**：在 LINE 內開啟表單自動辨識顧客 LINE 暱稱與大頭貼，預填姓名並綁定 `line_user_id`。
+- [x] **即時推播通知 (Flex Message)**：農友送出申請後，後端自動透過 Worker 觸發 LINE Messaging API 推播通知給站所幹部，附帶綠色「**撥打電話**」一鍵外撥按鈕。
+- [x] **原生體驗優化**：送單成功畫面提供「**關閉視窗 (返回 LINE)**」按鈕，提升使用流暢度。
+
 ---
 
 ## 🚀 伺服器運行與測試位址
 
 ### 🌐 雲端正式線上環境 (手機 / 任何網路皆可直接開啟)
-| 服務項目 | 正式網址 | 說明 |
+| 服務項目 | 正式網址 / 連結 | 說明 |
 | :--- | :--- | :--- |
-| **農友預約填單 (顧客端)** | [https://xingnong-farm.pages.dev](https://xingnong-farm.pages.dev) | 手機/LINE LIFF 直接開啟使用 |
+| **LINE 官方專用入口 (LIFF)** | [https://liff.line.me/2011709076-09FdfkjH](https://liff.line.me/2011709076-09FdfkjH) | **LINE 內直接全螢幕開啟，自動抓取暱稱** |
+| **農友預約填單 (一般網頁)** | [https://xingnong-farm.pages.dev](https://xingnong-farm.pages.dev) | 一般手機/電腦瀏覽器直接開啟 |
 | **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | 站所人員查看與一鍵撥號 |
 | **後端 API 服務** | `https://line-bot-farm-api.chingfon-lee.workers.dev` | Cloudflare Workers API |
 
@@ -95,8 +103,5 @@
 
 ## 📋 下一步規劃待辦清單 (Backlog)
 
-1. **LINE 官方帳號正式對接 (LIFF)**：
-   - 在 LINE Developers Console 建立 LIFF App，Endpoint URL 填入 `https://xingnong-farm.pages.dev`。
-   - 取得 `line_user_id` 自動綁定與設定 Rich Menu (圖文選單)。
+1. **LINE 官方帳號圖文選單 (Rich Menu)**：在 LINE Official Account Manager 設定底部常駐選單按鈕，點擊直通 LIFF 預約。
 2. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
-3. **LINE 官方帳號通知設定**：於 Worker 環境變數填入 `LINE_CHANNEL_ACCESS_TOKEN` 與幹部 `ADMIN_NOTIFY_USER_ID`。
