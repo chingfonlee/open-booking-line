@@ -250,6 +250,226 @@ export async function pushLineMessage(token: string, targetId: string, flexMessa
   }
 }
 
+export async function replyLineMessage(token: string, replyToken: string, messages: any[]) {
+  if (!token || !replyToken || !messages.length) return;
+  try {
+    const res = await fetch('https://api.line.me/v2/bot/message/reply', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        replyToken,
+        messages
+      })
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('Failed to reply LINE message:', res.status, err);
+    }
+  } catch (err) {
+    console.error('Failed to reply LINE message:', err);
+  }
+}
+
+export function generateProgressQueryFlex(requests: any[]) {
+  if (!requests || requests.length === 0) {
+    return {
+      type: 'flex',
+      altText: '【預約查詢】目前查無您的預約紀錄',
+      contents: {
+        type: 'bubble',
+        header: {
+          type: 'box',
+          layout: 'vertical',
+          backgroundColor: '#173820',
+          paddingAll: '18px',
+          contents: [
+            { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+            { type: 'text', text: '📋 預約申請查詢', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+          ]
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '18px',
+          spacing: 'md',
+          contents: [
+            { type: 'text', text: '目前查無您的預約紀錄', size: 'md', weight: 'bold', color: '#20271f' },
+            { type: 'text', text: '若您有果樹枝條粉碎、代耕或農機租借需求，歡迎隨時點擊下方按鈕線上預約！', size: 'sm', color: '#657061', wrap: true }
+          ]
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '16px',
+          contents: [
+            {
+              type: 'button',
+              action: {
+                type: 'uri',
+                label: '🌱 立即線上預約',
+                uri: 'https://liff.line.me/2011709076-09FdfkjH'
+              },
+              style: 'primary',
+              color: '#173820'
+            }
+          ]
+        }
+      }
+    };
+  }
+
+  const latest = requests[0];
+  const slotMap: Record<string, string> = {
+    morning: '上午',
+    afternoon: '下午',
+    any: '皆可'
+  };
+  const slotText = slotMap[latest.preferred_time_slot] || latest.preferred_time_slot;
+
+  let statusBadgeColor = '#856200';
+  let statusBadgeBg = '#fef3c7';
+  let statusText = '🟡 待聯絡 (服務站已受理，專人排程中)';
+  let statusNote = '服務站幹部已收到您的申請，將儘速致電確認確切施工排程。';
+
+  if (latest.status === 'processing') {
+    statusBadgeColor = '#1e40af';
+    statusBadgeBg = '#dbeafe';
+    statusText = '🔵 處理中 (已聯繫確認，安排施工中)';
+    statusNote = '站所已與您聯繫確認，目前正調配機具與人員準備施作。';
+  } else if (latest.status === 'closed') {
+    statusBadgeColor = '#334155';
+    statusBadgeBg = '#f1f5f9';
+    statusText = '⚪ 已結案 (服務已完成)';
+    statusNote = '本筆預約已順利施工完成，感謝您的支持！';
+  }
+
+  const bodyContents: any[] = [
+    {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: statusBadgeBg,
+      cornerRadius: '8px',
+      paddingAll: '10px',
+      contents: [
+        { type: 'text', text: statusText, size: 'xs', weight: 'bold', color: statusBadgeColor, wrap: true }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      margin: 'md',
+      contents: [
+        { type: 'text', text: '預約單號', size: 'xs', color: '#64748b', flex: 2 },
+        { type: 'text', text: latest.id, size: 'xs', color: '#0f172a', weight: 'bold', flex: 5 }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '服務項目', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: latest.service_type, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '作物 / 面積', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: latest.crop_type + ' · ' + latest.area_size + (latest.branch_volume ? ' (' + latest.branch_volume + ')' : ''), size: 'sm', color: '#0f172a', flex: 5 }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '希望日期', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: latest.preferred_date + ' (' + slotText + ')', size: 'sm', color: '#15803d', weight: 'bold', flex: 5, wrap: true }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '施作地點', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: latest.location_area + ' ' + (latest.location_address || ''), size: 'sm', color: '#0f172a', flex: 5, wrap: true }
+      ]
+    }
+  ];
+
+  if (latest.admin_memo) {
+    bodyContents.push({
+      type: 'box',
+      layout: 'vertical',
+      margin: 'md',
+      backgroundColor: '#f8f3e7',
+      cornerRadius: '8px',
+      paddingAll: '10px',
+      contents: [
+        { type: 'text', text: '站所內部回覆：' + latest.admin_memo, size: 'xs', color: '#2a5937', wrap: true }
+      ]
+    });
+  } else {
+    bodyContents.push({
+      type: 'box',
+      layout: 'vertical',
+      margin: 'md',
+      backgroundColor: '#faf8f3',
+      cornerRadius: '8px',
+      paddingAll: '10px',
+      contents: [
+        { type: 'text', text: '💬 ' + statusNote, size: 'xs', color: '#657061', wrap: true }
+      ]
+    });
+  }
+
+  return {
+    type: 'flex',
+    altText: '【預約進度】' + latest.service_type + ' - ' + statusText,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#173820',
+        paddingAll: '18px',
+        contents: [
+          { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+          { type: 'text', text: '📋 您的服務預約進度', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '16px',
+        contents: bodyContents
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '🌱 填寫新預約申請',
+              uri: 'https://liff.line.me/2011709076-09FdfkjH'
+            },
+            style: 'primary',
+            color: '#173820'
+          }
+        ]
+      }
+    }
+  };
+}
+
 export interface VerifiedLineProfile {
   sub: string; // LINE User ID
   name?: string;

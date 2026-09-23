@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { generateFlexNotification, generateCustomerConfirmationFlex, pushLineMessage, verifyLineIdToken } from './line';
+import { generateFlexNotification, generateCustomerConfirmationFlex, generateProgressQueryFlex, pushLineMessage, replyLineMessage, verifyLineIdToken } from './line';
 import { verifyTurnstileToken } from './turnstile';
 import { CreateServiceRequestDto, UpdateServiceRequestDto, RequestStatus } from '../../shared/types';
 
@@ -413,6 +413,126 @@ app.post('/api/admin/blocked-dates', async (c) => {
     }
   } catch (error: any) {
     return c.json({ success: false, message: error.message }, 500);
+  }
+});
+
+// 6. LINE Messaging API Webhook 端點 (處理農友在 LINE 聊天室內查詢預約進度或 Rich Menu 點擊)
+app.get('/api/line/webhook', (c) => {
+  return c.text('LINE Webhook is active', 200);
+});
+
+app.post('/api/line/webhook', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const events: any[] = body.events || [];
+
+    if (!events.length) {
+      // LINE Developers Console 驗證 Webhook 時發送空 events
+      return c.text('OK', 200);
+    }
+
+    const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (!token) {
+      console.warn('LINE_CHANNEL_ACCESS_TOKEN is not configured');
+      return c.text('OK', 200);
+    }
+
+    for (const event of events) {
+      const replyToken = event.replyToken;
+      const userId = event.source?.userId;
+      if (!replyToken || !userId) continue;
+
+      let isQuery = false;
+      let isBooking = false;
+
+      if (event.type === 'message' && event.message?.type === 'text') {
+        const text = (event.message.text || '').trim();
+        if (/^(我要預約|預約|預約服務|線上預約|申請|我要申請|枝條粉碎|預約粉碎|代耕預約)$/i.test(text) || text === '預約') {
+          isBooking = true;
+        } else if (
+          /^(查詢|查預約|查詢預約|我的預約|進度|預約進度|查單|預約狀態|status|query)$/i.test(text) ||
+          text.includes('查預約') ||
+          text.includes('我的預約') ||
+          text.includes('預約進度') ||
+          text.includes('查詢')
+        ) {
+          isQuery = true;
+        }
+      } else if (event.type === 'postback') {
+        const data = event.postback?.data || '';
+        if (data.includes('query')) {
+          isQuery = true;
+        } else if (data.includes('book')) {
+          isBooking = true;
+        }
+      }
+
+      if (isQuery) {
+        // 從資料庫查詢該 LINE 用戶最新的預約紀錄
+        const records = await c.env.DB.prepare(
+          'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
+        ).bind(userId).all();
+
+        const flexMsg = generateProgressQueryFlex(records.results || []);
+        c.executionCtx.waitUntil(
+          replyLineMessage(token, replyToken, [flexMsg])
+        );
+      } else if (isBooking) {
+        const bookingCard = {
+          type: 'flex',
+          altText: '【線上預約】行農合作社服務預約',
+          contents: {
+            type: 'bubble',
+            header: {
+              type: 'box',
+              layout: 'vertical',
+              backgroundColor: '#173820',
+              paddingAll: '18px',
+              contents: [
+                { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+                { type: 'text', text: '📝 線上服務預約申請', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+              ]
+            },
+            body: {
+              type: 'box',
+              layout: 'vertical',
+              paddingAll: '18px',
+              spacing: 'sm',
+              contents: [
+                { type: 'text', text: '歡迎使用農機枝條粉碎與代耕服務線上預約！', size: 'sm', color: '#20271f', weight: 'bold' },
+                { type: 'text', text: '點擊下方按鈕即可開啟預約表單，填寫作物、面積與希望施工日期，服務站將儘速與您聯繫排程。', size: 'xs', color: '#657061', wrap: true }
+              ]
+            },
+            footer: {
+              type: 'box',
+              layout: 'vertical',
+              paddingAll: '16px',
+              contents: [
+                {
+                  type: 'button',
+                  action: {
+                    type: 'uri',
+                    label: '🌱 開啟預約申請表',
+                    uri: 'https://liff.line.me/2011709076-09FdfkjH'
+                  },
+                  style: 'primary',
+                  color: '#173820'
+                }
+              ]
+            }
+          }
+        };
+
+        c.executionCtx.waitUntil(
+          replyLineMessage(token, replyToken, [bookingCard])
+        );
+      }
+    }
+
+    return c.text('OK', 200);
+  } catch (error: any) {
+    console.error('Webhook error:', error);
+    return c.text('OK', 200);
   }
 });
 
