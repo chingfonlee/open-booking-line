@@ -6,7 +6,7 @@ import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const ADMIN_TOKEN_KEY = 'xingnong_admin_token';
-const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '農業服務站';
+const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '高雄服務站';
 
 interface AdminUserProfile {
   userId: string;
@@ -77,7 +77,15 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   const getAuthHeaders = (): Record<string, string> => {
-    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY) || (liff.isLoggedIn() ? liff.getIDToken() : '');
+    let lineToken = '';
+    if (LIFF_ID) {
+      try {
+        if (liff.isLoggedIn()) {
+          lineToken = liff.getIDToken() || '';
+        }
+      } catch {}
+    }
+    const token = sessionStorage.getItem(ADMIN_TOKEN_KEY) || lineToken;
     if (token) {
       return { Authorization: `Bearer ${token}` };
     }
@@ -174,8 +182,12 @@ export const AdminDashboard: React.FC = () => {
 
   const handleLogout = () => {
     if (confirm('確定要登出管理端嗎？')) {
-      if (liff.isLoggedIn()) {
-        liff.logout();
+      if (LIFF_ID) {
+        try {
+          if (liff.isLoggedIn()) {
+            liff.logout();
+          }
+        } catch {}
       }
       sessionStorage.removeItem(ADMIN_TOKEN_KEY);
       setIsAuthenticated(false);
@@ -218,7 +230,11 @@ export const AdminDashboard: React.FC = () => {
           <div className="space-y-2">
             <button
               onClick={() => {
-                if (liff.isLoggedIn()) liff.logout();
+                if (LIFF_ID) {
+                  try {
+                    if (liff.isLoggedIn()) liff.logout();
+                  } catch {}
+                }
                 setAuthError(null);
               }}
               className="w-full py-2.5 bg-[#eee2cf] hover:bg-[#e2d4bd] text-[#20271f] font-semibold rounded-xl text-xs transition"

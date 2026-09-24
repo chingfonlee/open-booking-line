@@ -15,9 +15,26 @@ import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, Cal
 import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
-const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '農業服務站';
+const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '高雄服務站';
 
 export const ApplyForm: React.FC = () => {
+  const isInLineClient = () => {
+    if (!LIFF_ID) return false;
+    try {
+      return liff.isInClient();
+    } catch {
+      return false;
+    }
+  };
+
+  const closeLineWindow = () => {
+    if (LIFF_ID) {
+      try {
+        liff.closeWindow();
+      } catch {}
+    }
+  };
+
   const [formData, setFormData] = useState<CreateServiceRequestDto>({
     contact_name: '',
     phone: '',
@@ -142,7 +159,16 @@ export const ApplyForm: React.FC = () => {
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     try {
-      const idToken = liff.isLoggedIn() ? (liff.getIDToken() || undefined) : undefined;
+      let idToken: string | undefined = undefined;
+      if (LIFF_ID) {
+        try {
+          if (liff.isLoggedIn()) {
+            idToken = liff.getIDToken() || undefined;
+          }
+        } catch (e) {
+          console.warn('LIFF token retrieval warning:', e);
+        }
+      }
       const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000BB';
       let effectiveToken = turnstileToken;
       if (!effectiveToken && (window as any).turnstile) {
@@ -212,10 +238,10 @@ export const ApplyForm: React.FC = () => {
             <div>• 人員將儘速<span className="text-[#2a5937] font-bold">撥打電話</span>與您確認細節與確切施工時程。</div>
           </div>
           <div className="space-y-2.5">
-            {liff.isInClient() && (
+            {isInLineClient() && (
               <button
                 type="button"
-                onClick={() => liff.closeWindow()}
+                onClick={closeLineWindow}
                 className="w-full py-3.5 bg-[#173820] hover:bg-[#0f2415] text-white font-bold rounded-xl transition shadow-md"
               >
                 關閉視窗 (返回 LINE)
@@ -233,7 +259,7 @@ export const ApplyForm: React.FC = () => {
                 });
               }}
               className={'w-full py-3 font-semibold rounded-xl transition ' + (
-                liff.isInClient()
+                isInLineClient()
                   ? 'bg-[#e0d9cb] hover:bg-[#d0c7b5] text-[#20271f]'
                   : 'bg-[#2a5937] hover:bg-[#173820] text-white shadow-md'
               )}
