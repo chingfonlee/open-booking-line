@@ -85,7 +85,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 // 限縮 CORS 來源，支援環境變數自訂、LIFF 官方應用與本機開發環境
 app.use('*', cors({
   origin: (origin, c) => {
-    if (!origin) return '*';
+    if (!origin) return null;
 
     // 1. 本機開發環境與 LINE LIFF 官方標準網域永遠允許
     if (
@@ -119,15 +119,17 @@ app.use('*', cors({
     return null;
   },
   allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'x-admin-pin', 'x-line-token', 'cf-connecting-ip']
+  allowHeaders: ['Content-Type', 'Authorization', 'x-line-token', 'cf-connecting-ip']
 }));
 
-// 加入標準安全標頭 (防 MIME 混淆、防點擊劫持)
+// 加入標準安全標頭 (防 MIME 混淆、防點擊劫持、強制 HTTPS、CSP)
 app.use('*', async (c, next) => {
   await next();
   c.res.headers.set('X-Content-Type-Options', 'nosniff');
   c.res.headers.set('X-Frame-Options', 'SAMEORIGIN');
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  c.res.headers.set('Content-Security-Policy', "default-src 'self'; frame-ancestors 'self' https://liff.line.me;");
 });
 
 // 全域未捕獲異常處理 (確保永不丟失 CORS 標頭且回傳結構化 JSON)
