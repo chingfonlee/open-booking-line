@@ -1,0 +1,16 @@
+{
+  "name": "open-booking-line",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm --prefix packages/backend run dev",
+    "dev:frontend": "npm --prefix packages/frontend run dev",
+    "build:frontend": "npm --prefix packages/frontend run build",
+    "login": "npm --prefix packages/backend exec wrangler login",
+    "deploy:backend": "npm --prefix packages/backend run deploy",
+    "export:opensource": "node scripts/export-opensource.js"
+  }
+}
