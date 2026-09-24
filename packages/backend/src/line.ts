@@ -556,13 +556,17 @@ export async function verifyLineIdToken(idToken: string, channelId?: string): Pr
     if (channelId) {
       params.append('client_id', channelId);
     }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
     const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: params.toString()
-    });
+      body: params.toString(),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
     if (!res.ok) {
       const errText = await res.text();
       console.warn('LINE ID token verification failed:', res.status, errText);

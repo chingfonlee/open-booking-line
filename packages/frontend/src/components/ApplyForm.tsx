@@ -132,6 +132,9 @@ export const ApplyForm: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
       const idToken = liff.isLoggedIn() ? (liff.getIDToken() || undefined) : undefined;
       const payload = {
@@ -144,18 +147,33 @@ export const ApplyForm: React.FC = () => {
       const res = await fetch(`${API_BASE}/api/requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
-      const data = await res.json();
-      if (data.success) {
+
+      let data: any = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json().catch(() => ({}));
+      } else {
+        const text = await res.text().catch(() => '');
+        data = { success: false, message: text || `伺服器回應異常 (HTTP ${res.status})` };
+      }
+
+      if (res.ok && data.success) {
         setSubmittedId(data.data.id);
       } else {
-        alert(data.message || '送出失敗，請稍後再試');
+        alert(data.message || `送出失敗 (狀態碼 ${res.status})，請稍後再試`);
       }
     } catch (err: any) {
       console.error('Submit request failed:', err);
-      alert('網路連線失敗，請檢查網路：' + (err?.message || '伺服器無回應'));
+      if (err?.name === 'AbortError') {
+        alert('連線逾時（超過 15 秒）：現場手機收訊可能不佳，請確認行動網路後再試，或直接電話聯繫服務站。');
+      } else {
+        alert('網路連線失敗，請檢查網路：' + (err?.message || '伺服器無回應'));
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsSubmitting(false);
     }
   };

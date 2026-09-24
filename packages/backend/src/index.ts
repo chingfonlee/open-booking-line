@@ -29,17 +29,18 @@ const pinFailedAttemptsMap = new Map<string, { count: number; lockedUntil: numbe
 // 已授權的幹部 LINE Token 快取
 const verifiedAdminTokens = new Map<string, { sub: string; name?: string; picture?: string; exp: number }>();
 
-function isSubmissionRateLimited(ip: string): boolean {
+function isSubmissionRateLimited(key: string): boolean {
+  if (!key || (key.startsWith('unknown_') && key.endsWith('_'))) return false;
   const now = Date.now();
   const windowMs = 10 * 60 * 1000; // 10 分鐘
   const maxSubmissions = 5; // 10 分鐘內最多 5 次
 
-  const timestamps = (submissionRateMap.get(ip) || []).filter(t => now - t < windowMs);
+  const timestamps = (submissionRateMap.get(key) || []).filter(t => now - t < windowMs);
   if (timestamps.length >= maxSubmissions) {
     return true;
   }
   timestamps.push(now);
-  submissionRateMap.set(ip, timestamps);
+  submissionRateMap.set(key, timestamps);
   return false;
 }
 
@@ -106,23 +107,45 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 app.use('*', cors());
 
+// 全域未捕獲異常處理 (確保永不丟失 CORS 標頭且回傳結構化 JSON)
+app.onError((err, c) => {
+  console.error('Unhandled server error:', err);
+  return c.json({
+    success: false,
+    message: err.message || '伺服器發生暫時性異常，請稍後再試或直接電話聯繫服務站。'
+  }, 500);
+});
+
 // Health check
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', station: c.env.STATION_NAME || '高雄服務站', time: new Date().toISOString() });
 });
 
-// 1. 農友送出服務申請 (含 IP 頻率限制、Turnstile 無感真人驗證與 LINE ID Token 簽名驗證)
+// 1. 農友送出服務申請 (含 IP + 電話複合頻率限制、Turnstile 無感真人驗證與 LINE ID Token 簽名驗證)
 app.post('/api/requests', async (c) => {
   try {
+    const rawBody = await c.req.text().catch(() => '');
+    let body: CreateServiceRequestDto | null = null;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return c.json({ success: false, message: '請求資料格式不正確，請重新整理後再試' }, 400);
+    }
+
+    if (!body) {
+      return c.json({ success: false, message: '請求資料不能為空' }, 400);
+    }
+
     const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
-    if (isSubmissionRateLimited(clientIp)) {
+    const cleanPhone = (body.phone || '').replace(/[-\s]/g, '');
+    const rateLimitKey = `${clientIp}_${cleanPhone}`;
+
+    if (isSubmissionRateLimited(rateLimitKey)) {
       return c.json({
         success: false,
         message: '送單頻率過高，為保護系統資源請於 10 分鐘後再試，或直接電話聯繫服務站。'
       }, 429);
     }
-
-    const body = await c.req.json<CreateServiceRequestDto>();
 
     // 1-1. Cloudflare Turnstile 無感真人驗證
     const turnstileSecret = c.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
@@ -137,7 +160,6 @@ app.post('/api/requests', async (c) => {
       return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
     }
 
-    const cleanPhone = (body.phone || '').replace(/[-\s]/g, '');
     const isMobile = /^09\d{8}$/.test(cleanPhone);
     const isLandline = /^0[2-8]\d{7}$/.test(cleanPhone);
 
@@ -149,7 +171,20 @@ app.post('/api/requests', async (c) => {
       return c.json({ success: false, message: '選擇其他作物種類時，請在補充備註填寫作物種類' }, 400);
     }
 
-    // 1-2. LINE ID Token 簽名驗證（防偽身分）
+    // 1-2. 雙重日期額滿防護 (同步校驗後端 D1 封閉日期)
+    if (body.preferred_date) {
+      const isBlocked = await c.env.DB.prepare(
+        'SELECT date, reason FROM blocked_dates WHERE date = ?'
+      ).bind(body.preferred_date).first();
+      if (isBlocked) {
+        return c.json({
+          success: false,
+          message: `您選擇的日期 (${body.preferred_date}) 目前服務站已額滿或暫停排程，請選擇其他日期！`
+        }, 400);
+      }
+    }
+
+    // 1-3. LINE ID Token 簽名驗證（防偽身分）
     let verifiedLineUserId = body.line_user_id || null;
     if (body.id_token) {
       const lineProfile = await verifyLineIdToken(body.id_token, c.env.LINE_LOGIN_CHANNEL_ID);
@@ -173,7 +208,7 @@ app.post('/api/requests', async (c) => {
 
     await c.env.DB.prepare(insertSql).bind(
       id, now, now,
-      body.contact_name.trim(),
+      (body.contact_name || '').trim(),
       cleanPhone,
       body.service_type,
       body.crop_type || '其他',

@@ -21,13 +21,17 @@ export async function verifyTurnstileToken(
       formData.append('remoteip', remoteIp);
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: formData.toString()
-    });
+      body: formData.toString(),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
 
     const data = (await res.json()) as any;
     return {
