@@ -1,1 +1,2 @@
+/api/* https://line-bot-farm-api.chingfon-lee.workers.dev/api/:splat 200
 /* /index.html 200
