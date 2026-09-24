@@ -1,5 +1,6 @@
 # 🚀 行農預約系統 · Agent 全自動化部署與技術規範懶人包
-> **Target Audience**: 專門設計供 **AI Coding Agent**（如 Claude Code, Antigravity, Cursor, Devin, GitHub Copilot 等）讀取並自主執行，以最高自動化、最少使用者介入的方式完成專案檢測、建置與雲端部署。同時提供使用者必備之外部平台申請步驟。
+> **Target Audience**: 專門設計供 **AI Coding Agent**（如 Claude Code, Antigravity, Cursor, Devin, GitHub Copilot 等）讀取並自主執行，以最高自動化、最少使用者介入的方式完成專案檢測、建置與雲端部署。同時提供使用者必備之外部平台申請步驟。  
+> 💡 **如果您是完全沒有程式經驗的新手**：請直接閱讀 **[新手白話圖文指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)**，本文件專供技術人員與 AI Agent 讀取執行。
 
 ---
 
