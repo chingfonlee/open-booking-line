@@ -26,7 +26,8 @@ const IGNORE_LIST = [
   'status.md',
   'DEMO_HANDOFF.md',
   '.env',
-  '.env.local'
+  '.env.local',
+  'export-opensource.js'
 ];
 
 function copyAndSanitize(srcDir, destDir) {
@@ -58,6 +59,7 @@ function copyAndSanitize(srcDir, destDir) {
           .replace(/LINE_LOGIN_CHANNEL_ID\s*=\s*"[^"]*"/, 'LINE_LOGIN_CHANNEL_ID = "2000000000"')
           .replace(/STATION_NAME\s*=\s*"[^"]*"/, 'STATION_NAME = "示範農場服務站"')
           .replace(/ADMIN_PIN\s*=\s*"[^"]*"\r?\n?/g, '')
+          .replace(/TURNSTILE_SECRET_KEY\s*=\s*"[^"]*"/, 'TURNSTILE_SECRET_KEY = "0x4AAAAAA...your-turnstile-secret"')
           .replace(/ALLOWED_ORIGINS\s*=\s*"[^"]*"/, 'ALLOWED_ORIGINS = "https://your-app.pages.dev"');
       }
 
@@ -75,6 +77,10 @@ function copyAndSanitize(srcDir, destDir) {
         );
       }
 
+      if (srcPath.endsWith('line.ts') || srcPath.endsWith('index.ts')) {
+        content = content.replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX');
+      }
+
       if (srcPath.endsWith('[[catchall]].ts') || srcPath.endsWith('[[path]].ts')) {
         content = content.replace(
           /https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev/g,
@@ -89,12 +95,19 @@ function copyAndSanitize(srcDir, destDir) {
         );
       }
 
+      if (srcPath.endsWith('package.json') && path.dirname(srcPath) === ROOT_DIR) {
+        content = content.replace(/"name":\s*"line-bot-farm"/, '"name": "open-booking-line"');
+      }
+
       if (srcPath.endsWith('README.md') || srcPath.endsWith('DEPLOYMENT_GUIDE.md')) {
         content = content
-          .replace(/U7c0c955[a-zA-Z0-9]+/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+          .replace(/U7c0c955[a-zA-Z0-9.]+/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
           .replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX')
           .replace(/2011709076/g, '2000000000')
-          .replace(/9ab7d6d6-6e29-421b-8674-6e6bf0d3e770/g, 'your-cloudflare-d1-database-id');
+          .replace(/9ab7d6d6-6e29-421b-8674-6e6bf0d3e770/g, 'your-cloudflare-d1-database-id')
+          .replace(/chingfonlee\/biz-resource-reservation/g, 'chingfonlee/open-booking-line')
+          .replace(/biz-resource-reservation/g, 'open-booking-line')
+          .replace(/line-bot-farm\//g, 'open-booking-line/');
       }
 
       fs.writeFileSync(destPath, content, 'utf8');
