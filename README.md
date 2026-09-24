@@ -56,8 +56,8 @@ line-bot-farm/
 ### 1. 取得專案並安裝相依套件
 
 ```bash
-git clone https://github.com/chingfonlee/biz-resource-reservation.git
-cd biz-resource-reservation
+git clone https://github.com/chingfonlee/open-booking-line.git
+cd open-booking-line
 npm install
 ```
 

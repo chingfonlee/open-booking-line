@@ -271,7 +271,7 @@ app.post('/api/requests', async (c) => {
       body.area_value ? String(body.area_value) : null,
       body.area_unit || null,
       body.branch_volume || '中量',
-      body.location_area || '燕巢區',
+      body.location_area || '',
       body.location_address || '',
       body.preferred_date,
       body.preferred_time_slot || 'morning',
@@ -287,7 +287,7 @@ app.post('/api/requests', async (c) => {
         ...body,
         area_size: computedAreaSize,
         id
-      }, c.env.LIFF_ID);
+      }, c.env.LIFF_ID, c.env.STATION_NAME);
       c.executionCtx.waitUntil(
         pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg)
       );
@@ -299,7 +299,7 @@ app.post('/api/requests', async (c) => {
         ...body,
         area_size: computedAreaSize,
         id
-      }, c.env.LIFF_ID);
+      }, c.env.LIFF_ID, c.env.STATION_NAME);
       c.executionCtx.waitUntil(
         pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg)
       );
@@ -586,7 +586,7 @@ app.post('/api/line/webhook', async (c) => {
         ].filter(Boolean);
 
         if (userId && allowedAdminIds.includes(userId)) {
-          const adminCard = generateAdminPortalFlex(c.env.LIFF_ID);
+          const adminCard = generateAdminPortalFlex(c.env.LIFF_ID, c.env.STATION_NAME);
           await replyLineMessage(token, replyToken, [adminCard]);
         } else {
           const denyCard = {
@@ -605,12 +605,12 @@ app.post('/api/line/webhook', async (c) => {
         }
 
         console.log('Found records count for query:', records.results?.length || 0);
-        const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID);
+        const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID, c.env.STATION_NAME);
         await replyLineMessage(token, replyToken, [flexMsg]);
       } else if (isBooking) {
         const bookingCard = {
           type: 'flex',
-          altText: '【線上預約】行農合作社服務預約',
+          altText: '【線上預約】' + (c.env.STATION_NAME || '服務站') + '服務預約',
           contents: {
             type: 'bubble',
             header: {
@@ -619,7 +619,7 @@ app.post('/api/line/webhook', async (c) => {
               backgroundColor: '#173820',
               paddingAll: '18px',
               contents: [
-                { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+                { type: 'text', text: '🌱 ' + (c.env.STATION_NAME || '高雄服務站'), color: '#bbf7d0', size: 'xs', weight: 'bold' },
                 { type: 'text', text: '📝 線上服務預約申請', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
               ]
             },
@@ -656,7 +656,7 @@ app.post('/api/line/webhook', async (c) => {
         await replyLineMessage(token, replyToken, [bookingCard]);
       } else {
         // 其他任何訊息（包含打招呼、測試等），主動回覆功能導覽卡片
-        const welcomeFlex = generateWelcomeGuideFlex(c.env.LIFF_ID);
+        const welcomeFlex = generateWelcomeGuideFlex(c.env.LIFF_ID, c.env.STATION_NAME);
         await replyLineMessage(token, replyToken, [welcomeFlex]);
       }
     }
@@ -681,7 +681,7 @@ app.get('/api/admin/debug/test-card', async (c) => {
     'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
   ).bind(userId).all();
 
-  const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID);
+  const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID, c.env.STATION_NAME);
   await pushLineMessage(token, userId, flexMsg);
 
   return c.json({
