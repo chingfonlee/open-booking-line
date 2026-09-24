@@ -38,7 +38,7 @@ flowchart TD
 1. **盡可能自動化**：除「平台帳號註冊」與「取得 LINE 金鑰」需使用者手動提供外，環境檢查、依賴安裝、資料庫建立、檔案設定、建置與部署皆應由 Agent 透過終端機指令全自動完成。
 2. **參數收集原則**：向使用者索取以下 4 個必要參數後即可啟動全自動部署流程：
    - `LINE_CHANNEL_ACCESS_TOKEN`（Messaging API 長效金鑰）
-   - `ADMIN_NOTIFY_USER_ID`（接收通知的幹部 LINE User ID，以 `U` 開頭）
+   - `ADMIN_NOTIFY_USER_ID`（接收通知的服務人員 LINE User ID，以 `U` 開頭）
    - `LINE_LOGIN_CHANNEL_ID`（LINE Login Channel ID，數字）
    - `VITE_LIFF_ID`（LIFF 應用 ID，格式如 `2000000000-XXXXXXXX`）
 
@@ -53,9 +53,13 @@ flowchart TD
 | **後端 API** | Cloudflare Workers | Hono 輕量高效框架, Node.js Compat, TypeScript, Web Crypto API |
 | **資料庫** | Cloudflare D1 | 雲端分散式 Serverless SQLite，雙資料表 (`service_requests`, `blocked_dates`) |
 | **身分驗證** | LINE OAuth ID Token | 後端呼叫 LINE 官方 `/oauth2/v2.1/verify` 驗證簽名，取得真實 `sub`（User ID） |
-| **管理權限** | 幹部白名單 (`ADMIN_LINE_IDS`) | 僅限白名單 LINE 帳號登入管理後台，手機自動授權、桌機支援 QR Code 掃描 |
+| **管理權限** | 服務人員白名單 (`ADMIN_LINE_IDS`) | 僅限白名單 LINE 帳號登入管理後台，手機自動授權、桌機支援 QR Code 掃描 |
+| **Webhook 防偽** | 原生 HMAC-SHA256 | 後端使用 Web Crypto API 校驗 `x-line-signature`，阻擋偽造 Webhook 事件 |
+| **跨域防禦** | 動態 CORS 白名單 | 支援 `ALLOWED_ORIGINS` 環境變數配置，隔離惡意跨站刷單，預設僅允許自家 Pages 與 LIFF |
+| **金鑰與密碼** | 零硬編碼治理 | 無預設密碼，未配置 PIN 碼直接阻絕登入，憑證一律透過 Header 傳輸（移除 URL 傳參） |
 | **安全防護** | Cloudflare Turnstile | 表單前端零摩擦無感真人驗證，防止惡意腳本刷單與耗損 LINE 免費推播 |
-| **頻率限制** | IP Sliding Window | 10 分鐘內最多 5 次送單，防止濫發攻擊；備援 PIN 碼連續錯誤 5 次鎖定 15 分鐘 |
+| **頻率限制** | IP + Phone Composite Window | 10 分鐘內最多 5 次送單，兼顧防刷單與台灣電信基地台 CGNAT 相容性；PIN 碼錯 5 次鎖定 15 分鐘 |
+| **安全標頭** | HTTP Security Headers | 全域注入 nosniff、SAMEORIGIN、strict-origin-when-cross-origin 防點擊劫持與嗅探 |
 | **營運成本** | 100% 免費額度支援 | Cloudflare 免費方案（Workers 10萬次/日 + Pages 無限頻寬 + D1 500萬次讀取/日）+ LINE 官方免費 200 則推播/月 |
 
 ---
@@ -87,8 +91,10 @@ flowchart TD
    - 點擊 **Basic settings** 分頁：
      - 滑至最下方找到 **Your user ID**（以 `U` 開頭的 33 碼字串）。
      - 複製此 ID ➡️ **`ADMIN_NOTIFY_USER_ID`**。
+     - 找到 **Channel secret**（32 碼字串）。
+     - 複製此 Secret ➡️ **`LINE_CHANNEL_SECRET`**（強烈推薦，啟用 Webhook HMAC-SHA256 密碼學防偽驗簽）。
 
-#### 2-3 建立 LINE Login Channel 與 LIFF（農友表單與幹部登入）
+#### 2-3 建立 LINE Login Channel 與 LIFF（農友表單與服務人員登入）
 1. 回到 Provider 頁面，點擊 **Create a new channel**，選擇 **LINE Login**。
 2. 填寫名稱（例如：`行農服務站預約入口`），App types 勾選 **Web app**。
 3. 建立後，在 **Basic settings** 分頁：
@@ -108,9 +114,12 @@ flowchart TD
 
 ```text
 LINE_CHANNEL_ACCESS_TOKEN=（填入 Messaging API Channel Access Token）
-ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的個人 LINE User ID）
+LINE_CHANNEL_SECRET=（填入 Messaging API Channel Secret，選填強烈推薦）
+ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的服務人員個人 LINE User ID）
+ADMIN_LINE_IDS=（填入授權服務人員 LINE User ID 白名單，可多個以逗號隔開）
 LINE_LOGIN_CHANNEL_ID=（填入 LINE Login Channel ID 數字）
 VITE_LIFF_ID=（填入 LIFF ID）
+ADMIN_PIN=（自訂 8 位數字備援管理密碼，不可使用預設密碼）
 STATION_NAME=高雄服務站（選填，預設為高雄服務站）
 ```
 
@@ -225,7 +234,8 @@ ADMIN_NOTIFY_USER_ID = "<REPLACE_WITH_ADMIN_NOTIFY_USER_ID>"
 ADMIN_LINE_IDS = "<REPLACE_WITH_ADMIN_NOTIFY_USER_ID>"
 LINE_LOGIN_CHANNEL_ID = "<REPLACE_WITH_LINE_LOGIN_CHANNEL_ID>"
 TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
-ADMIN_PIN = "20241718"
+ADMIN_PIN = "<REPLACE_WITH_CUSTOM_PIN>"
+ALLOWED_ORIGINS = "https://<YOUR_PAGES_DOMAIN>.pages.dev"
 ```
 
 #### 5-2 注入 LINE Messaging Access Token 至 Worker Secret
@@ -233,6 +243,8 @@ Agent 於 `packages/backend` 執行：
 ```bash
 cd packages/backend
 echo "<REPLACE_WITH_LINE_CHANNEL_ACCESS_TOKEN>" | npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+# 若有提供 LINE_CHANNEL_SECRET 則注入（啟用 Webhook 密碼學防偽驗簽）：
+echo "<REPLACE_WITH_LINE_CHANNEL_SECRET>" | npx wrangler secret put LINE_CHANNEL_SECRET
 cd ../..
 ```
 
@@ -382,13 +394,45 @@ https://liff.line.me/<YOUR_LIFF_ID>
 
 ---
 
+
+---
+
+## 🔒 6. 專案安全性架構與安裝檢驗指引 (Security Verification)
+
+本專案已完成全面性的企業級資安加固，安裝者與 AI Agent 在完成部署後，可透過本章節了解防護機制與自我檢測方式：
+
+### 🛡️ 8 大核心防護機制與漏洞防範
+
+| 防護項目 | 漏洞威脅與潛在風險 | 本專案實作之防禦機制 |
+| :--- | :--- | :--- |
+| **1. Webhook 防偽驗簽** | 惡意第三方直接 POST 請求發送偽造 LINE 訊息，盜刷 D1 資料庫或消耗推播額度。 | 採用原生 Web Crypto API 計算 `x-line-signature` 之 **HMAC-SHA256** 簽名校驗，杜絕偽造。 |
+| **2. 零預設硬編碼機密** | 代碼或設定檔包含預設密碼（如硬編碼 PIN），公開或開源時導致系統門戶大開。 | **徹底移除預設密碼**，未配置 `ADMIN_PIN` 時系統強制拒絕認證；機密金鑰一律由 `wrangler secret` 管理。 |
+| **3. 動態 CORS 網域隔離** | 全開 `cors('*')` 易遭惡意網站跨站請求偽造；硬編碼網域則導致換網域時無法使用。 | 支援 `ALLOWED_ORIGINS` 動態白名單（支援萬用字元如 `*.pages.dev`），預設僅信任本機開發與 LINE LIFF。 |
+| **4. 嚴格 Header 憑證傳輸** | 透過 URL Query（`?pin=...` 或 `?token=...`）傳參，密鑰易殘留於瀏覽器歷程與伺服器 Log。 | **全面取消 URL Query 認證**，一律由 HTTP Header（`x-admin-pin`、`x-line-token`）安全傳遞。 |
+| **5. 除錯測試端點收斂** | 公開測試卡片端點可能被任何人任意呼叫觸發 Push，消耗免費配額。 | 測試端點收整至 `/api/admin/debug/test-card`，必須具備服務人員白名單或正確 PIN 始可調用。 |
+| **6. 電信級複合頻率限制** | 純 IP 限流在行動網路（4G/5G）常因基地台 CGNAT 共享 IP 導致無辜農民互相被鎖定。 | 採用 **`Client IP + Phone Number`** 複合識別鍵作為滑動視窗依據（10 分鐘上限 5 次），兼顧安全與相容性。 |
+| **7. 訂單 ID 高熵防碰撞** | 使用 `Math.random()` 短亂數容易在高並發時撞號或被惡意爆破枚舉。 | 全面改採原生 **`crypto.randomUUID()`** 產生高熵亂數後綴，防止訂單枚舉攻擊。 |
+| **8. HTTP 安全標頭注入** | 缺少防護標頭可能遭受 Clickjacking 點擊劫持或 MIME 嗅探攻擊。 | 後端全域自動注入 `X-Content-Type-Options: nosniff`、`X-Frame-Options: SAMEORIGIN` 等標準標頭。 |
+
+### 🔍 部署後安全性自我檢驗 3 步驟
+
+安裝完成後，建議執行以下快速驗證，確保站所安全性設定無誤：
+
+1. **驗證管理密碼防護**：
+   - 瀏覽器開啟 `https://<YOUR_PAGES_DOMAIN>/?view=admin`。
+   - 故意輸入錯誤 PIN 碼，確認系統回傳「密碼錯誤」且連續 5 次錯誤後進入暫時鎖定保護。
+2. **驗證 CORS 來源隔離**：
+   - 於未在 `ALLOWED_ORIGINS` 允許清單的第三方網頁（例如隨意開啟一個無關網頁的 DevTools Console）嘗試呼叫後端 API，確認無法跨域取得資料。
+3. **驗證 Webhook 防偽簽名**：
+   - 使用 Postman 或 curl 直接對 `/api/line/webhook` 發送沒有合法 `x-line-signature` 的 POST 請求，確認後端主動回傳 `401 Missing signature` 或 `401 Invalid signature`，阻止惡意存取。
+
 ## 7. 常見問題與故障排除
 
 | 問題情境 | 排查與修復方式 |
 | :--- | :--- |
 | **農民輸入「查詢預約」或點擊圖文選單，聊天室沒有出現進度卡片？** | **100% 為 Webhook 兩道開關未開：**<br>1. 至 [LINE OA Manager](https://manager.line.biz/) 的「設定」➡️「回應設定」確認 **Webhook 已切換為「開啟」**。<br>2. 至 [LINE Developers](https://developers.line.biz/) 的 Messaging API 頁籤確認 **Use webhook 為 Enabled（綠色）** 且 URL 結尾包含 `/api/line/webhook`。<br>3. 圖文選單按鈕類型必須為 **「文字 (Text)」**，不可為空白連結。 |
 | **如何自我診斷 LINE 推播與卡片是否正常？** | 授權服務人員可在帶有 `x-admin-pin` 或 LINE 登入 Token 下呼叫診斷端點：<br>`https://<YOUR_WORKER_DOMAIN>/api/admin/debug/test-card`<br>系統會即時從 D1 抓取最新一筆預約並直接推播一張 Flex 卡片給申請農友，若手機有收到卡片，代表後端金鑰與卡片格式完全正常（已加入安全防護，未授權者無法調用）。 |
-| **管理後台顯示 403 Forbidden（未獲幹部授權）** | 代表當前登入的 LINE 帳號不在白名單中。請將該使用者的 LINE ID 加入 `packages/backend/wrangler.toml` 的 `ADMIN_LINE_IDS`（逗號隔開），並重新執行 `npx wrangler deploy`。 |
+| **管理後台顯示 403 Forbidden（未獲服務人員授權）** | 代表當前登入的 LINE 帳號不在白名單中。請將該使用者的 LINE ID 加入 `packages/backend/wrangler.toml` 的 `ADMIN_LINE_IDS`（逗號隔開），並重新執行 `npx wrangler deploy`。 |
 | **農民送出表單後，LINE 未收到推播訊息** | 1. 檢查 `packages/backend` 是否已成功執行 `wrangler secret put LINE_CHANNEL_ACCESS_TOKEN`。<br>2. 檢查 `ADMIN_NOTIFY_USER_ID` 是否與欲接收通知的 LINE 帳號一致。<br>3. 確保管理者已加入該 LINE 官方帳號為好友。 |
 | **LIFF 開啟時畫面空白或提示 URL 不合法** | 確認 LINE Developers 後台 LIFF 的 **Endpoint URL** 是否完全匹配 Cloudflare Pages 網址（包含 `https://`，不可有多餘斜線）。 |
 | **表單畫面出現「僅用於測試」字樣？** | 本專案已升級為 Invisible 隱形模式。若您切換自訂金鑰時出現此字樣，代表使用了測試金鑰；請參考上方「第 5 點」至 Cloudflare Turnstile 申請正式免費金鑰並設定為 Invisible 模式。 |
