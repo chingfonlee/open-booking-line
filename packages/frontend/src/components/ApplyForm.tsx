@@ -81,12 +81,15 @@ export const ApplyForm: React.FC = () => {
     const renderTurnstile = () => {
       if ((window as any).turnstile && turnstileContainerRef.current) {
         try {
-          const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '2x00000000000000000000AB'; // 官方 Invisible Always-Pass 隱形金鑰，無任何警語橫幅
+          const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000BB'; // 官方 Invisible Always-Pass 隱形金鑰
           (window as any).turnstile.render(turnstileContainerRef.current, {
             sitekey,
             size: 'invisible',
             callback: (token: string) => {
               setTurnstileToken(token);
+            },
+            'error-callback': () => {
+              console.warn('Turnstile challenge error, will use fallback');
             }
           });
         } catch (e) {
@@ -137,12 +140,24 @@ export const ApplyForm: React.FC = () => {
 
     try {
       const idToken = liff.isLoggedIn() ? (liff.getIDToken() || undefined) : undefined;
+      const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000BB';
+      let effectiveToken = turnstileToken;
+      if (!effectiveToken && (window as any).turnstile) {
+        try {
+          effectiveToken = (window as any).turnstile.getResponse();
+        } catch {}
+      }
+      // 測試金鑰環境防呆：若本機測試或受瀏覽器阻擋外掛影響未及時取得 Token，自動套用測試 Token
+      if (!effectiveToken && (sitekey.startsWith('1x') || sitekey.startsWith('2x'))) {
+        effectiveToken = 'XXXX.DUMMY.TOKEN.XXXX';
+      }
+
       const payload = {
         ...formData,
         phone: cleanPhone,
         area_size: formData.area_value + ' ' + formData.area_unit,
         id_token: idToken,
-        turnstile_token: turnstileToken || undefined
+        turnstile_token: effectiveToken || undefined
       };
       const res = await fetch(`${API_BASE}/api/requests`, {
         method: 'POST',
@@ -531,7 +546,7 @@ export const ApplyForm: React.FC = () => {
           </div>
 
           {/* Cloudflare Turnstile 隱形無感驗證元件 (背景全自動運作，零畫面干擾、無任何警語) */}
-          <div ref={turnstileContainerRef} className="hidden"></div>
+          <div ref={turnstileContainerRef}></div>
           <div className="flex items-center justify-center -mt-2 mb-1">
             <p className="text-[11px] text-[#657061] flex items-center gap-1">
               <span>🛡️</span> 由 Cloudflare Turnstile 提供安全防護
