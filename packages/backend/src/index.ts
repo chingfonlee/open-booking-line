@@ -8,7 +8,8 @@ import {
   generateAdminPortalFlex,
   pushLineMessage,
   replyLineMessage,
-  verifyLineIdToken
+  verifyLineIdToken,
+  verifyLineSignature
 } from './line';
 import { verifyTurnstileToken } from './turnstile';
 import { CreateServiceRequestDto, UpdateServiceRequestDto, RequestStatus } from '../../shared/types';
@@ -16,10 +17,13 @@ import { CreateServiceRequestDto, UpdateServiceRequestDto, RequestStatus } from 
 type Bindings = {
   DB: D1Database;
   LINE_CHANNEL_ACCESS_TOKEN?: string;
+  LINE_CHANNEL_SECRET?: string;
   ADMIN_NOTIFY_USER_ID?: string;
   ADMIN_LINE_IDS?: string;
   STATION_NAME?: string;
   ADMIN_PIN?: string;
+  ALLOWED_ORIGINS?: string;
+  FRONTEND_URL?: string;
   TURNSTILE_SECRET_KEY?: string;
   LINE_LOGIN_CHANNEL_ID?: string;
 };
@@ -106,19 +110,40 @@ async function getAdminFromToken(c: any): Promise<{ sub: string; name?: string; 
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// 限縮 CORS 來源，僅允許自家 Pages、LIFF 官方應用與本機開發環境
+// 限縮 CORS 來源，支援環境變數自訂、LIFF 官方應用與本機開發環境
 app.use('*', cors({
-  origin: (origin) => {
+  origin: (origin, c) => {
     if (!origin) return '*';
+
+    // 1. 本機開發環境與 LINE LIFF 官方標準網域永遠允許
     if (
-      origin === 'https://xingnong-farm.pages.dev' ||
-      origin.endsWith('.xingnong-farm.pages.dev') ||
       origin === 'https://liff.line.me' ||
       origin.startsWith('http://localhost:') ||
       origin.startsWith('http://127.0.0.1:')
     ) {
       return origin;
     }
+
+    // 2. 自訂允許網域清單 (支援逗點分隔多組網域，例如 "https://farm.pages.dev,https://myfarm.com")
+    const envOrigins = (c.env as Bindings).ALLOWED_ORIGINS || (c.env as Bindings).FRONTEND_URL || '';
+    if (envOrigins) {
+      const allowedList = envOrigins.split(',').map((s: string) => s.trim().replace(/\/$/, ''));
+      const isAllowed = allowedList.some((allowed: string) => {
+        if (allowed === origin) return true;
+        if (allowed.startsWith('*.') && origin.endsWith(allowed.slice(1))) return true;
+        return false;
+      });
+      if (isAllowed) return origin;
+    }
+
+    // 3. 預設相容官方示範網域 (*.xingnong-farm.pages.dev)
+    if (
+      origin === 'https://xingnong-farm.pages.dev' ||
+      origin.endsWith('.xingnong-farm.pages.dev')
+    ) {
+      return origin;
+    }
+
     return null;
   },
   allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
@@ -286,8 +311,6 @@ app.post('/api/requests', async (c) => {
   }
 });
 
-const DEFAULT_ADMIN_PIN = '20241718';
-
 // 服務人員 LINE 白名單身分驗證端點
 app.post('/api/admin/auth/line', async (c) => {
   try {
@@ -350,9 +373,14 @@ app.post('/api/admin/verify', async (c) => {
     }, 429);
   }
 
+  const validPin = c.env.ADMIN_PIN;
+  if (!validPin) {
+    console.error('[SECURITY ERROR] ADMIN_PIN is not configured in server environment');
+    return c.json({ success: false, message: '系統管理密碼尚未於環境變數中設定，請聯繫系統管理員配置' }, 500);
+  }
+
   const body = await c.req.json().catch(() => ({}));
   const pin = body.pin || c.req.header('x-admin-pin');
-  const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
 
   if (pin !== validPin) {
     recordPinFailure(clientIp);
@@ -377,8 +405,8 @@ app.use('/api/admin/*', async (c, next) => {
 
   // 2. 備援檢驗 PIN 碼 (僅允許 Header 傳送，防範 URL Query 洩漏)
   const pin = c.req.header('x-admin-pin');
-  const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
-  if (pin && pin === validPin) {
+  const validPin = c.env.ADMIN_PIN;
+  if (pin && validPin && pin === validPin) {
     return next();
   }
 
@@ -495,6 +523,23 @@ app.post('/api/line/webhook', async (c) => {
     const rawBody = await c.req.text();
     console.log('LINE Webhook received raw body:', rawBody);
     
+    // 0. LINE 官方 Webhook 簽名驗證 (HMAC-SHA256 防偽驗證)
+    const channelSecret = c.env.LINE_CHANNEL_SECRET;
+    const signature = c.req.header('x-line-signature');
+    if (channelSecret) {
+      if (!signature) {
+        console.warn('[LINE Webhook 安全阻擋] 缺少 x-line-signature 標頭，拒絕處理');
+        return c.text('Missing signature', 401);
+      }
+      const isValid = await verifyLineSignature(rawBody, signature, channelSecret);
+      if (!isValid) {
+        console.warn('[LINE Webhook 安全阻擋] x-line-signature 簽名校驗失敗，可能為偽造請求');
+        return c.text('Invalid signature', 401);
+      }
+    } else {
+      console.warn('[LINE Webhook 安全提醒] 環境變數未配置 LINE_CHANNEL_SECRET，暫時略過簽名驗證（開源部署建議於正式環境設定）');
+    }
+
     let body: any = {};
     try {
       body = JSON.parse(rawBody);

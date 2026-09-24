@@ -55,7 +55,17 @@ function copyAndSanitize(srcDir, destDir) {
           .replace(/database_id\s*=\s*"[^"]*"/, 'database_id = "your-cloudflare-d1-database-id"')
           .replace(/ADMIN_NOTIFY_USER_ID\s*=\s*"[^"]*"/, 'ADMIN_NOTIFY_USER_ID = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"')
           .replace(/ADMIN_LINE_IDS\s*=\s*"[^"]*"/, 'ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"')
-          .replace(/LINE_LOGIN_CHANNEL_ID\s*=\s*"[^"]*"/, 'LINE_LOGIN_CHANNEL_ID = "2000000000"');
+          .replace(/LINE_LOGIN_CHANNEL_ID\s*=\s*"[^"]*"/, 'LINE_LOGIN_CHANNEL_ID = "2000000000"')
+          .replace(/STATION_NAME\s*=\s*"[^"]*"/, 'STATION_NAME = "示範農場服務站"')
+          .replace(/ADMIN_PIN\s*=\s*"[^"]*"/, 'ADMIN_PIN = "change-me-to-your-secure-pin"')
+          .replace(/ALLOWED_ORIGINS\s*=\s*"[^"]*"/, 'ALLOWED_ORIGINS = "https://your-app.pages.dev"');
+      }
+
+      if (srcPath.endsWith('config.ts')) {
+        content = content.replace(
+          /'https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev'/,
+          "'https://line-bot-farm-api.your-subdomain.workers.dev'"
+        );
       }
 
       if (srcPath.endsWith('AdminDashboard.tsx') || srcPath.endsWith('ApplyForm.tsx')) {
@@ -65,10 +75,10 @@ function copyAndSanitize(srcDir, destDir) {
         );
       }
 
-      if (srcPath.endsWith('[[path]].ts')) {
+      if (srcPath.endsWith('[[catchall]].ts') || srcPath.endsWith('[[path]].ts')) {
         content = content.replace(
-          /const targetUrl = 'https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev' \+ url\.pathname \+ url\.search;/,
-          "const backendUrl = (context.env.BACKEND_API_URL as string) || 'https://line-bot-farm-api.your-subdomain.workers.dev';\n  const targetUrl = backendUrl.replace(/\\/$/, '') + url.pathname + url.search;"
+          /https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev/g,
+          'https://line-bot-farm-api.your-subdomain.workers.dev'
         );
       }
 

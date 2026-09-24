@@ -594,6 +594,38 @@ export async function verifyLineIdToken(idToken: string, channelId?: string): Pr
   }
 }
 
+/**
+ * 驗證 LINE Webhook x-line-signature 簽名 (HMAC-SHA256)
+ * 防止偽造 Webhook 事件刷後端 D1 或消耗 LINE 配額
+ */
+export async function verifyLineSignature(
+  rawBody: string,
+  signature: string,
+  channelSecret: string
+): Promise<boolean> {
+  if (!rawBody || !signature || !channelSecret) return false;
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(channelSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(rawBody)
+    );
+    const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+    return computedSignature === signature;
+  } catch (err) {
+    console.error('Failed to verify LINE signature:', err);
+    return false;
+  }
+}
+
 export function generateAdminPortalFlex() {
   return {
     type: 'flex',
