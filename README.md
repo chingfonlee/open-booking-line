@@ -15,10 +15,10 @@
    - 農民開啟 LINE LIFF 即可自動帶入暱稱，一鍵完成預約。
    - 預約送出後，站所服務人員即刻收到美觀的 **LINE Flex Message** 推播通知，並可直接點擊卡片撥號聯絡農民或一鍵進入後台。
 3. **開源級企業安全防護體系**
-   - 🛡️ **LINE 服務人員白名單原生鑑權**：管理後台採用 LINE 官方 ID Token 驗證，僅允許設定在 `ADMIN_LINE_IDS` 白名單內的服務人員存取。手機端自動授權進入，電腦桌機端支援 QR Code 掃描登入；徹底免除靜態密碼洩漏之風險（並保留可折疊之緊急備援 PIN 通道）。
-   - 🛡️ **LINE Webhook 密碼學防偽驗簽**：採用原生 Web Crypto API 針對 `x-line-signature` 進行 HMAC-SHA256 驗證，杜絕偽造 Webhook 事件盜刷 DB 或耗損推播配額。
-   - 🛡️ **Cloudflare Turnstile 零摩擦防護**：農民填表無須辨識歪斜文字或點擊紅綠燈，由 Cloudflare Turnstile 進行無感真人驗證，徹底防禦惡意機器人刷單、保護每月免費 LINE 推播額度與 D1 寫入資源。
-   - 🛡️ **全環境零硬編碼機密 (Zero Hardcoded Secrets)**：無任何預設密碼，所有敏感憑證均透過環境變數或 `wrangler secret` 隔離，並具備全自動開源脫敏保護。
+   - 🛡️ **純 LINE 服務人員白名單原生鑑權（Zero-Password 零密碼架構）**：管理後台全面採用 LINE 官方 ID Token 驗證，僅允許設定在 `ADMIN_LINE_IDS` 白名單內的服務人員存取。手機端自動授權進入，電腦桌機端支援 QR Code 掃描登入；**徹底拔除靜態密碼，徹底根除密碼洩漏、爆破與忘記密碼之風險**。
+   - 🛡️ **LINE Webhook 密碼學防偽驗簽**：採用原生 Web Crypto API 針對 `x-line-signature` 進行 HMAC-SHA256 恆定時間驗證，杜絕偽造 Webhook 事件盜刷 DB 或耗損推播配額。
+   - 🛡️ **Cloudflare Turnstile 強制無感真人驗證**：農民填表無須辨識歪斜文字，背景強制驗核 Token，防禦惡意機器人繞過刷單、保護每月免費 LINE 推播額度與 D1 寫入資源。
+   - 🛡️ **全資料欄位長度防爆破與 PII 日誌脫敏**：全面限制姓名、電話、地址與備註之最大字數，日誌自動遮蔽敏感個人電話，落實隱私合規。
 
 ---
 
@@ -113,7 +113,6 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
 | `ADMIN_LINE_IDS` | 授權管理服務人員的 LINE User ID 白名單（逗號分隔） | `U7c0c955...,U123456...` |
 | `LINE_LOGIN_CHANNEL_ID` | LIFF 所屬的 LINE Login Channel ID | `2011709076` |
 | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile 密鑰 | 測試：`1x0000000000000000000000000000000AA`（正式請自建） |
-| `ADMIN_PIN` | 備援管理通行密碼 | 建議自訂高強度 8 位數密碼（或以 `wrangler secret put ADMIN_PIN` 注入） |
 | `ALLOWED_ORIGINS` | 前端允許之 CORS 來源（逗號分隔） | `https://your-app.pages.dev,https://*.pages.dev` |
 
 將 LINE 關鍵密鑰設為 Worker Secret（避免明文納入版本控制）：
@@ -151,18 +150,18 @@ npx wrangler pages deploy dist --project-name xingnong-farm
 flowchart TD
     subgraph Client["農民端與服務人員端 (Client)"]
         Farmer["🧑‍🌾 農友表單 (LIFF)"]
-        Admin["🛠️ 服務人員後台"]
+        Admin["🛠️ 服務人員後台 (Zero-Password)"]
         LineApp["📱 LINE 官方聊天室"]
     end
 
     subgraph SecurityLayer["安全性防禦層 (Workers Edge Security)"]
         CORS["🌐 CORS 動態網域檢驗<br>(ALLOWED_ORIGINS)"]
-        Headers["🛡️ 安全標頭注入<br>(X-Frame-Options, nosniff)"]
+        Headers["🛡️ 安全標頭注入<br>(X-Frame-Options, nosniff, HSTS)"]
         RateLimit["⏳ 複合式滑動窗口頻率限制<br>(Client IP + Phone)"]
-        Turnstile["🤖 Cloudflare Turnstile<br>無感真人驗證"]
-        HMAC["🔑 LINE Webhook HMAC-SHA256<br>密碼學防偽驗簽"]
-        LineAuth["🆔 LINE ID Token 簽名驗證<br>(白名單校驗)"]
-        PinLock["🔒 管理員 PIN 碼防爆破鎖定<br>(錯 5 次鎖定 15 分鐘)"]
+        Turnstile["🤖 Cloudflare Turnstile<br>強制真人 Token 驗證"]
+        HMAC["🔑 LINE Webhook HMAC-SHA256<br>恆定時間防時序驗簽"]
+        LineAuth["🆔 LINE ID Token 密碼學簽名校驗<br>(純白名單零密碼存取)"]
+        LengthCheck["📏 欄位長度嚴格校驗<br>(防止灌爆 D1 資料庫)"]
     end
 
     subgraph Core["核心資料與服務 (Zero-Cost Core)"]
@@ -170,47 +169,46 @@ flowchart TD
         LINE_API["📨 LINE Messaging API"]
     end
 
-    Farmer --> CORS --> Headers --> RateLimit --> Turnstile --> D1
+    Farmer --> CORS --> Headers --> RateLimit --> Turnstile --> LengthCheck --> D1
     Farmer -. 預約成立 .-> LINE_API
     LineApp --> HMAC --> D1
-    Admin --> LineAuth --> PinLock --> D1
+    Admin --> LineAuth --> D1
 ```
 
-### 1. 🛡️ LINE Webhook 原生 HMAC-SHA256 密碼學防偽驗簽
-* **修復漏洞**：傳統 Webhook 缺乏簽名驗證時，攻擊者可偽造 HTTP POST 請求刷爆後端資料庫或消耗 LINE 免費推播額度。
-* **防護機制**：實作 [`verifyLineSignature`](packages/backend/src/line.ts)，透過原生 Web Crypto API 計算 `x-line-signature` 之 HMAC-SHA256 雜湊，阻斷所有未授權的偽造 Webhook 事件。
+### 1. 🛡️ LINE Webhook 原生 HMAC-SHA256 恆定時間防偽驗簽
+* **修復漏洞**：傳統 Webhook 缺乏簽名校驗，且字串 `===` 比對存在時序微秒差異（Timing Attack）。
+* **防護機制**：實作 [`verifyLineSignature`](packages/backend/src/line.ts)，透過原生 Web Crypto API 計算 `x-line-signature` 之 HMAC-SHA256 雜湊，並採用 `constantTimeEqual` 恆定時間比對，阻斷偽造請求與時序攻擊。
 
-### 2. 🔐 零硬編碼機密與安全金鑰治理 (Zero Hardcoded Secrets)
-* **修復漏洞**：舊版本代碼與設定檔曾包含預設 PIN 與明文金鑰，公開至 Git 會導致系統門戶大開。
-* **防護機制**：
-  - 徹底刪除程式碼中所有預設密碼常數（如 `DEFAULT_ADMIN_PIN`），未配置環境變數時系統自動拒絕認證並輸出安全警告。
-  - 機密憑證建議透過 `wrangler secret put` 儲存，且開源導出腳本（`scripts/export-opensource.js`）具備自動去識別化脫敏機制。
+### 2. 🔐 純 LINE 身分白名單鑑權（Zero-Password 零密碼架構）
+* **修復漏洞**：靜態管理密碼（PIN）容易被暴力破解、洩漏於 Git，或儲存於 `localStorage` 遭 XSS 竊取。
+* **防護機制**：**徹底拔除所有 PIN 碼相關機制**。管理端 100% 透過 LINE 官方 ID Token 驗證服務人員身分（`ADMIN_LINE_IDS`），手機端免密碼自動鑑權、電腦端手機掃碼登入，無密碼可供洩漏或爆破。
 
-### 3. 🌐 動態 CORS 白名單隔離 (`ALLOWED_ORIGINS`)
+### 3. 🤖 Cloudflare Turnstile 強制真人檢核（防範繞過漏洞）
+* **修復漏洞**：舊版本若客戶端未帶 `turnstile_token` 欄位即直接放行，容易被腳本繞過。
+* **防護機制**：後端強制要求 `body.turnstile_token` 必填，否則直接回傳 HTTP 400，徹底封死無 Token 繞過途徑。
+
+### 4. 📏 資料庫全欄位長度上限防禦 (Anti-Blowup)
+* **修復漏洞**：SQLite/D1 的 `TEXT` 預設不限長度，惡意攻擊者若塞入大量垃圾字串（數十萬字）可能癱瘓資料庫。
+* **防護機制**：嚴格限制所有字串長度：姓名 $\le 50$ 字、電話 $\le 25$ 字、地點 $\le 200$ 字、作物與面積 $\le 50$ 字、備註 $\le 1000$ 字，超長即拒絕。
+
+### 5. 🌐 動態 CORS 白名單隔離 (`ALLOWED_ORIGINS`)
 * **修復漏洞**：硬編碼特定網域會導致開源採用者無法在自訂網域運作；而使用 `cors('*')` 又會遭受任意惡意網站跨站刷單。
 * **防護機制**：後端採用動態來源校驗，支援環境變數 `ALLOWED_ORIGINS`（支援多組網域與萬用字元如 `*.pages.dev`），預設僅信任本機開發環境與 LINE 官方 LIFF。
 
-### 4. 🔏 嚴格 Header 憑證傳輸（移除 URL Query 傳參）
-* **修復漏洞**：透過 `?pin=...` 或 `?token=...` 傳送憑證會被瀏覽器歷史紀錄、CDN 快取與伺服器 Access Log 完整記錄造成洩密。
-* **防護機制**：全面禁止 URL Query 傳遞管理憑證，一律採用 HTTP Header（`x-admin-pin`、`x-line-token`、`Authorization: Bearer`）安全傳輸。
+### 6. 🙈 日誌敏感個資遮蔽 (PII Masking)
+* **修復漏洞**：後端若印出 `rawBody` 或使用者文字，伺服器 Log（Cloudflare Dashboard / wrangler tail）會曝露農民電話與姓名。
+* **防護機制**：全面移除全文 dump，日誌僅記錄事件類型與數量，電話號碼自動遮蔽為 `0912***678`。
 
-### 5. 🧱 除錯與高權限端點收斂 (`/api/admin/debug/*`)
-* **修復漏洞**：公開的 `/api/debug/test-card` 端點可被任意人觸發 LINE Push 並透過 User ID 列舉資料庫。
-* **防護機制**：除錯端點一律收納於 `/api/admin/*` 路由群組下，必須通過服務人員 LINE 白名單鑑權或管理 PIN 授權方可執行。
-
-### 6. 📱 電信級複合頻率限制 (Composite Rate Limiting)
+### 7. 📱 電信級複合頻率限制 (Composite Rate Limiting)
 * **修復漏洞**：純以 IP 限流在台灣行動網路環境下，常因基地台 CGNAT（數千台手機共用同一個電信公網 IP）導致無辜農民互相被鎖定阻擋。
 * **防護機制**：採用 `Client IP + Phone Number` 複合鍵作為滑動視窗限流依據（10 分鐘內最多 5 筆預約），兼顧防惡意刷單與電信網路相容性。
 
-### 7. 🎲 訂單 ID 高熵防碰撞 (`crypto.randomUUID()`)
-* **修復漏洞**：原先使用 `Math.random()` 產生的隨機後綴在高並發情境下碰撞率高且易被預測。
-* **防護機制**：全面改用原生 `crypto.randomUUID()` 截取高熵隨機字串，杜絕訂單撞號與遞增枚舉攻擊。
-
-### 8. 🛡️ 瀏覽器標準安全防護標頭 (Security Headers)
-* 全域回應自動注入：
+### 8. 🛡️ 瀏覽器標準安全防護標頭 (Security Headers & HSTS)
+* 前端 Pages（`_headers`）與後端 Workers 全域自動注入：
   - `X-Content-Type-Options: nosniff`（防範 MIME 嗅探攻擊）
   - `X-Frame-Options: SAMEORIGIN`（防止管理介面遭受 Clickjacking 點擊劫持）
   - `Referrer-Policy: strict-origin-when-cross-origin`（防止敏感路徑洩漏至外部參照）
+  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`（強制 HTTPS 傳輸）
 
 ---
 

@@ -57,7 +57,7 @@ function copyAndSanitize(srcDir, destDir) {
           .replace(/ADMIN_LINE_IDS\s*=\s*"[^"]*"/, 'ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"')
           .replace(/LINE_LOGIN_CHANNEL_ID\s*=\s*"[^"]*"/, 'LINE_LOGIN_CHANNEL_ID = "2000000000"')
           .replace(/STATION_NAME\s*=\s*"[^"]*"/, 'STATION_NAME = "示範農場服務站"')
-          .replace(/ADMIN_PIN\s*=\s*"[^"]*"/, 'ADMIN_PIN = "change-me-to-your-secure-pin"')
+          .replace(/ADMIN_PIN\s*=\s*"[^"]*"\r?\n?/g, '')
           .replace(/ALLOWED_ORIGINS\s*=\s*"[^"]*"/, 'ALLOWED_ORIGINS = "https://your-app.pages.dev"');
       }
 

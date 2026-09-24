@@ -21,7 +21,6 @@ type Bindings = {
   ADMIN_NOTIFY_USER_ID?: string;
   ADMIN_LINE_IDS?: string;
   STATION_NAME?: string;
-  ADMIN_PIN?: string;
   ALLOWED_ORIGINS?: string;
   FRONTEND_URL?: string;
   TURNSTILE_SECRET_KEY?: string;
@@ -29,9 +28,8 @@ type Bindings = {
 };
 
 // 頻率限制記憶體快取 (Sliding Window Rate Limiter)
-const submissionRateMap = new Map<string, number[]>(); // key: IP, value: timestamps
-const pinFailedAttemptsMap = new Map<string, { count: number; lockedUntil: number }>(); // key: IP
-// 已授權的幹部 LINE Token 快取
+const submissionRateMap = new Map<string, number[]>(); // key: IP+Phone, value: timestamps
+// 已授權的服務人員 LINE Token 快取
 const verifiedAdminTokens = new Map<string, { sub: string; name?: string; picture?: string; exp: number }>();
 
 function isSubmissionRateLimited(key: string): boolean {
@@ -47,32 +45,6 @@ function isSubmissionRateLimited(key: string): boolean {
   timestamps.push(now);
   submissionRateMap.set(key, timestamps);
   return false;
-}
-
-function checkPinBruteForce(ip: string): { locked: boolean; waitMinutes?: number } {
-  const now = Date.now();
-  const record = pinFailedAttemptsMap.get(ip);
-  if (!record) return { locked: false };
-  if (record.lockedUntil > now) {
-    const waitMinutes = Math.ceil((record.lockedUntil - now) / 60000);
-    return { locked: true, waitMinutes };
-  }
-  return { locked: false };
-}
-
-function recordPinFailure(ip: string) {
-  const now = Date.now();
-  const record = pinFailedAttemptsMap.get(ip) || { count: 0, lockedUntil: 0 };
-  record.count += 1;
-  if (record.count >= 5) {
-    record.lockedUntil = now + 15 * 60 * 1000; // 鎖定 15 分鐘
-    record.count = 0; // 重置計數
-  }
-  pinFailedAttemptsMap.set(ip, record);
-}
-
-function clearPinFailure(ip: string) {
-  pinFailedAttemptsMap.delete(ip);
 }
 
 async function getAdminFromToken(c: any): Promise<{ sub: string; name?: string; picture?: string } | null> {
@@ -198,17 +170,42 @@ app.post('/api/requests', async (c) => {
       }, 429);
     }
 
-    // 1-1. Cloudflare Turnstile 無感真人驗證
+    // 1-1. Cloudflare Turnstile 無感真人驗證 (強制必填，防範無 Token 繞過)
     const turnstileSecret = c.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
-    if (body.turnstile_token) {
-      const turnstileRes = await verifyTurnstileToken(body.turnstile_token, turnstileSecret, clientIp);
-      if (!turnstileRes.success) {
-        return c.json({ success: false, message: '真人安全驗證未通過，請重新整理頁面後再試。' }, 403);
-      }
+    if (!body.turnstile_token) {
+      return c.json({ success: false, message: '缺少真人安全驗證標記，請重新整理頁面後再試。' }, 400);
+    }
+    const turnstileRes = await verifyTurnstileToken(body.turnstile_token, turnstileSecret, clientIp);
+    if (!turnstileRes.success) {
+      return c.json({ success: false, message: '真人安全驗證未通過，請重新整理頁面後再試。' }, 403);
     }
     
     if (!body.contact_name || !body.phone || !body.service_type || !body.preferred_date) {
       return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
+    }
+
+    // 1-2. 資料長度上限校驗 (防止惡意超長文字灌爆 D1 資料庫)
+    if ((body.contact_name || '').length > 50) {
+      return c.json({ success: false, message: '姓名長度不能超過 50 個字' }, 400);
+    }
+    if ((body.phone || '').length > 25) {
+      return c.json({ success: false, message: '電話長度不能超過 25 個字' }, 400);
+    }
+    if ((body.service_type || '').length > 50) {
+      return c.json({ success: false, message: '服務項目長度不能超過 50 個字' }, 400);
+    }
+    if ((body.crop_type || '').length > 50) {
+      return c.json({ success: false, message: '作物種類長度不能超過 50 個字' }, 400);
+    }
+    if ((body.area_value || '').length > 30) {
+      return c.json({ success: false, message: '面積欄位長度不能超過 30 個字' }, 400);
+    }
+    const locationStr = (body.location || body.location_address || '');
+    if (locationStr.length > 200) {
+      return c.json({ success: false, message: '服務地點長度不能超過 200 個字' }, 400);
+    }
+    if (body.notes && body.notes.length > 1000) {
+      return c.json({ success: false, message: '補充備註長度不能超過 1000 個字' }, 400);
     }
 
     const isMobile = /^09\d{8}$/.test(cleanPhone);
@@ -360,57 +357,19 @@ app.post('/api/admin/auth/line', async (c) => {
   }
 });
 
-// 站所管理密碼驗證端點 (備援 PIN 模式，含防暴力破解暫時鎖定)
-app.post('/api/admin/verify', async (c) => {
-  const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
-  
-  // 防暴力破解檢核
-  const lockStatus = checkPinBruteForce(clientIp);
-  if (lockStatus.locked) {
-    return c.json({
-      success: false,
-      message: `密碼連續錯誤次數過多，為維護安全已暫時鎖定，請於 ${lockStatus.waitMinutes} 分鐘後再試。`
-    }, 429);
-  }
-
-  const validPin = c.env.ADMIN_PIN;
-  if (!validPin) {
-    console.error('[SECURITY ERROR] ADMIN_PIN is not configured in server environment');
-    return c.json({ success: false, message: '系統管理密碼尚未於環境變數中設定，請聯繫系統管理員配置' }, 500);
-  }
-
-  const body = await c.req.json().catch(() => ({}));
-  const pin = body.pin || c.req.header('x-admin-pin');
-
-  if (pin !== validPin) {
-    recordPinFailure(clientIp);
-    return c.json({ success: false, message: '密碼錯誤，請輸入正確的站所管理密碼' }, 401);
-  }
-
-  clearPinFailure(clientIp);
-  return c.json({ success: true, message: '驗證成功' });
-});
-
-// 站所管理員權限檢核 (優先檢驗 LINE 服務人員白名單 Token，備援檢驗 PIN 碼)
+// 站所服務人員權限檢核 (純 LINE 服務人員白名單 Token 鑑權，零靜態密碼)
 app.use('/api/admin/*', async (c, next) => {
-  if (c.req.path === '/api/admin/auth/line' || c.req.path === '/api/admin/verify') {
+  if (c.req.path === '/api/admin/auth/line') {
     return next();
   }
 
-  // 1. 優先檢驗 LINE 服務人員白名單 Token
+  // 嚴格檢驗 LINE 服務人員白名單 Token
   const admin = await getAdminFromToken(c);
   if (admin) {
     return next();
   }
 
-  // 2. 備援檢驗 PIN 碼 (僅允許 Header 傳送，防範 URL Query 洩漏)
-  const pin = c.req.header('x-admin-pin');
-  const validPin = c.env.ADMIN_PIN;
-  if (pin && validPin && pin === validPin) {
-    return next();
-  }
-
-  return c.json({ success: false, message: '未經授權：請透過授權服務人員 LINE 帳號登入或提供正確授權憑證' }, 401);
+  return c.json({ success: false, message: '未經授權：請透過授權服務人員 LINE 帳號登入系統' }, 401);
 });
 
 // 2. 站所人員查詢申請單列表
@@ -468,6 +427,9 @@ app.patch('/api/admin/requests/:id', async (c) => {
     }
 
     if (body.admin_memo !== undefined) {
+      if (body.admin_memo && body.admin_memo.length > 1000) {
+        return c.json({ success: false, message: '管理備註長度不能超過 1000 個字' }, 400);
+      }
       updates.push('admin_memo = ?');
       params.push(body.admin_memo);
     }
@@ -521,7 +483,7 @@ app.get('/api/line/webhook', (c) => {
 app.post('/api/line/webhook', async (c) => {
   try {
     const rawBody = await c.req.text();
-    console.log('LINE Webhook received raw body:', rawBody);
+    console.log('[LINE Webhook] Received request, payload length:', rawBody.length);
     
     // 0. LINE 官方 Webhook 簽名驗證 (HMAC-SHA256 防偽驗證)
     const channelSecret = c.env.LINE_CHANNEL_SECRET;
@@ -561,7 +523,7 @@ app.post('/api/line/webhook', async (c) => {
     }
 
     for (const event of events) {
-      console.log('Processing LINE event:', JSON.stringify(event));
+      console.log('[LINE Event] type:', event.type, 'mode:', event.mode || 'active');
       const replyToken = event.replyToken;
       const userId = event.source?.userId;
       if (!replyToken) {
@@ -575,7 +537,8 @@ app.post('/api/line/webhook', async (c) => {
 
       if (event.type === 'message' && event.message?.type === 'text') {
         const text = (event.message.text || '').trim();
-        console.log('Received user text:', text, 'from userId:', userId);
+        const maskedLogText = text.replace(/09\d{8}/g, (m: string) => m.slice(0, 4) + '***' + m.slice(7));
+        console.log('[LINE User Message] text:', maskedLogText);
 
         if (/^(管理|後台|管理後台|站所管理|幹部管理|admin|dashboard)$/i.test(text) || text === '管理' || text === '後台') {
           isAdminCmd = true;
@@ -700,7 +663,10 @@ app.post('/api/line/webhook', async (c) => {
 
 // 7. 診斷端點：手動推播測試卡片至特定 LINE User ID (納入 /api/admin 權限管轄，需服務人員授權)
 app.get('/api/admin/debug/test-card', async (c) => {
-  const userId = c.req.query('userId') || 'Ub799ecd073a5b090bf7a7ceee8eeef83';
+  const userId = c.req.query('userId') || c.env.ADMIN_NOTIFY_USER_ID;
+  if (!userId) {
+    return c.json({ success: false, message: '缺少目標 userId 參數' }, 400);
+  }
   const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) return c.json({ error: 'Missing LINE_CHANNEL_ACCESS_TOKEN' }, 500);
 

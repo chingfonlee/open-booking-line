@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import liff from '@line/liff';
 import { ServiceRequest, RequestStatus } from '../../../shared/types';
-import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Phone, CheckCircle2, RefreshCw, X, MapPin, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
-const ADMIN_PIN_KEY = 'xingnong_admin_pin';
 const ADMIN_TOKEN_KEY = 'xingnong_admin_token';
 
 interface AdminUserProfile {
@@ -19,12 +18,6 @@ export const AdminDashboard: React.FC = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [adminUser, setAdminUser] = useState<AdminUserProfile | null>(null);
   const [authError, setAuthError] = useState<{ message: string; userId?: string; displayName?: string } | null>(null);
-
-  // 備援 PIN 模式
-  const [showPinBackup, setShowPinBackup] = useState<boolean>(false);
-  const [inputPin, setInputPin] = useState('');
-  const [pinError, setPinError] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
 
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [selectedReq, setSelectedReq] = useState<ServiceRequest | null>(null);
@@ -68,23 +61,6 @@ export const AdminDashboard: React.FC = () => {
           }
         }
 
-        // 檢查備援已存 PIN 碼
-        const savedPin = localStorage.getItem(ADMIN_PIN_KEY);
-        if (savedPin) {
-          const res = await fetch(`${API_BASE}/api/admin/verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: savedPin })
-          }).catch(() => null);
-          if (res && res.ok) {
-            setIsAuthenticated(true);
-            setIsCheckingAuth(false);
-            return;
-          } else {
-            localStorage.removeItem(ADMIN_PIN_KEY);
-          }
-        }
-
         setIsCheckingAuth(false);
       })
       .catch((err) => {
@@ -97,10 +73,6 @@ export const AdminDashboard: React.FC = () => {
     const token = sessionStorage.getItem(ADMIN_TOKEN_KEY) || (liff.isLoggedIn() ? liff.getIDToken() : '');
     if (token) {
       return { Authorization: `Bearer ${token}` };
-    }
-    const pin = localStorage.getItem(ADMIN_PIN_KEY) || '';
-    if (pin) {
-      return { 'x-admin-pin': pin };
     }
     return {};
   };
@@ -123,7 +95,6 @@ export const AdminDashboard: React.FC = () => {
       } else if (res.status === 401 || res.status === 403) {
         setIsAuthenticated(false);
         sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-        localStorage.removeItem(ADMIN_PIN_KEY);
       }
     } catch (err) {
       console.error('Failed to fetch requests', err);
@@ -159,7 +130,6 @@ export const AdminDashboard: React.FC = () => {
       } else if (res.status === 401 || res.status === 403) {
         setIsAuthenticated(false);
         sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-        localStorage.removeItem(ADMIN_PIN_KEY);
       }
     } catch (err) {
       alert('更新失敗');
@@ -197,7 +167,6 @@ export const AdminDashboard: React.FC = () => {
         liff.logout();
       }
       sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-      localStorage.removeItem(ADMIN_PIN_KEY);
       setIsAuthenticated(false);
       setAdminUser(null);
       setAuthError(null);
@@ -258,37 +227,6 @@ export const AdminDashboard: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    const handlePinLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const trimmed = inputPin.trim();
-      if (!trimmed) {
-        setPinError('請輸入管理密碼');
-        return;
-      }
-
-      setIsVerifying(true);
-      setPinError('');
-      try {
-        const res = await fetch(`${API_BASE}/api/admin/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: trimmed })
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          localStorage.setItem(ADMIN_PIN_KEY, trimmed);
-          setIsAuthenticated(true);
-          setPinError('');
-        } else {
-          setPinError(data.message || '密碼錯誤，請輸入正確的站所管理密碼');
-        }
-      } catch {
-        setPinError('連線異常，請檢查網路連線');
-      } finally {
-        setIsVerifying(false);
-      }
-    };
-
     return (
       <div className="min-h-screen bg-[#f3f0e8] flex items-center justify-center p-4">
         <div className="bg-[#fffdf7] max-w-sm w-full rounded-2xl shadow-xl border border-[#c8ad86] p-6 sm:p-8 text-center">
@@ -297,60 +235,22 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <h2 className="text-xl font-bold text-[#20271f] mb-1">服務站管理系統</h2>
           <p className="text-xs text-[#657061] mb-6">
-            高雄服務站 · 限授權服務人員存取
+            限授權服務人員存取 · 零密碼身分安全保護
           </p>
 
           {/* 主要登入：LINE 服務人員一鍵授權登入 */}
           <button
             onClick={handleLineLogin}
-            className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm mb-4"
+            className="w-full py-3.5 bg-[#06C755] hover:bg-[#05b34c] text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm mb-3"
           >
             <span className="text-lg">💬</span>
-            <span>使用 LINE 帳號登入驗證</span>
+            <span>使用 LINE 帳號授權登入</span>
           </button>
-          <p className="text-[11px] text-[#657061] mb-6">
-            手機開啟將自動鑑權；電腦開啟可直接使用手機鏡頭掃描 QR Code 登入
+          <p className="text-[11px] text-[#657061] mb-6 leading-relaxed">
+            手機開啟將自動鑑權；電腦開啟可使用手機 LINE 掃描 QR Code 快速登入
           </p>
 
-          {/* 備援密碼折疊區塊 */}
-          <div className="border-t border-[#e0d9cb] pt-4 text-left">
-            <button
-              type="button"
-              onClick={() => setShowPinBackup(!showPinBackup)}
-              className="text-xs text-[#657061] hover:text-[#20271f] font-medium flex items-center justify-between w-full"
-            >
-              <span>備援通道：輸入站所通行密碼</span>
-              <span>{showPinBackup ? '▲' : '▼'}</span>
-            </button>
-
-            {showPinBackup && (
-              <form onSubmit={handlePinLogin} className="space-y-3 mt-3">
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={12}
-                  value={inputPin}
-                  onChange={(e) => {
-                    setInputPin(e.target.value);
-                    setPinError('');
-                  }}
-                  placeholder="輸入通行密碼"
-                  disabled={isVerifying}
-                  className="w-full px-3 py-2 text-center tracking-widest text-sm font-bold border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:outline-none bg-white text-[#20271f]"
-                />
-                {pinError && <p className="text-xs text-red-600 font-semibold">{pinError}</p>}
-                <button
-                  type="submit"
-                  disabled={isVerifying}
-                  className="w-full py-2 bg-[#2a5937] hover:bg-[#173820] text-white font-bold rounded-xl text-xs transition"
-                >
-                  {isVerifying ? '驗證中...' : '密碼驗證進入'}
-                </button>
-              </form>
-            )}
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-[#e0d9cb]">
+          <div className="pt-4 border-t border-[#e0d9cb]">
             <a
               href="/"
               className="text-xs text-[#657061] hover:text-[#20271f] font-medium"

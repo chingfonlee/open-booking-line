@@ -18,8 +18,6 @@ ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 LINE_LOGIN_CHANNEL_ID = "2000000000"
 # Cloudflare Turnstile 密鑰 (預設為 Cloudflare 官方測試 Always-Pass 金鑰，正式商轉請更換)
 TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
-# 備援站所管理密碼 (請務必替換為自訂高強度密碼或改用 wrangler secret put ADMIN_PIN)
-ADMIN_PIN = "change-me-to-your-secure-pin"
 # 前端允許之 CORS 來源 (多個請用逗號隔開，支援萬用字元如 *.pages.dev)
 ALLOWED_ORIGINS = "https://your-app.pages.dev"
 # LINE Messaging API Channel Secret (選填：用於驗證 Webhook x-line-signature 防偽簽名)
