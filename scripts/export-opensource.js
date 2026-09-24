@@ -140,10 +140,10 @@ try {
   console.log('🎉 開源版本已準備就緒！');
   console.log(`目錄位置：${EXPORT_DIR}`);
   console.log('後續發布至公開 GitHub 倉庫步驟：');
-  console.log('1. 在 GitHub 建立一個全新的 Public 倉庫（例如 biz-resource-reservation）');
+  console.log('1. 在 GitHub 建立一個全新的 Public 倉庫（例如 open-booking-line）');
   console.log(`2. cd "${EXPORT_DIR}"`);
-  console.log('3. git remote add origin https://github.com/chingfonlee/biz-resource-reservation.git');
-  console.log('4. git push -u origin main --force');
+  console.log('3. git remote add origin https://github.com/chingfonlee/open-booking-line.git');
+  console.log('4. git push -u origin main');
   console.log('======================================================\n');
 } catch (err) {
   console.warn('Git 初始化提示:', err.message);
