@@ -73,7 +73,7 @@ function clearPinFailure(ip: string) {
 
 async function getAdminFromToken(c: any): Promise<{ sub: string; name?: string; picture?: string } | null> {
   const authHeader = c.req.header('Authorization');
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : (c.req.header('x-line-token') || c.req.query('token'));
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : c.req.header('x-line-token');
   if (!token) return null;
 
   const now = Date.now();
@@ -106,7 +106,32 @@ async function getAdminFromToken(c: any): Promise<{ sub: string; name?: string; 
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-app.use('*', cors());
+// 限縮 CORS 來源，僅允許自家 Pages、LIFF 官方應用與本機開發環境
+app.use('*', cors({
+  origin: (origin) => {
+    if (!origin) return '*';
+    if (
+      origin === 'https://xingnong-farm.pages.dev' ||
+      origin.endsWith('.xingnong-farm.pages.dev') ||
+      origin === 'https://liff.line.me' ||
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:')
+    ) {
+      return origin;
+    }
+    return null;
+  },
+  allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-admin-pin', 'x-line-token', 'cf-connecting-ip']
+}));
+
+// 加入標準安全標頭 (防 MIME 混淆、防點擊劫持)
+app.use('*', async (c, next) => {
+  await next();
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+});
 
 // 全域未捕獲異常處理 (確保永不丟失 CORS 標頭且回傳結構化 JSON)
 app.onError((err, c) => {
@@ -194,7 +219,7 @@ app.post('/api/requests', async (c) => {
       }
     }
 
-    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const randomSuffix = crypto.randomUUID().replace(/-/g, '').slice(0, 5).toUpperCase();
     const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const id = 'REQ-' + datePrefix + '-' + randomSuffix;
     const now = new Date().toISOString();
@@ -350,8 +375,8 @@ app.use('/api/admin/*', async (c, next) => {
     return next();
   }
 
-  // 2. 備援檢驗 PIN 碼
-  const pin = c.req.header('x-admin-pin') || c.req.query('pin');
+  // 2. 備援檢驗 PIN 碼 (僅允許 Header 傳送，防範 URL Query 洩漏)
+  const pin = c.req.header('x-admin-pin');
   const validPin = c.env.ADMIN_PIN || DEFAULT_ADMIN_PIN;
   if (pin && pin === validPin) {
     return next();
@@ -628,8 +653,8 @@ app.post('/api/line/webhook', async (c) => {
   }
 });
 
-// 7. 診斷端點：手動推播測試卡片至特定 LINE User ID
-app.get('/api/debug/test-card', async (c) => {
+// 7. 診斷端點：手動推播測試卡片至特定 LINE User ID (納入 /api/admin 權限管轄，需服務人員授權)
+app.get('/api/admin/debug/test-card', async (c) => {
   const userId = c.req.query('userId') || 'Ub799ecd073a5b090bf7a7ceee8eeef83';
   const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) return c.json({ error: 'Missing LINE_CHANNEL_ACCESS_TOKEN' }, 500);

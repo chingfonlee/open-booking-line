@@ -387,7 +387,7 @@ https://liff.line.me/<YOUR_LIFF_ID>
 | 問題情境 | 排查與修復方式 |
 | :--- | :--- |
 | **農民輸入「查詢預約」或點擊圖文選單，聊天室沒有出現進度卡片？** | **100% 為 Webhook 兩道開關未開：**<br>1. 至 [LINE OA Manager](https://manager.line.biz/) 的「設定」➡️「回應設定」確認 **Webhook 已切換為「開啟」**。<br>2. 至 [LINE Developers](https://developers.line.biz/) 的 Messaging API 頁籤確認 **Use webhook 為 Enabled（綠色）** 且 URL 結尾包含 `/api/line/webhook`。<br>3. 圖文選單按鈕類型必須為 **「文字 (Text)」**，不可為空白連結。 |
-| **如何自我診斷 LINE 推播與卡片是否正常？** | 可在瀏覽器直接開啟後端診斷端點：<br>`https://<YOUR_WORKER_DOMAIN>/api/debug/test-card`<br>系統會即時從 D1 抓取最新一筆預約並直接推播一張 Flex 卡片給申請農友，若手機有收到卡片，代表後端金鑰與卡片格式完全正常。 |
+| **如何自我診斷 LINE 推播與卡片是否正常？** | 授權服務人員可在帶有 `x-admin-pin` 或 LINE 登入 Token 下呼叫診斷端點：<br>`https://<YOUR_WORKER_DOMAIN>/api/admin/debug/test-card`<br>系統會即時從 D1 抓取最新一筆預約並直接推播一張 Flex 卡片給申請農友，若手機有收到卡片，代表後端金鑰與卡片格式完全正常（已加入安全防護，未授權者無法調用）。 |
 | **管理後台顯示 403 Forbidden（未獲幹部授權）** | 代表當前登入的 LINE 帳號不在白名單中。請將該使用者的 LINE ID 加入 `packages/backend/wrangler.toml` 的 `ADMIN_LINE_IDS`（逗號隔開），並重新執行 `npx wrangler deploy`。 |
 | **農民送出表單後，LINE 未收到推播訊息** | 1. 檢查 `packages/backend` 是否已成功執行 `wrangler secret put LINE_CHANNEL_ACCESS_TOKEN`。<br>2. 檢查 `ADMIN_NOTIFY_USER_ID` 是否與欲接收通知的 LINE 帳號一致。<br>3. 確保管理者已加入該 LINE 官方帳號為好友。 |
 | **LIFF 開啟時畫面空白或提示 URL 不合法** | 確認 LINE Developers 後台 LIFF 的 **Endpoint URL** 是否完全匹配 Cloudflare Pages 網址（包含 `https://`，不可有多餘斜線）。 |
