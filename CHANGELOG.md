@@ -44,6 +44,10 @@
 - **問題**：農友送出需求後，站所幹部於 LINE 收到通知卡片時，首屏缺少顯眼的「申請單號」（例如 `REQ-20260924-XXXXX`），幹部在進行電話回訪與跨系統核對時極為不便。
 - **修復**：重新設計 `generateFlexNotification` 卡片佈局，於頂部 Header 標頭以醒目綠色高亮呈現單號，並於內文明細區第一行置入等寬字體單號。
 
+#### 7. 阻斷客戶 LINE UID 偽造漏洞 (Line User ID Forgery / IDOR Prevention)
+- **問題**：原後端邏輯 `let verifiedLineUserId = body.line_user_id || null;` 會在未提供 `id_token` 時盲目信任前端傳送之 `body.line_user_id`。攻擊者若知曉特定目標的 LINE User ID，可偽造其 UID 送出垃圾預約，導致受害者遭到推播騷擾或在 LINE 查詢時出現偽造紀錄。
+- **修復**：後端嚴格宣告 `let verifiedLineUserId = null;`，只有經過 LINE 官方 OAuth 驗簽之 `body.id_token` 解析成功後（`lineProfile.sub`）才予以綁定，徹底杜絕無 Token 偽造他人 UID。
+
 ---
 
 ## [1.0.0] - 2026-09-24
