@@ -48,6 +48,12 @@
 - **問題**：原後端邏輯 `let verifiedLineUserId = body.line_user_id || null;` 會在未提供 `id_token` 時盲目信任前端傳送之 `body.line_user_id`。攻擊者若知曉特定目標的 LINE User ID，可偽造其 UID 送出垃圾預約，導致受害者遭到推播騷擾或在 LINE 查詢時出現偽造紀錄。
 - **修復**：後端嚴格宣告 `let verifiedLineUserId = null;`，只有經過 LINE 官方 OAuth 驗簽之 `body.id_token` 解析成功後（`lineProfile.sub`）才予以綁定，徹底杜絕無 Token 偽造他人 UID。
 
+#### 8. 防禦內部管理備註外洩 (Internal Memo Privacy Leakage Prevention)
+- **問題**：管理端後台標註「站所內部備註（僅站所可見）」，但在農友透過 LINE 官方帳號點擊「查詢預約進度」時，後端原以 `SELECT *` 撈取資料，並在 `generateProgressQueryFlex()` 卡片中將 `latest.admin_memo` 以「站所內部回覆：...」直接輸出給農友。若站所人員在備註中紀錄內部敏感評估、款項糾紛或私人通訊細節，將引發重大隱私洩漏事故。
+- **修復**：
+  - 前端與推播卡片徹底拔除 `admin_memo` 的對外渲染，客戶進度卡片統一採用客製化之官方標準狀態指引（`statusNote`）。
+  - 後端查詢資料庫時，以「嚴格欄位白名單投影（Column Projection Whitelist）」取代 `SELECT *`，主動阻絕未授權欄位滲漏至對外響應。
+
 ---
 
 ## [1.0.0] - 2026-09-24

@@ -512,31 +512,19 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string, stat
     }
   ];
 
-  if (latest.admin_memo) {
-    bodyContents.push({
-      type: 'box',
-      layout: 'vertical',
-      margin: 'md',
-      backgroundColor: '#f8f3e7',
-      cornerRadius: '8px',
-      paddingAll: '10px',
-      contents: [
-        { type: 'text', text: '站所內部回覆：' + latest.admin_memo, size: 'xs', color: '#2a5937', wrap: true }
-      ]
-    });
-  } else {
-    bodyContents.push({
-      type: 'box',
-      layout: 'vertical',
-      margin: 'md',
-      backgroundColor: '#faf8f3',
-      cornerRadius: '8px',
-      paddingAll: '10px',
-      contents: [
-        { type: 'text', text: '💬 ' + statusNote, size: 'xs', color: '#657061', wrap: true }
-      ]
-    });
-  }
+  // 安全隱私防護：admin_memo 為站所內部紀錄 (僅站所可見)，絕不可對外洩漏給客戶。
+  // 對客戶查詢進度，統一顯示結構化、客製化之官方處理狀態說明 (statusNote)。
+  bodyContents.push({
+    type: 'box',
+    layout: 'vertical',
+    margin: 'md',
+    backgroundColor: '#faf8f3',
+    cornerRadius: '8px',
+    paddingAll: '10px',
+    contents: [
+      { type: 'text', text: '💬 ' + statusNote, size: 'xs', color: '#657061', wrap: true }
+    ]
+  });
 
   return {
     type: 'flex',
