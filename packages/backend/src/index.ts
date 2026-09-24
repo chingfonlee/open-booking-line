@@ -601,8 +601,10 @@ app.post('/api/line/webhook', async (c) => {
         // 從資料庫查詢該 LINE 用戶最新的預約紀錄
         let records: any = { results: [] };
         if (userId) {
+          // 安全隱私防護：採用欄位白名單投影，嚴格排除 admin_memo 等站所內部機密備註
           records = await c.env.DB.prepare(
-            'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
+            'SELECT id, created_at, updated_at, contact_name, service_type, crop_type, area_size, branch_volume, location_area, location_address, preferred_date, preferred_time_slot, date_flexibility, status ' +
+            'FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
           ).bind(userId).all();
         }
 
