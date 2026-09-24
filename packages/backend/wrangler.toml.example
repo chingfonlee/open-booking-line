@@ -16,9 +16,11 @@ ADMIN_NOTIFY_USER_ID = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 # LINE Login Channel ID (LIFF 所屬的 Channel ID，前幾碼數字，用於後端驗證 ID Token)
 LINE_LOGIN_CHANNEL_ID = "2000000000"
+# LINE LIFF ID (供後端 Flex 卡片跳轉按鈕使用，格式如 2000000000-XXXXXXXX)
+LIFF_ID = "2000000000-XXXXXXXX"
 # Cloudflare Turnstile 密鑰 (預設為 Cloudflare 官方測試 Always-Pass 金鑰，正式商轉請更換)
 TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
-# 前端允許之 CORS 來源 (多個請用逗號隔開，支援萬用字元如 *.pages.dev)
-ALLOWED_ORIGINS = "https://your-app.pages.dev"
+# 前端允許之 CORS 來源 (多個請用逗號隔開，支援萬用字元如 https://*.pages.dev)
+ALLOWED_ORIGINS = "https://*.pages.dev"
 # LINE Messaging API Channel Secret (選填：用於驗證 Webhook x-line-signature 防偽簽名)
 # LINE_CHANNEL_SECRET = "your-channel-secret"

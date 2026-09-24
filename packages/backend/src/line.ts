@@ -1,4 +1,5 @@
-export function generateFlexNotification(request: any) {
+export function generateFlexNotification(request: any, liffId?: string) {
+  const activeLiffId = liffId || '2000000000-XXXXXXXX';
   const slotMap: Record<string, string> = {
     morning: '上午',
     afternoon: '下午',
@@ -119,7 +120,7 @@ export function generateFlexNotification(request: any) {
             action: {
               type: 'uri',
               label: '🛠️ 開啟服務站管理後台',
-              uri: 'https://liff.line.me/2000000000-XXXXXXXX?view=admin'
+              uri: 'https://liff.line.me/' + activeLiffId + '?view=admin'
             },
             style: 'secondary'
           }
@@ -129,7 +130,8 @@ export function generateFlexNotification(request: any) {
   };
 }
 
-export function generateCustomerConfirmationFlex(request: any) {
+export function generateCustomerConfirmationFlex(request: any, liffId?: string) {
+  const activeLiffId = liffId || '2000000000-XXXXXXXX';
   const slotMap: Record<string, string> = {
     morning: '上午',
     afternoon: '下午',
@@ -249,7 +251,7 @@ export function generateCustomerConfirmationFlex(request: any) {
             action: {
               type: 'uri',
               label: '開啟預約服務入口',
-              uri: 'https://liff.line.me/2000000000-XXXXXXXX'
+              uri: 'https://liff.line.me/' + activeLiffId
             },
             style: 'primary',
             color: '#173820'
@@ -320,7 +322,8 @@ export async function replyLineMessage(token: string, replyToken: string, messag
   }
 }
 
-export function generateWelcomeGuideFlex() {
+export function generateWelcomeGuideFlex(liffId?: string) {
+  const activeLiffId = liffId || '2000000000-XXXXXXXX';
   return {
     type: 'flex',
     altText: '【服務選單】行農合作社服務選單',
@@ -357,7 +360,7 @@ export function generateWelcomeGuideFlex() {
             action: {
               type: 'uri',
               label: '🌱 線上預約申請',
-              uri: 'https://liff.line.me/2000000000-XXXXXXXX'
+              uri: 'https://liff.line.me/' + activeLiffId
             },
             style: 'primary',
             color: '#173820'
@@ -377,7 +380,8 @@ export function generateWelcomeGuideFlex() {
   };
 }
 
-export function generateProgressQueryFlex(requests: any[]) {
+export function generateProgressQueryFlex(requests: any[], liffId?: string) {
+  const activeLiffId = liffId || '2000000000-XXXXXXXX';
   if (!requests || requests.length === 0) {
     return {
       type: 'flex',
@@ -414,7 +418,7 @@ export function generateProgressQueryFlex(requests: any[]) {
               action: {
                 type: 'uri',
                 label: '🌱 立即線上預約',
-                uri: 'https://liff.line.me/2000000000-XXXXXXXX'
+                uri: 'https://liff.line.me/' + activeLiffId
               },
               style: 'primary',
               color: '#173820'
@@ -563,7 +567,7 @@ export function generateProgressQueryFlex(requests: any[]) {
             action: {
               type: 'uri',
               label: '🌱 填寫新預約申請',
-              uri: 'https://liff.line.me/2000000000-XXXXXXXX'
+              uri: 'https://liff.line.me/' + activeLiffId
             },
             style: 'primary',
             color: '#173820'
@@ -662,7 +666,8 @@ function constantTimeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-export function generateAdminPortalFlex() {
+export function generateAdminPortalFlex(liffId?: string) {
+  const activeLiffId = liffId || '2000000000-XXXXXXXX';
   return {
     type: 'flex',
     altText: '【服務站管理】專屬管理後台通道',
@@ -699,7 +704,7 @@ export function generateAdminPortalFlex() {
             action: {
               type: 'uri',
               label: '📋 開啟服務站管理後台',
-              uri: 'https://liff.line.me/2000000000-XXXXXXXX?view=admin'
+              uri: 'https://liff.line.me/' + activeLiffId + '?view=admin'
             },
             style: 'primary',
             color: '#173820'

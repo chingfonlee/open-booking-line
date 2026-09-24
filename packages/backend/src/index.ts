@@ -25,6 +25,7 @@ type Bindings = {
   FRONTEND_URL?: string;
   TURNSTILE_SECRET_KEY?: string;
   LINE_LOGIN_CHANNEL_ID?: string;
+  LIFF_ID?: string;
 };
 
 // 頻率限制記憶體快取 (Sliding Window Rate Limiter)
@@ -96,22 +97,26 @@ app.use('*', cors({
       return origin;
     }
 
-    // 2. 自訂允許網域清單 (支援逗點分隔多組網域，例如 "https://farm.pages.dev,https://myfarm.com")
+    // 2. 自訂允許網域清單 (支援逗點分隔多組網域，例如 "https://farm.pages.dev,https://*.pages.dev")
     const envOrigins = (c.env as Bindings).ALLOWED_ORIGINS || (c.env as Bindings).FRONTEND_URL || '';
     if (envOrigins) {
       const allowedList = envOrigins.split(',').map((s: string) => s.trim().replace(/\/$/, ''));
       const isAllowed = allowedList.some((allowed: string) => {
         if (allowed === origin) return true;
-        if (allowed.startsWith('*.') && origin.endsWith(allowed.slice(1))) return true;
+        // 支援包含協定的萬用字元比對（如 https://*.pages.dev）
+        if (allowed.includes('*')) {
+          const pattern = new RegExp('^' + allowed.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+          if (pattern.test(origin)) return true;
+        }
         return false;
       });
       if (isAllowed) return origin;
     }
 
-    // 3. 預設相容官方示範網域 (*.xingnong-farm.pages.dev)
+    // 3. 預設相容所有 Cloudflare Pages 網域 (*.pages.dev) 與示範網域
     if (
-      origin === 'https://xingnong-farm.pages.dev' ||
-      origin.endsWith('.xingnong-farm.pages.dev')
+      (origin.startsWith('https://') && origin.endsWith('.pages.dev')) ||
+      origin === 'https://xingnong-farm.pages.dev'
     ) {
       return origin;
     }
@@ -282,7 +287,7 @@ app.post('/api/requests', async (c) => {
         ...body,
         area_size: computedAreaSize,
         id
-      });
+      }, c.env.LIFF_ID);
       c.executionCtx.waitUntil(
         pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg)
       );
@@ -294,7 +299,7 @@ app.post('/api/requests', async (c) => {
         ...body,
         area_size: computedAreaSize,
         id
-      });
+      }, c.env.LIFF_ID);
       c.executionCtx.waitUntil(
         pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg)
       );
@@ -581,7 +586,7 @@ app.post('/api/line/webhook', async (c) => {
         ].filter(Boolean);
 
         if (userId && allowedAdminIds.includes(userId)) {
-          const adminCard = generateAdminPortalFlex();
+          const adminCard = generateAdminPortalFlex(c.env.LIFF_ID);
           await replyLineMessage(token, replyToken, [adminCard]);
         } else {
           const denyCard = {
@@ -600,7 +605,7 @@ app.post('/api/line/webhook', async (c) => {
         }
 
         console.log('Found records count for query:', records.results?.length || 0);
-        const flexMsg = generateProgressQueryFlex(records.results || []);
+        const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID);
         await replyLineMessage(token, replyToken, [flexMsg]);
       } else if (isBooking) {
         const bookingCard = {
@@ -638,7 +643,7 @@ app.post('/api/line/webhook', async (c) => {
                   action: {
                     type: 'uri',
                     label: '🌱 開啟預約申請表',
-                    uri: 'https://liff.line.me/2000000000-XXXXXXXX'
+                    uri: 'https://liff.line.me/' + (c.env.LIFF_ID || '2000000000-XXXXXXXX')
                   },
                   style: 'primary',
                   color: '#173820'
@@ -651,7 +656,7 @@ app.post('/api/line/webhook', async (c) => {
         await replyLineMessage(token, replyToken, [bookingCard]);
       } else {
         // 其他任何訊息（包含打招呼、測試等），主動回覆功能導覽卡片
-        const welcomeFlex = generateWelcomeGuideFlex();
+        const welcomeFlex = generateWelcomeGuideFlex(c.env.LIFF_ID);
         await replyLineMessage(token, replyToken, [welcomeFlex]);
       }
     }
@@ -676,7 +681,7 @@ app.get('/api/admin/debug/test-card', async (c) => {
     'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
   ).bind(userId).all();
 
-  const flexMsg = generateProgressQueryFlex(records.results || []);
+  const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID);
   await pushLineMessage(token, userId, flexMsg);
 
   return c.json({
