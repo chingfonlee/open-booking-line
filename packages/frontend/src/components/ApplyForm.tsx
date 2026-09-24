@@ -15,6 +15,7 @@ import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, Cal
 import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
+const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '農業服務站';
 
 export const ApplyForm: React.FC = () => {
   const [formData, setFormData] = useState<CreateServiceRequestDto>({
@@ -54,8 +55,9 @@ export const ApplyForm: React.FC = () => {
       .catch(() => {});
 
     // 2. 初始化 LIFF SDK
-    liff.init({ liffId: LIFF_ID })
-      .then(() => {
+    if (LIFF_ID) {
+      liff.init({ liffId: LIFF_ID })
+        .then(() => {
         if (liff.isLoggedIn()) {
           liff.getProfile().then(profile => {
             if (profile) {
@@ -76,6 +78,7 @@ export const ApplyForm: React.FC = () => {
       .catch((err) => {
         console.warn('LIFF init deferred or in browser:', err);
       });
+    }
 
     // 3. 渲染 Cloudflare Turnstile 隱形無感驗證元件
     const renderTurnstile = () => {
@@ -205,7 +208,7 @@ export const ApplyForm: React.FC = () => {
             單號：<span className="font-mono font-bold text-[#173820]">{submittedId}</span>
           </p>
           <div className="bg-[#f8f3e7] border border-[#e0d9cb] rounded-xl p-4 text-left text-sm text-[#657061] mb-6 space-y-2">
-            <div>• 高雄服務站已收到您的需求通知。</div>
+            <div>• {STATION_NAME}已收到您的需求通知。</div>
             <div>• 人員將儘速<span className="text-[#2a5937] font-bold">撥打電話</span>與您確認細節與確切施工時程。</div>
           </div>
           <div className="space-y-2.5">
@@ -248,7 +251,7 @@ export const ApplyForm: React.FC = () => {
       <header className="bg-[#173820] text-[#fffdf7] border-b-4 border-[#c8ad86] px-5 py-6 shadow-sm">
         <div className="max-w-xl mx-auto">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#dcebd6] text-[#173820] text-xs font-bold mb-2">
-            <span>🌱</span> 高雄服務站
+            <span>🌱</span> {STATION_NAME}
           </div>
           <h1 className="text-2xl font-black tracking-tight text-[#fffdf7]">客戶服務申請</h1>
           <p className="text-[#dcebd6]/90 text-sm mt-1">

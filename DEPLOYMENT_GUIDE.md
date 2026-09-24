@@ -252,6 +252,9 @@ cd ../..
 Agent 建立 `packages/frontend/.env`：
 ```env
 VITE_LIFF_ID=<REPLACE_WITH_VITE_LIFF_ID>
+VITE_STATION_NAME=<REPLACE_WITH_STATION_NAME>
+# 後端 API 網址：若前端與後端分開部署，可填入 Worker 網址（例如：https://line-bot-farm-api.<your-account>.workers.dev）；留空則走同源 Pages Functions 反向代理
+VITE_API_BASE_URL=https://line-bot-farm-api.<your-account>.workers.dev
 VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA
 ```
 

@@ -6,6 +6,7 @@ import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const ADMIN_TOKEN_KEY = 'xingnong_admin_token';
+const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '農業服務站';
 
 interface AdminUserProfile {
   userId: string;
@@ -28,6 +29,12 @@ export const AdminDashboard: React.FC = () => {
 
   // 1. 初始化 LIFF 與 LINE 幹部白名單自動驗證
   useEffect(() => {
+    if (!LIFF_ID) {
+      console.warn('VITE_LIFF_ID is not configured');
+      setIsCheckingAuth(false);
+      return;
+    }
+
     liff.init({ liffId: LIFF_ID })
       .then(async () => {
         if (liff.isLoggedIn()) {
@@ -156,6 +163,10 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleLineLogin = () => {
+    if (!LIFF_ID) {
+      alert('尚未設定 VITE_LIFF_ID，請先於環境變數中設定。');
+      return;
+    }
     if (!liff.isLoggedIn()) {
       liff.login({ redirectUri: window.location.href });
     }
@@ -270,7 +281,7 @@ export const AdminDashboard: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#2a5937]"></span>
-            <span className="text-xs font-bold text-[#657061]">高雄服務站</span>
+            <span className="text-xs font-bold text-[#657061]">{STATION_NAME}</span>
             {adminUser && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f3e5] text-[#2a5937] border border-[#c5e3bd]">
                 {adminUser.pictureUrl && (

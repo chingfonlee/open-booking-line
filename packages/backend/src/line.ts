@@ -1,5 +1,6 @@
-export function generateFlexNotification(request: any, liffId?: string) {
+export function generateFlexNotification(request: any, liffId?: string, stationName?: string) {
   const activeLiffId = liffId || '2000000000-XXXXXXXX';
+  const station = stationName || '高雄服務站';
   const slotMap: Record<string, string> = {
     morning: '上午',
     afternoon: '下午',
@@ -20,7 +21,7 @@ export function generateFlexNotification(request: any, liffId?: string) {
         contents: [
           {
             type: 'text',
-            text: '🌱 行農合作社 · 高雄服務站',
+            text: '🌱 ' + station,
             color: '#bbf7d0',
             size: 'xs',
             weight: 'bold'
@@ -130,8 +131,9 @@ export function generateFlexNotification(request: any, liffId?: string) {
   };
 }
 
-export function generateCustomerConfirmationFlex(request: any, liffId?: string) {
+export function generateCustomerConfirmationFlex(request: any, liffId?: string, stationName?: string) {
   const activeLiffId = liffId || '2000000000-XXXXXXXX';
+  const station = stationName || '高雄服務站';
   const slotMap: Record<string, string> = {
     morning: '上午',
     afternoon: '下午',
@@ -152,7 +154,7 @@ export function generateCustomerConfirmationFlex(request: any, liffId?: string) 
         contents: [
           {
             type: 'text',
-            text: '🌱 行農合作社 · 高雄服務站',
+            text: '🌱 ' + station,
             color: '#bbf7d0',
             size: 'xs',
             weight: 'bold'
@@ -322,11 +324,12 @@ export async function replyLineMessage(token: string, replyToken: string, messag
   }
 }
 
-export function generateWelcomeGuideFlex(liffId?: string) {
+export function generateWelcomeGuideFlex(liffId?: string, stationName?: string) {
   const activeLiffId = liffId || '2000000000-XXXXXXXX';
+  const station = stationName || '高雄服務站';
   return {
     type: 'flex',
-    altText: '【服務選單】行農合作社服務選單',
+    altText: '【服務選單】' + station + '服務選單',
     contents: {
       type: 'bubble',
       header: {
@@ -335,7 +338,7 @@ export function generateWelcomeGuideFlex(liffId?: string) {
         backgroundColor: '#173820',
         paddingAll: '18px',
         contents: [
-          { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+          { type: 'text', text: '🌱 ' + station, color: '#bbf7d0', size: 'xs', weight: 'bold' },
           { type: 'text', text: '服務專屬選單', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
         ]
       },
@@ -380,8 +383,9 @@ export function generateWelcomeGuideFlex(liffId?: string) {
   };
 }
 
-export function generateProgressQueryFlex(requests: any[], liffId?: string) {
+export function generateProgressQueryFlex(requests: any[], liffId?: string, stationName?: string) {
   const activeLiffId = liffId || '2000000000-XXXXXXXX';
+  const station = stationName || '高雄服務站';
   if (!requests || requests.length === 0) {
     return {
       type: 'flex',
@@ -394,7 +398,7 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string) {
           backgroundColor: '#173820',
           paddingAll: '18px',
           contents: [
-            { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+            { type: 'text', text: '🌱 ' + station, color: '#bbf7d0', size: 'xs', weight: 'bold' },
             { type: 'text', text: '📋 預約申請查詢', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
           ]
         },
@@ -545,7 +549,7 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string) {
         backgroundColor: '#173820',
         paddingAll: '18px',
         contents: [
-          { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+          { type: 'text', text: '🌱 ' + station, color: '#bbf7d0', size: 'xs', weight: 'bold' },
           { type: 'text', text: '📋 您的服務預約進度', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
         ]
       },
@@ -666,8 +670,9 @@ function constantTimeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-export function generateAdminPortalFlex(liffId?: string) {
+export function generateAdminPortalFlex(liffId?: string, stationName?: string) {
   const activeLiffId = liffId || '2000000000-XXXXXXXX';
+  const station = stationName || '高雄服務站';
   return {
     type: 'flex',
     altText: '【服務站管理】專屬管理後台通道',
@@ -679,7 +684,7 @@ export function generateAdminPortalFlex(liffId?: string) {
         backgroundColor: '#173820',
         paddingAll: '18px',
         contents: [
-          { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+          { type: 'text', text: '🌱 ' + station, color: '#bbf7d0', size: 'xs', weight: 'bold' },
           { type: 'text', text: '🛠️ 服務站管理系統', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
         ]
       },
