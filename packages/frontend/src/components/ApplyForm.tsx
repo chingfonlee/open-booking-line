@@ -12,6 +12,7 @@ import {
   TimeSlot 
 } from '../../../shared/types';
 import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock } from 'lucide-react';
+import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
 
@@ -43,7 +44,7 @@ export const ApplyForm: React.FC = () => {
 
   useEffect(() => {
     // 1. 抓取額滿黑名單
-    fetch('/api/config/blocked-dates')
+    fetch(`${API_BASE}/api/config/blocked-dates`)
       .then(res => res.json())
       .then(res => {
         if (res.success && Array.isArray(res.data)) {
@@ -140,7 +141,7 @@ export const ApplyForm: React.FC = () => {
         id_token: idToken,
         turnstile_token: turnstileToken || undefined
       };
-      const res = await fetch('/api/requests', {
+      const res = await fetch(`${API_BASE}/api/requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -151,8 +152,9 @@ export const ApplyForm: React.FC = () => {
       } else {
         alert(data.message || '送出失敗，請稍後再試');
       }
-    } catch (err) {
-      alert('網路連線失敗，請檢查網路');
+    } catch (err: any) {
+      console.error('Submit request failed:', err);
+      alert('網路連線失敗，請檢查網路：' + (err?.message || '伺服器無回應'));
     } finally {
       setIsSubmitting(false);
     }

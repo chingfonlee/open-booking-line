@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import liff from '@line/liff';
 import { ServiceRequest, RequestStatus } from '../../../shared/types';
 import { Phone, CheckCircle2, RefreshCw, X, MapPin, KeyRound, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { API_BASE } from '../config';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
 const ADMIN_PIN_KEY = 'xingnong_admin_pin';
@@ -40,7 +41,7 @@ export const AdminDashboard: React.FC = () => {
           const idToken = liff.getIDToken();
           if (idToken) {
             try {
-              const res = await fetch('/api/admin/auth/line', {
+              const res = await fetch(`${API_BASE}/api/admin/auth/line`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id_token: idToken })
@@ -70,7 +71,7 @@ export const AdminDashboard: React.FC = () => {
         // 檢查備援已存 PIN 碼
         const savedPin = localStorage.getItem(ADMIN_PIN_KEY);
         if (savedPin) {
-          const res = await fetch('/api/admin/verify', {
+          const res = await fetch(`${API_BASE}/api/admin/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pin: savedPin })
@@ -108,8 +109,8 @@ export const AdminDashboard: React.FC = () => {
     setLoading(true);
     try {
       const url = currentFilter === 'all' 
-        ? '/api/admin/requests' 
-        : `/api/admin/requests?status=${currentFilter}`;
+        ? `${API_BASE}/api/admin/requests` 
+        : `${API_BASE}/api/admin/requests?status=${currentFilter}`;
       const res = await fetch(url, {
         headers: getAuthHeaders()
       });
@@ -140,7 +141,7 @@ export const AdminDashboard: React.FC = () => {
   const handleUpdateStatus = async (id: string, newStatus: RequestStatus, memo?: string) => {
     setSavingStatus(true);
     try {
-      const res = await fetch(`/api/admin/requests/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/requests/${id}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -268,7 +269,7 @@ export const AdminDashboard: React.FC = () => {
       setIsVerifying(true);
       setPinError('');
       try {
-        const res = await fetch('/api/admin/verify', {
+        const res = await fetch(`${API_BASE}/api/admin/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pin: trimmed })
