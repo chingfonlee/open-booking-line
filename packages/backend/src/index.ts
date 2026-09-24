@@ -239,11 +239,13 @@ app.post('/api/requests', async (c) => {
       }
     }
 
-    // 1-3. LINE ID Token 簽名驗證（防偽身分）
-    let verifiedLineUserId = body.line_user_id || null;
+    // 1-3. LINE ID Token 簽名驗證（防偽身分綁定）
+    // 安全防護：絕不可盲目信任前端傳送之 body.line_user_id，徹底杜絕偽造他人 UID 進行身分冒用、騷擾推播或查詢竄改
+    // 只有經過 LINE 官方 OAuth 密碼學校驗成功的 ID Token，才能綁定該使用者的真實 UID (profile.sub)
+    let verifiedLineUserId: string | null = null;
     if (body.id_token) {
       const lineProfile = await verifyLineIdToken(body.id_token, c.env.LINE_LOGIN_CHANNEL_ID);
-      if (lineProfile) {
+      if (lineProfile && lineProfile.sub) {
         verifiedLineUserId = lineProfile.sub;
       }
     }
