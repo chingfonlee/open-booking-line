@@ -1,0 +1,56 @@
+# 更新日誌 (Changelog)
+
+本專案遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/) 規範。
+
+---
+
+## [1.0.1] - 2026-09-24
+
+### 🐛 錯誤修復與環境解耦 (Bug Fixes & Hardcoded Values Decoupling)
+
+本版本主要解決開源化過程中所發現的環境綁定、跨域限制與寫死常數問題，確保任何團隊在全新 Cloudflare / LINE 帳號下皆能開箱即用。
+
+#### 1. 前端 API 網址解耦與 DNS 報錯修復 (API Base URL Fallback)
+- **問題**：`packages/frontend/src/config.ts` 原先預設 fallback 至 `line-bot-farm-api.your-subdomain.workers.dev`。若使用者部署前端時未設定 `VITE_API_BASE_URL`，瀏覽器發出 API 請求時會因域名不存在而拋出 `TypeError: Failed to fetch`。
+- **修復**：改為 `(import.meta.env.VITE_API_BASE_URL as string) || ''`。未填寫時安全回退為同源相對路徑（`/api/...`），由 Cloudflare Pages Functions 自動反向代理至 Worker 後端。
+
+#### 2. Pages Functions 反向代理路由衝突與例外防護
+- **問題**：`packages/frontend/functions/api/` 目錄同時存在 `[[path]].ts` 與 `[[catchall]].ts` 兩份 Catch-all 路由檔，造成 Cloudflare Pages 建置衝突，且內部寫死無效網址。
+- **修復**：
+  - 移除冗餘衝突的 `[[path]].ts`。
+  - 在 `[[catchall]].ts` 內增加 `context.env.BACKEND_API_URL` 檢查；若未配置後端變數，回傳結構化的 HTTP 502 JSON 診斷訊息，避免無日誌的靜態轉發崩潰。
+
+#### 3. 後端 CORS 萬用字元支援 (CORS Wildcard Matching)
+- **問題**：`packages/backend/src/index.ts` 原 CORS 正規表示式無法精準匹配開源者建立的 `https://*.pages.dev` 二級子網域，導致前端送出預約表單時觸發瀏覽器的跨來源資源共用（CORS）阻擋。
+- **修復**：重構 `isOriginAllowed` 萬用字元解析演算法，支援 `*.pages.dev` 及逗號分隔的多來源清單，完整涵蓋 Cloudflare Pages 預覽環境與正式自訂網域。
+
+#### 4. LINE LIFF ID 動態化與未配置防崩潰保護 (LIFF ID Decoupling & Guard)
+- **問題**：
+  - 後端 `line.ts` 內 5 款 Flex Message 卡片（服務申請通知、顧客確認單、歡迎指引、進度查詢等）的跳轉 URL 寫死原專案之特定 LIFF ID。
+  - 前端 `ApplyForm.tsx` 與 `AdminDashboard.tsx` 預設 fallback 原作者 LIFF ID；若新開源者尚未申請或未填寫 `VITE_LIFF_ID`，前端呼叫 `liff.init()` 會引發未處理例外，導致頁面載入白屏。
+- **修復**：
+  - 後端所有 Flex Message 生成函數增加 `liffId?: string` 參數，全面動態讀取 Worker 環境變數 `c.env.LIFF_ID`。
+  - 前端 fallback 清空，並在呼叫 `liff.init()` 前加入 `if (LIFF_ID)` 嚴格防護；若未設定 LIFF ID，登入時跳出友善提示，表單於一般瀏覽器中仍可正常操作與送單。
+
+#### 5. 服務站所名稱與預設行政區解耦 (Station Name & District Decoupling)
+- **問題**：
+  - 後端推播卡片頁首、頁尾與前端 UI 標題多處寫死「🌱 行農合作社 · 高雄服務站」。
+  - 後端資料庫寫入時，未填寫行政區預設寫入「燕巢區」，不符合其他縣市合作社之需求。
+- **修復**：
+  - 支援動態 `STATION_NAME`（後端）與 `VITE_STATION_NAME`（前端），未提供時退回中性預設「農業服務站」。
+  - 移除預設「燕巢區」fallback，改為依據表單實際輸入內容儲存。
+
+#### 6. LINE Flex 推播卡片突出顯示預約單號
+- **問題**：農友送出需求後，站所幹部於 LINE 收到通知卡片時，首屏缺少顯眼的「申請單號」（例如 `REQ-20260924-XXXXX`），幹部在進行電話回訪與跨系統核對時極為不便。
+- **修復**：重新設計 `generateFlexNotification` 卡片佈局，於頂部 Header 標頭以醒目綠色高亮呈現單號，並於內文明細區第一行置入等寬字體單號。
+
+---
+
+## [1.0.0] - 2026-09-24
+
+### 🎉 初始開源發布 (Initial Open Source Release)
+- **純無伺服器架構**：Cloudflare Workers + D1 (SQLite) + Cloudflare Pages + LINE Messaging API / LIFF。
+- **Zero-Password 幹部白名單原生鑑權**：管理後台使用 LINE 官方 ID Token 驗證，免除靜態密碼外洩與撞庫風險。
+- **LINE Webhook 密碼學防偽驗簽**：採用 Web Crypto API 進行 HMAC-SHA256 驗簽。
+- **Cloudflare Turnstile 無感真人驗證**：後端嚴格核驗，防禦自動化腳本刷單與推播配額消耗。
+- **去識別化導出腳本**：提供 `npm run export:opensource` 建立乾淨無金鑰紀錄之公開開源版本。

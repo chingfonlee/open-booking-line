@@ -1,7 +1,7 @@
 # 行農合作社｜服務申請管理 — 專案進度追蹤 (status.md)
 
-**最後更新時間**：2026-09-23  
-**當前版本**：Starter 實體運作版 (高雄服務站)  
+**最後更新時間**：2026-09-24  
+**當前版本**：v1.0.1 (開源跨平台解耦版)  
 **專案技術棧**：Cloudflare Workers + Hono + Cloudflare D1 (SQLite) + Vite + React 18 + Tailwind CSS + LINE LIFF 相容
 
 ---
@@ -89,6 +89,25 @@
   - 在 `POST /api/requests` 加入滑動窗口頻率限制（每 IP 於 10 分鐘內最多 5 筆）。
   - 有效防止惡意爬蟲或腳本刷單塞爆 D1 資料庫，並徹底杜絕惡意耗盡 LINE 官方帳號推播額度的風險。
 
+### 10. 站所幹部管理端 Zero-Password 零密碼架構 (LINE 原生白名單鑑權)
+- [x] **拔除靜態密碼**：全面廢除 PIN 碼密碼鎖，杜絕弱密碼外洩、彩虹表暴力破解與遺忘密碼之維運負擔。
+- [x] **LINE 官方 ID Token 驗證**：管理員以 LINE 登入後，後端透過 LINE 官方鑑權端點 (`https://api.line.me/oauth2/v2.1/verify`) 驗證身分簽章。
+- [x] **ADMIN_LINE_IDS 白名單機制**：後端嚴格核對 `userId` 是否存在於環境變數授權清單中。手機開啟自動授權進入；電腦開啟支援 LINE App 掃碼登入。
+
+### 11. 企業級安全防護體系 (已上線強化)
+- [x] **LINE Webhook 密碼學防偽驗簽**：採用原生 Web Crypto API 針對 `x-line-signature` 進行 HMAC-SHA256 恆定時間比對，杜絕偽造 Webhook 事件盜刷 DB 或耗損推播配額。
+- [x] **Cloudflare Turnstile 強制無感真人驗證**：農友填表無須辨識歪斜文字，背景強制驗核 Token，防禦惡意機器人繞過刷單、保護每月免費 LINE 推播額度與 D1 寫入資源。
+- [x] **PII 隱私日誌脫敏與長度邊界防護**：全資料欄位長度上限防禦，日誌自動遮蔽敏感個人電話。
+
+### 12. 開源專案發布與解耦修復紀錄 (v1.0.1 Bug Fixes & Decoupling)
+- [x] **開源獨立存儲庫發布**：建立全新開源專案 [open-booking-line](https://github.com/chingfonlee/open-booking-line)，並配備一鍵去識別化自動導出腳本 (`export-opensource.js`)。
+- [x] **修復前端跨域連線 Failed to fetch (API Base URL 動態化)**：`packages/frontend/src/config.ts` 解除對原 subdomain 寫死依賴，未提供 `VITE_API_BASE_URL` 時自動 fallback 為同源相對路徑，由 Pages Functions 自動轉發。
+- [x] **修復 Pages Functions 路由衝突與 502 防護**：移除衝突的 `[[path]].ts`，於 `[[catchall]].ts` 補齊 `BACKEND_API_URL` 存在性防護與結構化 JSON 報錯。
+- [x] **修復後端 CORS 萬用字元比對規則**：重構萬用字元比對邏輯，支援所有 `https://*.pages.dev` 自動配發子網域，杜絕跨域請求遭瀏覽器阻擋。
+- [x] **修復 LINE LIFF ID 寫死與初始化防禦**：後端 5 款 Flex 卡片全面支援動態傳入 `liffId`；前端移除原作者 ID fallback 並在 `liff.init()` 前加入 `if (LIFF_ID)` 存在性檢查，避免無配置時白屏報錯。
+- [x] **解除服務站所名稱與預設行政區寫死限制**：支援動態 `STATION_NAME` 與 `VITE_STATION_NAME`，預設為「農業服務站」；移除後端寫死之「燕巢區」預設值。
+- [x] **LINE Flex 推播卡片突出顯示預約單號**：將申請單號提升至卡片 Header 頂部與獨立明細欄位，提升站所人員核對回訪效率。
+
 ---
 
 ## 🚀 伺服器運行與測試位址
@@ -98,21 +117,21 @@
 | :--- | :--- | :--- |
 | **LINE 官方專用入口 (LIFF)** | [https://liff.line.me/2011709076-09FdfkjH](https://liff.line.me/2011709076-09FdfkjH) | **LINE 內直接全螢幕開啟，自動抓取暱稱** |
 | **農友預約填單 (一般網頁)** | [https://xingnong-farm.pages.dev](https://xingnong-farm.pages.dev) | 一般手機/電腦瀏覽器直接開啟 |
-| **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | **站所幹部管理 (通行密碼：`20241718`)** |
+| **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | **站所幹部管理 (LINE 幹部白名單原生登入)** |
 | **後端 API 服務** | `https://line-bot-farm-api.chingfon-lee.workers.dev` | Cloudflare Workers API |
+| **公開開源儲存庫** | [https://github.com/chingfonlee/open-booking-line](https://github.com/chingfonlee/open-booking-line) | MIT 許可證開源發布版 |
 
 ### 💻 本地端開發環境 (Local Dev)
 | 服務項目 | 本機運行端點 | 說明 |
 | :--- | :--- | :--- |
 | **前端應用 (顧客端)** | `http://localhost:5173/` | 農友預約申請表單 |
-| **前端應用 (管理端)** | `http://localhost:5173/?view=admin` | 幹部服務申請管理儀表板 (密碼：`20241718`) |
-| **真機區域網路測試** | `http://192.168.16.215:5173/` | 同 Wi-Fi 實體手機瀏覽器測試 |
+| **前端應用 (管理端)** | `http://localhost:5173/?view=admin` | 幹部服務申請管理儀表板 |
 | **後端 API 伺服器** | `http://127.0.0.1:8787` | 本機 Worker API |
 
 ---
 
 ## 📋 下一步規劃待辦清單 (Backlog)
 
-1. **正式上線安全升級（幹部 LINE 白名單驗證）**：客戶正式商轉上線後，將管理端身分驗證改為「限定特定幹部 LINE 帳號（依據 `line_user_id`）登入」，全面免除手動輸入密碼且具備最高防偽安全性。
-2. **LINE 官方帳號圖文選單 (Rich Menu)**：在 LINE Official Account Manager 設定底部常駐選單按鈕，點擊直通 LIFF 預約。
-3. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
+1. **LINE 官方帳號圖文選單 (Rich Menu)**：在 LINE Official Account Manager 設定底部常駐選單按鈕，點擊直通 LIFF 預約。
+2. **黑名單後台管理 UI**：在站所後台介面增加日曆或列表，讓幹部直接「點擊關閉/開啟某日」。
+3. **開源影片懶人包錄製配套**：製作專案導讀與 5 分鐘極速部署教學影片。
