@@ -392,6 +392,46 @@ https://liff.line.me/<YOUR_LIFF_ID>
 
 ---
 
+## 🔒 5.1 🚀 正式營運安全加固 Check List（3 步驟無痛升級生產環境）
+
+> 💡 **教學展示 vs 正式營運說明**：
+> 本專案為降低新手首次安裝與測試門檻，預設提供 Cloudflare 官方測試金鑰容錯與本機友善機制（開箱即測）。
+> **若您準備將此系統投入真實農場或商家對外營運，強烈建議完成以下 3 項加固步驟（耗時約 2 分鐘，全部 100% 免費）：**
+
+### 1. 啟用 LINE Webhook 強制密碼學驗簽 (Fail-Closed)
+- **原因**：防止未授權的第三方惡意 POST 偽造 LINE 訊息刷爆資料庫或推播額度。
+- **作法**：至 [LINE Developers Console](https://developers.line.biz/) ➡️ 進入您的 Messaging API Channel ➡️ **Basic settings** 分頁複製 **Channel secret**。
+- **終端機執行**：
+  ```bash
+  cd packages/backend
+  npx wrangler secret put LINE_CHANNEL_SECRET
+  # 依提示貼上 Channel secret 即可
+  ```
+- **效果**：後端即刻啟動原生 Web Crypto API 恆定時間 HMAC-SHA256 驗簽，非官方伺服器發送的請求一律 401 拒絕。
+
+### 2. 替換為專屬 Cloudflare Turnstile 正式金鑰
+- **原因**：預設測試金鑰（`1x000...`）僅供展示與本機驗證，正式上線必須啟用專屬真人行為分析，阻擋爬蟲與機器人刷單。
+- **作法**：
+  1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 左側選單 **Turnstile** ➡️ 點擊 **Add site**。
+  2. 輸入站點名稱，網域填入您的 Pages 網址（例如 `your-app.pages.dev`），模式選擇 **Invisible（隱形無感）**。
+  3. 將產生的 **Site Key** 填入 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`。
+  4. 將產生的 **Secret Key** 透過指令安全託管：
+     ```bash
+     cd packages/backend
+     npx wrangler secret put TURNSTILE_SECRET_KEY
+     ```
+  5. 重新發布前端：`npm run build:frontend && npm run deploy:frontend`。
+
+### 3. (選用) 開啟 Cloudflare 免費 WAF Rate Limiting 邊緣限流
+- **原因**：本專案代碼內建 `IP + Phone` 滑動視窗限流（0 外部依賴）。若需要進一步抵禦跨區域分散式攻擊，可直接利用 Cloudflare 免費 WAF 規則達成全域邊緣即時阻斷。
+- **作法**：
+  1. 於 Cloudflare Dashboard 進入您的網域 ➡️ **Security** ➡️ **WAF** ➡️ **Rate limiting rules**。
+  2. 點擊 **Create rule**（免費方案即享 1 條自訂規則）：
+     - **Rule name**：`Protect Booking API`
+     - **If incoming requests match**：`URI Path equals /api/requests` AND `Request Method equals POST`
+     - **Rate**：`5 requests per 10 minutes`
+     - **Action**：`Block`
+  3. 點擊 **Deploy** 即生效，由 Cloudflare 邊緣直接阻絕惡意攻擊，不耗費任何 Worker 運算配額。
 
 ---
 
