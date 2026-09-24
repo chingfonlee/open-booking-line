@@ -92,11 +92,20 @@ export function generateFlexNotification(request: any) {
             type: 'button',
             action: {
               type: 'uri',
-              label: '撥打電話：' + request.phone,
+              label: '📞 撥打電話：' + request.phone,
               uri: 'tel:' + request.phone
             },
             style: 'primary',
             color: '#15803d'
+          },
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '🛠️ 開啟服務站管理後台',
+              uri: 'https://liff.line.me/2011709076-09FdfkjH?view=admin'
+            },
+            style: 'secondary'
           }
         ]
       }
@@ -583,4 +592,52 @@ export async function verifyLineIdToken(idToken: string, channelId?: string): Pr
     console.error('Failed to verify LINE ID token:', err);
     return null;
   }
+}
+
+export function generateAdminPortalFlex() {
+  return {
+    type: 'flex',
+    altText: '【服務站管理】專屬管理後台通道',
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#173820',
+        paddingAll: '18px',
+        contents: [
+          { type: 'text', text: '🌱 行農合作社 · 高雄服務站', color: '#bbf7d0', size: 'xs', weight: 'bold' },
+          { type: 'text', text: '🛠️ 服務站管理系統', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '18px',
+        spacing: 'sm',
+        contents: [
+          { type: 'text', text: '服務人員身分驗證通過', size: 'sm', color: '#15803d', weight: 'bold' },
+          { type: 'text', text: '點擊下方按鈕即可直接於 LINE 內開啟全螢幕管理儀表板，進行案件查詢、狀態更新與額滿排程管理：', size: 'xs', color: '#657061', wrap: true }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '📋 開啟服務站管理後台',
+              uri: 'https://liff.line.me/2011709076-09FdfkjH?view=admin'
+            },
+            style: 'primary',
+            color: '#173820'
+          }
+        ]
+      }
+    }
+  };
 }

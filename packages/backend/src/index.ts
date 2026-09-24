@@ -5,6 +5,7 @@ import {
   generateCustomerConfirmationFlex,
   generateProgressQueryFlex,
   generateWelcomeGuideFlex,
+  generateAdminPortalFlex,
   pushLineMessage,
   replyLineMessage,
   verifyLineIdToken
@@ -500,12 +501,15 @@ app.post('/api/line/webhook', async (c) => {
 
       let isQuery = false;
       let isBooking = false;
+      let isAdminCmd = false;
 
       if (event.type === 'message' && event.message?.type === 'text') {
         const text = (event.message.text || '').trim();
         console.log('Received user text:', text, 'from userId:', userId);
 
-        if (
+        if (/^(管理|後台|管理後台|站所管理|幹部管理|admin|dashboard)$/i.test(text) || text === '管理' || text === '後台') {
+          isAdminCmd = true;
+        } else if (
           text.includes('查') ||
           text.includes('進度') ||
           text.includes('單號') ||
@@ -526,14 +530,32 @@ app.post('/api/line/webhook', async (c) => {
       } else if (event.type === 'postback') {
         const data = event.postback?.data || '';
         console.log('Received postback data:', data);
-        if (data.includes('query')) {
+        if (data.includes('admin')) {
+          isAdminCmd = true;
+        } else if (data.includes('query')) {
           isQuery = true;
         } else if (data.includes('book')) {
           isBooking = true;
         }
       }
 
-      if (isQuery) {
+      if (isAdminCmd) {
+        const allowedAdminIds = [
+          ...(c.env.ADMIN_LINE_IDS ? c.env.ADMIN_LINE_IDS.split(',').map((s: string) => s.trim()) : []),
+          c.env.ADMIN_NOTIFY_USER_ID
+        ].filter(Boolean);
+
+        if (userId && allowedAdminIds.includes(userId)) {
+          const adminCard = generateAdminPortalFlex();
+          await replyLineMessage(token, replyToken, [adminCard]);
+        } else {
+          const denyCard = {
+            type: 'text',
+            text: '🔒 您好，此管理指令僅供站所授權服務人員使用。若您有果樹枝條粉碎或代耕預約需求，歡迎點擊下方選單進行線上預約！'
+          };
+          await replyLineMessage(token, replyToken, [denyCard]);
+        }
+      } else if (isQuery) {
         // 從資料庫查詢該 LINE 用戶最新的預約紀錄
         let records: any = { results: [] };
         if (userId) {
