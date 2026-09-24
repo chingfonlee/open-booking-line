@@ -8,7 +8,7 @@ export function generateFlexNotification(request: any) {
 
   return {
     type: 'flex',
-    altText: '【新服務申請】' + request.contact_name + ' - ' + request.service_type,
+    altText: '【新服務申請】單號：' + (request.id || '最新') + ' (' + request.contact_name + ' - ' + request.service_type + ')',
     contents: {
       type: 'bubble',
       header: {
@@ -31,6 +31,14 @@ export function generateFlexNotification(request: any) {
             size: 'lg',
             weight: 'bold',
             margin: 'xs'
+          },
+          {
+            type: 'text',
+            text: '單號：' + request.id,
+            color: '#dcebd6',
+            size: 'xs',
+            margin: 'sm',
+            weight: 'bold'
           }
         ]
       },
@@ -40,6 +48,14 @@ export function generateFlexNotification(request: any) {
         spacing: 'md',
         paddingAll: '16px',
         contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '預約單號', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: request.id, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
+            ]
+          },
           {
             type: 'box',
             layout: 'horizontal',
@@ -163,6 +179,14 @@ export function generateCustomerConfirmationFlex(request: any) {
         spacing: 'md',
         paddingAll: '16px',
         contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '預約單號', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: request.id, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
+            ]
+          },
           {
             type: 'box',
             layout: 'horizontal',
