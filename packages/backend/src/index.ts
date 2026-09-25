@@ -28,7 +28,9 @@ type Bindings = {
   LIFF_ID?: string;
 };
 
-// 頻率限制記憶體快取 (Sliding Window Rate Limiter)
+// 輕量應用層防連按與滑動窗口頻率限制 (In-Memory Sliding Window)
+// 定位說明：主要防禦「同用戶連續手抖重複點擊」與「單一節點短時間連發」，具備零外部依賴、零維運成本優勢。
+// 惡意爬蟲自動化刷單已由前置之 Cloudflare Turnstile 真人驗證全面阻絕。
 const submissionRateMap = new Map<string, number[]>(); // key: IP+Phone, value: timestamps
 // 已授權的服務人員 LINE Token 快取
 const verifiedAdminTokens = new Map<string, { sub: string; name?: string; picture?: string; exp: number }>();
@@ -38,6 +40,15 @@ function isSubmissionRateLimited(key: string): boolean {
   const now = Date.now();
   const windowMs = 10 * 60 * 1000; // 10 分鐘
   const maxSubmissions = 5; // 10 分鐘內最多 5 次
+
+  // 記憶體自我防護：若快取筆數累積過多，自動清理已過期的鍵值，避免無效佔用 Worker 記憶體
+  if (submissionRateMap.size > 500) {
+    for (const [k, v] of submissionRateMap.entries()) {
+      if (!v.some(t => now - t < windowMs)) {
+        submissionRateMap.delete(k);
+      }
+    }
+  }
 
   const timestamps = (submissionRateMap.get(key) || []).filter(t => now - t < windowMs);
   if (timestamps.length >= maxSubmissions) {
