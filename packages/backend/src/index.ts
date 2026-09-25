@@ -123,7 +123,8 @@ app.use('*', cors({
       return origin;
     }
 
-    // 2. 自訂允許網域清單 (支援逗點分隔多組網域，例如 "https://farm.pages.dev,https://*.pages.dev")
+    // 2. 自訂允許網域清單 (支援逗點分隔多組網域，例如 "https://farm.pages.dev,https://booking.example.com")
+    // 若管理者明確配置了 ALLOWED_ORIGINS 或 FRONTEND_URL，嚴格收斂至該清單，不再向下相容任意網域
     const envOrigins = (c.env as Bindings).ALLOWED_ORIGINS || (c.env as Bindings).FRONTEND_URL || '';
     if (envOrigins) {
       const allowedList = envOrigins.split(',').map((s: string) => s.trim().replace(/\/$/, ''));
@@ -136,14 +137,11 @@ app.use('*', cors({
         }
         return false;
       });
-      if (isAllowed) return origin;
+      return isAllowed ? origin : null;
     }
 
-    // 3. 預設相容所有 Cloudflare Pages 網域 (*.pages.dev) 與示範網域
-    if (
-      (origin.startsWith('https://') && origin.endsWith('.pages.dev')) ||
-      origin === 'https://xingnong-farm.pages.dev'
-    ) {
+    // 3. 預設模式（未配置 ALLOWED_ORIGINS 時）：為降低新手安裝難度，自動相容所有 Cloudflare Pages 網域 (*.pages.dev)
+    if (origin.startsWith('https://') && origin.endsWith('.pages.dev')) {
       return origin;
     }
 
@@ -565,9 +563,10 @@ app.post('/api/line/webhook', async (c) => {
     }
 
     for (const event of events) {
-      console.log('[LINE Event] type:', event.type, 'mode:', event.mode || 'active');
       const replyToken = event.replyToken;
       const userId = event.source?.userId;
+      const maskedUserId = userId && userId.length > 8 ? userId.slice(0, 4) + '***' + userId.slice(-4) : 'anonymous';
+      console.log('[LINE Event] type:', event.type, 'from:', maskedUserId);
       if (!replyToken) {
         console.warn('Skipping event without replyToken');
         continue;
@@ -579,8 +578,6 @@ app.post('/api/line/webhook', async (c) => {
 
       if (event.type === 'message' && event.message?.type === 'text') {
         const text = (event.message.text || '').trim();
-        const maskedLogText = text.replace(/09\d{8}/g, (m: string) => m.slice(0, 4) + '***' + m.slice(7));
-        console.log('[LINE User Message] text:', maskedLogText);
 
         if (/^(管理|後台|管理後台|站所管理|幹部管理|admin|dashboard)$/i.test(text) || text === '管理' || text === '後台') {
           isAdminCmd = true;
@@ -602,9 +599,10 @@ app.post('/api/line/webhook', async (c) => {
         ) {
           isBooking = true;
         }
+        const intent = isAdminCmd ? 'admin' : isQuery ? 'query' : isBooking ? 'booking' : 'guide';
+        console.log('[LINE User Message] intent matched:', intent, 'length:', text.length);
       } else if (event.type === 'postback') {
         const data = event.postback?.data || '';
-        console.log('Received postback data:', data);
         if (data.includes('admin')) {
           isAdminCmd = true;
         } else if (data.includes('query')) {
@@ -612,6 +610,8 @@ app.post('/api/line/webhook', async (c) => {
         } else if (data.includes('book')) {
           isBooking = true;
         }
+        const postbackAction = isAdminCmd ? 'admin' : isQuery ? 'query' : isBooking ? 'booking' : 'other';
+        console.log('[LINE Postback] action matched:', postbackAction);
       }
 
       if (isAdminCmd) {
@@ -714,8 +714,10 @@ app.get('/api/admin/debug/test-card', async (c) => {
   const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!token) return c.json({ error: 'Missing LINE_CHANNEL_ACCESS_TOKEN' }, 500);
 
+  // 安全防護：僅查詢卡片必要顯示欄位，排除內部敏感備註 (admin_memo 等)
   const records = await c.env.DB.prepare(
-    'SELECT * FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
+    'SELECT id, created_at, updated_at, contact_name, service_type, crop_type, area_size, branch_volume, location_area, location_address, preferred_date, preferred_time_slot, date_flexibility, status ' +
+    'FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
   ).bind(userId).all();
 
   const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID, c.env.STATION_NAME);
@@ -723,9 +725,8 @@ app.get('/api/admin/debug/test-card', async (c) => {
 
   return c.json({
     success: true,
-    message: 'Test card pushed to ' + userId,
-    recordsCount: records.results?.length || 0,
-    latestRecord: records.results?.[0] || null
+    message: 'Test card pushed successfully',
+    recordsCount: records.results?.length || 0
   });
 });
 
