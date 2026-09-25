@@ -11,6 +11,7 @@
     "build:frontend": "npm --prefix packages/frontend run build",
     "login": "npm --prefix packages/backend exec wrangler login",
     "deploy:backend": "npm --prefix packages/backend run deploy",
+    "setup:turnstile": "node scripts/setup-turnstile.js",
     "export:opensource": "node scripts/export-opensource.js"
   }
 }

@@ -32,7 +32,10 @@ flowchart TD
     K --> L[Phase 7: 前端編譯與部署 Workers + Pages]
     L --> M[Phase 8: 自動執行健康檢查 Curl]
     M --> N[Phase 9: 提示使用者至 LINE 後台更新 LIFF Endpoint]
-    N --> O[🎉 部署完成]
+    N --> O[🎉 Starter 測試部署完成]
+    O --> P{使用者是否要求正式商轉?}
+    P -- 是 --> Q[Phase 10: 一鍵全自動建立 Turnstile 真人防護]
+    Q --> R[🛡️ 生產環境 Fail-Closed 鋼鐵防護完畢]
 ```
 
 ### 🤖 給 Agent 的重要指引
@@ -318,6 +321,32 @@ Agent 向使用者提示：
 >   2. 查看頁面最頂部、頻道名稱旁邊的狀態膠囊標籤。
 >   3. 將 **`Developing`** 點擊並切換為 **`Published`**。
 >   4. 切換後，任何一般 LINE 使用者點擊您的 LIFF 連結皆能順暢開啟並預約！
+
+---
+
+### Phase 10：一鍵升級正式 Turnstile 真人防護 (Production Zero-Click Turnstile Setup)
+
+> 💡 **從 Starter 測試模式平滑升級為生產環境**：
+> 初次部署完成後，系統處於「Starter 體驗模式」，具備 100% 完整功能但使用官方測試金鑰（開箱即測）。
+> 當使用者準備正式對外公開、開放真實農民預約時，**Agent 可完全自主執行以下指令，一鍵完成專屬 Turnstile Widget 建立與密鑰配置，使用者完全無需進入 Cloudflare 後台手動點擊**：
+
+Agent 自動執行終端指令：
+```bash
+npm run setup:turnstile
+```
+此指令全自動執行以下 5 個步驟：
+1. 呼叫 `npx wrangler turnstile widget create` 建立 Managed 模式之專屬 Widget。
+2. 自動取得產生的 `sitekey` 並注入 `packages/frontend/.env`（`VITE_TURNSTILE_SITE_KEY`）。
+3. 自動取得產生的 `secret` 並安全更新至後端 Worker。
+4. 自動重新編譯打包前端並發布至 Cloudflare Pages。
+5. 自動重新部署後端 Worker，系統即刻鎖定為 **Fail-Closed 密碼學鋼鐵真人驗證**，全面阻絕爬蟲與腳本刷單！
+
+> 🤖 **給使用者的超簡易升級指令**：
+> 當您內部測試滿意、準備正式給大眾填單時，只需在終端機對 Agent 說：
+> ```text
+> 我測試完成了，請幫我啟用正式 Turnstile 防護！
+> ```
+> Agent 就會全自動為您完成上述所有升級程序。
 
 ---
 

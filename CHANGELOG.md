@@ -100,7 +100,12 @@
   - **單號升級真高熵（10 碼 Hex）**：單號隨機尾碼擴增為 10 碼（$16^{10} \approx 1.1$ 兆種排列），徹底杜絕併發碰撞。
   - **內部錯誤全面脫敏**：全域與各端點 500 捕捉錯誤時，僅在內部輸出伺服器日誌，對外統一回傳友善安全訊息，防止 SQL/D1 內部結構洩漏。
   - **收斂 `_redirects` 與刪除衝突代理**：使用 PowerShell `-LiteralPath` 徹底刪除實體檔案 `[[path]].ts`，並清理 `_redirects` 僅保留 SPA 路由規則。
-  - **更新新手指南**：於 `BEGINNER_GUIDE.md` 清楚標示 Starter Turnstile 之「測試防護模式」說明與正式商轉之申請升級步驟。
+#### 14. AI Agent 驅動之 Cloudflare Turnstile 零接觸自動化配置 (Zero-Touch Turnstile Automation by Agent)
+- **問題**：原正式商轉需引導新手手動登入 Cloudflare Web 控制台、建立 Turnstile Widget、手動複製 Site Key 與 Secret Key 至程式碼與後台，流程繁複且容易出錯。
+- **修復**：
+  - **升級 Wrangler 核心工具鏈**：後端升級至原生支援 Turnstile CLI 管理之最新版本（Wrangler 4.139+）。
+  - **新增自動化配置腳本 (`npm run setup:turnstile`)**：透過 Cloudflare 官方 API / CLI 原生呼叫 `wrangler turnstile widget create`，全自動建立 Managed 模式 Widget、提取金鑰、更新前端 `.env`、更新後端密鑰，並自動觸發前端與後端之重新編譯與發布。
+  - **全面導入 Agent 一鍵升級指示**：於 `DEPLOYMENT_GUIDE.md` 與 `BEGINNER_GUIDE.md` 制定零摩擦升級規範。使用者僅需對 Agent 發出「我測試完成了，請幫我啟用正式 Turnstile 防護」自然語言指令，即可由 Agent 完成生產環境 Fail-Closed 密碼學鋼鐵防護之切換。
 
 ---
 
