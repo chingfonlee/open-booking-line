@@ -61,7 +61,7 @@
 | 代碼名稱 | 在哪裡點選？ | 它長什麼樣子？（特徵） | 用途解說 |
 | :--- | :--- | :--- | :--- |
 | **① LINE_CHANNEL_ACCESS_TOKEN** | 點分頁 **Messaging API** ➔ 滑到最下方找到 **Channel access token (long-lived)** ➔ 點右邊的 **Issue** 按鈕產生 | 一長串超過 150 個英數亂碼（像是一串很長的密碼） | 機器人的通行證，讓系統可以用這個機器人傳送 LINE 訊息 |
-| **② ADMIN_NOTIFY_USER_ID** | 點分頁 **Basic settings** ➔ 滑到最下方找到 **Your user ID** | 以英文字母 **`U` 開頭的 33 碼字串**（例如 `U7c0c955efa...`） | **接收通知的老闆/幹部 LINE 代碼**。<br>⚠️ *注意：這不是你加好友用的 LINE ID，而是系統專用唯一識別碼！* |
+| **② ADMIN_NOTIFY_USER_ID** | 點分頁 **Basic settings** ➔ 滑到最下方找到 **Your user ID** | 以英文字母 **`U` 開頭的 33 碼字串**（例如 `Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`） | **接收通知的老闆/幹部 LINE 代碼**。<br>⚠️ *注意：這不是你加好友用的 LINE ID，而是系統專用唯一識別碼！* |
 | **③ LINE_CHANNEL_SECRET** | 點分頁 **Basic settings** ➔ 找到 **Channel secret** | 32 碼小寫英數混和字串（例如 `a1b2c3d4...`） | 密碼防偽鑰匙，防止外部壞人假冒 LINE 官方發假通知 |
 
 ---
@@ -76,8 +76,8 @@
 
 | 代碼名稱 | 在哪裡點選？ | 它長什麼樣子？（特徵） | 用途解說 |
 | :--- | :--- | :--- | :--- |
-| **④ LINE_LOGIN_CHANNEL_ID** | 點分頁 **Basic settings** ➔ 看到 **Channel ID** | 純 10 位數字（例如 `2011709076`） | 登入頻道代號，讓管理幹部用手機 LINE 一鍵免密碼登入 |
-| **⑤ VITE_LIFF_ID** | 點分頁 **LIFF** ➔ 點 **Add** 按鈕 ➔ 填寫名稱（`預約表單`）、Size 選 `Full`、Endpoint URL 先隨便填 `https://example.com`、Scopes 勾選 `profile` 與 `openid` ➔ 送出 | 數字與英數組合（例如 `2011709076-09FdfkjH`） | **預約單門牌號碼**。農民點擊這串網址時，會在 LINE 裡面全螢幕彈出美觀預約單！ |
+| **④ LINE_LOGIN_CHANNEL_ID** | 點分頁 **Basic settings** ➔ 看到 **Channel ID** | 純 10 位數字（例如 `2000000000`） | 登入頻道代號，讓管理幹部用手機 LINE 一鍵免密碼登入 |
+| **⑤ VITE_LIFF_ID** | 點分頁 **LIFF** ➔ 點 **Add** 按鈕 ➔ 填寫名稱（`預約表單`）、Size 選 `Full`、Endpoint URL 先隨便填 `https://example.com`、Scopes 勾選 `profile` 與 `openid` ➔ 送出 | 數字與英數組合（例如 `2000000000-XXXXXXXX`） | **預約單門牌號碼**。農民點擊這串網址時，會在 LINE 裡面全螢幕彈出美觀預約單！ |
 
 ---
 
@@ -120,7 +120,7 @@ STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
    - 把原本隨便填的 `https://example.com` 改成 AI 給你的網址：`https://my-farm.pages.dev`。
 4. 按下 **Update（儲存）**。
 
-🎉 **大功告成！** 現在你可以把 LIFF URL（例如 `https://liff.line.me/2011709076-09FdfkjH`）設定到你 LINE 官方帳號的圖文選單（Rich Menu），或是直接傳給親朋好友與農民測試填單囉！
+🎉 **大功告成！** 現在你可以把 LIFF URL（例如 `https://liff.line.me/2000000000-XXXXXXXX`）設定到你 LINE 官方帳號的圖文選單（Rich Menu），或是直接傳給親朋好友與農民測試填單囉！
 
 ---
 
