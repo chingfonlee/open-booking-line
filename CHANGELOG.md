@@ -60,6 +60,14 @@
   - **Starter 體驗軌道**：保留官方測試金鑰（`1x...`），讓新手初次架設與體驗維持 0 門檻開箱即測，並於後端日誌輸出明確安全提醒。
   - **Production 生產加固軌道**：一旦管理者配置真實 Turnstile 密鑰（非 `1x...` 測試前綴），系統自動鎖定為 **Fail-Closed 鋼鐵防禦**，全面拒絕任何虛擬測試 Token，強制走 Cloudflare 官方 `siteverify` 密碼學核驗，驗證未過或連線異常一律 403 阻擋。
 
+#### 10. LINE Webhook 嚴格防偽驗簽 (Strict Fail-Closed Webhook Verification)
+- **問題**：原後端在未配置 `LINE_CHANNEL_SECRET` 時僅以 warning 警告並放行請求（Fail Open），攻擊者可直接偽造 Webhook 事件冒充管理幹部觸發後台指令，或偽造進度查詢。
+- **修復**：後端全面落實 Fail-Closed 安全標準：
+  - 未配置 `LINE_CHANNEL_SECRET` ➔ 拒絕處理並回傳 HTTP 503 Configuration Error。
+  - 缺少 `x-line-signature` 標頭 ➔ 拒絕處理並回傳 HTTP 401 Unauthorized。
+  - HMAC-SHA256 簽名不符 ➔ 拒絕處理並回傳 HTTP 401 Unauthorized。
+  - 同步更新 `wrangler.toml.example` 與部署指南，正式將 Channel Secret 標記為必備安全密鑰。
+
 ---
 
 ## [1.0.0] - 2026-09-24

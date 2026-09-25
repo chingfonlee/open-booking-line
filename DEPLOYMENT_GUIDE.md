@@ -93,7 +93,7 @@ flowchart TD
      - 滑至最下方找到 **Your user ID**（以 `U` 開頭的 33 碼字串）。
      - 複製此 ID ➡️ **`ADMIN_NOTIFY_USER_ID`**。
      - 找到 **Channel secret**（32 碼字串）。
-     - 複製此 Secret ➡️ **`LINE_CHANNEL_SECRET`**（強烈推薦，啟用 Webhook HMAC-SHA256 密碼學防偽驗簽）。
+     - 複製此 Secret ➡️ **`LINE_CHANNEL_SECRET`**（必填：啟用 Webhook HMAC-SHA256 密碼學防偽驗簽）。
 
 #### 2-3 建立 LINE Login Channel 與 LIFF（農友表單與服務人員登入）
 1. 回到 Provider 頁面，點擊 **Create a new channel**，選擇 **LINE Login**。
@@ -115,7 +115,7 @@ flowchart TD
 
 ```text
 LINE_CHANNEL_ACCESS_TOKEN=（填入 Messaging API Channel Access Token）
-LINE_CHANNEL_SECRET=（填入 Messaging API Channel Secret，選填強烈推薦）
+LINE_CHANNEL_SECRET=（填入 Messaging API Channel Secret 32 碼，必填安全項）
 ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的服務人員個人 LINE User ID）
 ADMIN_LINE_IDS=（填入授權服務人員 LINE User ID 白名單，可多個以逗號隔開）
 LINE_LOGIN_CHANNEL_ID=（填入 LINE Login Channel ID 數字）
@@ -239,12 +239,12 @@ TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
 ALLOWED_ORIGINS = "https://*.pages.dev"
 ```
 
-#### 5-2 注入 LINE Messaging Access Token 至 Worker Secret
+#### 5-2 注入 LINE 金鑰至 Worker Secret
 Agent 於 `packages/backend` 執行：
 ```bash
 cd packages/backend
 echo "<REPLACE_WITH_LINE_CHANNEL_ACCESS_TOKEN>" | npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-# 若有提供 LINE_CHANNEL_SECRET 則注入（啟用 Webhook 密碼學防偽驗簽）：
+# 注入 LINE_CHANNEL_SECRET（必填：啟用 Webhook 密碼學防偽驗簽）：
 echo "<REPLACE_WITH_LINE_CHANNEL_SECRET>" | npx wrangler secret put LINE_CHANNEL_SECRET
 cd ../..
 ```
