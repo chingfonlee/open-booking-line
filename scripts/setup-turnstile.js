@@ -22,35 +22,22 @@ if (fs.existsSync(WRANGLER_TOML_PATH)) {
   }
 }
 
-// 預設關聯網域清單：包含 localhost 與 Cloudflare Pages
-const domains = ['localhost'];
-if (customDomain) {
-  domains.push(customDomain.replace(/^https?:\/\//, '').replace(/\/$/, ''));
-} else {
-  // 自動從 frontend .env 或預設推測
-  if (fs.existsSync(FRONTEND_ENV_PATH)) {
-    const envContent = fs.readFileSync(FRONTEND_ENV_PATH, 'utf8');
-    const apiMatch = envContent.match(/VITE_API_BASE_URL\s*=\s*(.+)/);
-    if (apiMatch && apiMatch[1] && apiMatch[1].includes('.workers.dev')) {
-      // 預設加入 pages.dev 通用網域
-      domains.push('*.pages.dev');
-    }
-  }
-  // 若未指定特定子網域，納入所有 pages.dev
-  if (!domains.some(d => d.includes('pages.dev'))) {
-    domains.push('*.pages.dev');
-  }
-}
+// 確定授權網域清單 (Turnstile 規格：禁止 * 萬用字元，填入主要網域自動涵蓋其所有子網域如預覽部署)
+const targetPagesDomain = customDomain 
+  ? customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  : 'xingnong-farm.pages.dev';
+
+const domains = ['localhost', '127.0.0.1', targetPagesDomain];
 
 const widgetName = `${stationName} 預約驗證`;
-console.log(`📌 準備建立 Turnstile Widget：`);
+console.log(`📌 準備建立/配置 Turnstile Widget：`);
 console.log(`   - 應用名稱: ${widgetName}`);
 console.log(`   - 授權網域: ${domains.join(', ')}`);
-console.log(`   - 驗證模式: Managed (無感智慧驗證)\n`);
+console.log(`   - 驗證模式: Managed (智慧互動模式，正常時完全無感隱形)\n`);
 
 // 2. 呼叫 Wrangler CLI 建立 Widget
 try {
-  console.log('🚀 正在透過 Cloudflare API 自動建立 Turnstile Widget...');
+  console.log('🚀 正在透過 Cloudflare 原生 CLI 建立 Turnstile Widget...');
   const createCmd = `npx wrangler turnstile widget create "${widgetName}" --domains "${domains.join(',')}" --mode managed --json`;
   
   const result = execSync(createCmd, {
@@ -59,40 +46,44 @@ try {
     stdio: ['pipe', 'pipe', 'pipe']
   });
 
-  let widgetData = null;
+  let siteKey = null;
+  let secretKey = null;
+
   try {
-    // 擷取 JSON 區塊
     const jsonMatch = result.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      widgetData = JSON.parse(jsonMatch[0]);
+      const widgetData = JSON.parse(jsonMatch[0]);
+      siteKey = widgetData.sitekey || widgetData.site_key;
+      secretKey = widgetData.secret;
     }
-  } catch (err) {
-    console.warn('解析 JSON 輸出失敗，原始輸出:', result);
+  } catch {
+    // 嚴格資安規範：絕不印出包含明文密鑰之 raw result
   }
-
-  const siteKey = widgetData?.sitekey || widgetData?.site_key;
-  const secretKey = widgetData?.secret;
 
   if (!siteKey || !secretKey) {
-    throw new Error(`無法取得有效的 SiteKey 或 SecretKey。API 回傳: ${result}`);
+    throw new Error('無法取得有效的 SiteKey 或 SecretKey，請確認 Cloudflare 帳號權限');
   }
 
-  console.log('\n✅ Turnstile Widget 建立成功！');
-  console.log(`   - Site Key:   ${siteKey}`);
-  console.log(`   - Secret Key: ${secretKey.slice(0, 6)}************************\n`);
+  console.log('✅ Turnstile Widget 建立成功！');
+  console.log(`   - Site Key: ${siteKey}`);
+  console.log('   - Secret Key: [已安全捕獲，準備直接送入 Cloudflare 加密金鑰庫]\n');
 
-  // 3. 自動更新後端 wrangler.toml
-  console.log('📝 正在更新後端密鑰 (packages/backend/wrangler.toml)...');
-  let tomlContent = fs.readFileSync(WRANGLER_TOML_PATH, 'utf8');
-  tomlContent = tomlContent.replace(
-    /TURNSTILE_SECRET_KEY\s*=\s*"[^"]*"/,
-    `TURNSTILE_SECRET_KEY = "${secretKey}"`
-  );
-  fs.writeFileSync(WRANGLER_TOML_PATH, tomlContent, 'utf8');
-  console.log('✅ 後端密鑰已更新！');
+  // 3. 安全寫入 Cloudflare Worker Secret (密鑰直接由 stdin 管道送入，絕不落地檔案、不進 Git)
+  console.log('🔒 正在將 Secret 安全寫入 Cloudflare Worker Secret (Zero-Disk-Storage)...');
+  const putSecret = spawnSync('npx', ['wrangler', 'secret', 'put', 'TURNSTILE_SECRET_KEY'], {
+    cwd: BACKEND_DIR,
+    input: secretKey + '\n',
+    encoding: 'utf8',
+    shell: true
+  });
 
-  // 4. 自動更新前端 packages/frontend/.env
-  console.log('📝 正在更新前端 Site Key (packages/frontend/.env)...');
+  if (putSecret.status !== 0) {
+    throw new Error('Worker Secret 寫入失敗，請確認網路連線與 Cloudflare 權限');
+  }
+  console.log('✅ Turnstile Secret 已安全加密儲存於 Cloudflare Worker Secret！\n');
+
+  // 4. 更新前端 Site Key 至 packages/frontend/.env
+  console.log('📝 正在更新前端公開 Site Key (packages/frontend/.env)...');
   let envContent = fs.existsSync(FRONTEND_ENV_PATH) ? fs.readFileSync(FRONTEND_ENV_PATH, 'utf8') : '';
   if (envContent.includes('VITE_TURNSTILE_SITE_KEY=')) {
     envContent = envContent.replace(/VITE_TURNSTILE_SITE_KEY=.*/, `VITE_TURNSTILE_SITE_KEY=${siteKey}`);
@@ -100,10 +91,10 @@ try {
     envContent += `\nVITE_TURNSTILE_SITE_KEY=${siteKey}\n`;
   }
   fs.writeFileSync(FRONTEND_ENV_PATH, envContent, 'utf8');
-  console.log('✅ 前端 Site Key 已更新！');
+  console.log('✅ 前端 Site Key 已更新！\n');
 
   // 5. 重新編譯前端並部署
-  console.log('\n📦 正在重新打包前端應用 (npm run build)...');
+  console.log('📦 正在重新打包前端應用 (npm run build)...');
   execSync('npm run build', { cwd: FRONTEND_DIR, stdio: 'inherit' });
 
   console.log('\n☁️  正在重新部署前端至 Cloudflare Pages...');
@@ -121,16 +112,18 @@ try {
   console.log('================================================================\n');
 
 } catch (error) {
-  const errorMsg = error.stderr || error.stdout || error.message || '';
+  const errorMsg = String(error.stderr || error.stdout || error.message || '');
   if (errorMsg.includes('code: 10000') || errorMsg.includes('missing some expected Oauth scopes') || errorMsg.includes('challenge-widgets.write')) {
-    console.error('\n⚠️  【OAuth 權限授權提醒】');
-    console.error('您的 Cloudflare 登入權杖尚未包含 Turnstile Widget 的操作權限（challenge-widgets.write）。');
+    console.error('\n⚠️  【Cloudflare 權限升級提示】');
+    console.error('您的 Cloudflare 登入憑證缺少 Turnstile Widget 操作權限（challenge-widgets.write）。');
     console.error('\n👉 請在終端機執行一次以下指令完成升級授權（瀏覽器會彈出 Cloudflare 授權視窗，點擊「Allow」即可）：');
     console.error('   npx wrangler login\n');
     console.error('授權完成後，再次執行此腳本，即可全自動為您建立並完成設定！\n');
   } else {
-    console.error('\n❌ 自動建立 Turnstile 遭遇異常:', errorMsg);
-    console.error('\n💡 備用替代方案：您也可以直接前往 Cloudflare 控制台手動建立 Turnstile Widget，並將 Site Key 與 Secret Key 分別填入 frontend/.env 與 backend/wrangler.toml。');
+    console.error('\n❌ 自動建立 Turnstile 遭遇異常。');
+    console.error('\n💡 備用替代方案：您也可以直接前往 Cloudflare 控制台手動建立 Turnstile Widget，並執行以下指令安全託管密鑰：');
+    console.error('   1. 前端：將 Site Key 寫入 packages/frontend/.env (VITE_TURNSTILE_SITE_KEY)');
+    console.error('   2. 後端：在 packages/backend 執行 npx wrangler secret put TURNSTILE_SECRET_KEY');
   }
   process.exit(1);
 }

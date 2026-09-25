@@ -18,9 +18,11 @@ ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 LINE_LOGIN_CHANNEL_ID = "2000000000"
 # LINE LIFF ID (供後端 Flex 卡片跳轉按鈕使用，格式如 2000000000-XXXXXXXX)
 LIFF_ID = "2000000000-XXXXXXXX"
-# Cloudflare Turnstile 密鑰 (預設為 Cloudflare 官方測試 Always-Pass 金鑰，正式商轉請更換)
-TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
 # 前端允許之 CORS 來源 (多個請用逗號隔開，支援萬用字元如 https://*.pages.dev)
 ALLOWED_ORIGINS = "https://*.pages.dev"
 # LINE Messaging API Channel Secret (必填：用於密碼學驗證 Webhook x-line-signature 防偽簽名)
 LINE_CHANNEL_SECRET = "your-channel-secret"
+
+# 【安全說明】：TURNSTILE_SECRET_KEY 已改由 Cloudflare Worker Secret 安全託管（不落地檔案、不進 Git）。
+# 預設 Starter 模式自動 fallback 官方 Always-Pass 測試密鑰；
+# 正式商轉請使用 npm run setup:turnstile 或手動執行 npx wrangler secret put TURNSTILE_SECRET_KEY。

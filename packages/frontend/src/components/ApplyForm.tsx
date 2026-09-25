@@ -97,14 +97,14 @@ export const ApplyForm: React.FC = () => {
       });
     }
 
-    // 3. 渲染 Cloudflare Turnstile 隱形無感驗證元件
+    // 3. 渲染 Cloudflare Turnstile Managed 驗證元件 (interaction-only 模式：正常狀態無感隱形，僅異常時提示交互)
     const renderTurnstile = () => {
       if ((window as any).turnstile && turnstileContainerRef.current) {
         try {
-          const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000BB'; // 官方 Invisible Always-Pass 隱形金鑰
+          const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000AA'; // 官方 Managed Always-Pass 測試金鑰
           (window as any).turnstile.render(turnstileContainerRef.current, {
             sitekey,
-            size: 'invisible',
+            appearance: 'interaction-only',
             callback: (token: string) => {
               setTurnstileToken(token);
             },
@@ -169,7 +169,7 @@ export const ApplyForm: React.FC = () => {
           console.warn('LIFF token retrieval warning:', e);
         }
       }
-      const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000BB';
+      const sitekey = (import.meta.env.VITE_TURNSTILE_SITE_KEY as string) || '1x00000000000000000000AA';
       let effectiveToken = turnstileToken;
       if (!effectiveToken && (window as any).turnstile) {
         try {
