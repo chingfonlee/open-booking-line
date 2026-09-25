@@ -133,17 +133,17 @@ try {
 
 } catch (error) {
   const errorMsg = String(error.stderr || error.stdout || error.message || '');
-  if (errorMsg.includes('code: 10000') || errorMsg.includes('missing some expected Oauth scopes') || errorMsg.includes('challenge-widgets.write')) {
+  if (error.message === 'OAUTH_SCOPE_MISSING' || errorMsg.includes('code: 10000') || errorMsg.includes('missing some expected Oauth scopes') || errorMsg.includes('challenge-widgets.write')) {
     console.error('\n⚠️  【Cloudflare 權限升級提示】');
     console.error('您的 Cloudflare 登入憑證缺少 Turnstile Widget 操作權限（challenge-widgets.write）。');
     console.error('\n👉 請在終端機執行一次以下指令完成升級授權（瀏覽器會彈出 Cloudflare 授權視窗，點擊「Allow」即可）：');
     console.error('   npx wrangler login\n');
     console.error('授權完成後，再次執行此腳本，即可全自動為您建立並完成設定！\n');
   } else {
-    console.error('\n❌ 自動建立 Turnstile 遭遇異常。');
+    console.error('\n❌ 自動建立 Turnstile 遭遇異常：', error.message);
     console.error('\n💡 備用替代方案：您也可以直接前往 Cloudflare 控制台手動建立 Turnstile Widget，並執行以下指令安全託管密鑰：');
     console.error('   1. 前端：將 Site Key 寫入 packages/frontend/.env (VITE_TURNSTILE_SITE_KEY)');
-    console.error('   2. 後端：在 packages/backend 執行 npx wrangler secret put TURNSTILE_SECRET_KEY');
+    console.error('   2. 後端：在 packages/backend 執行 npx wrangler secret put TURNSTILE_SECRET_KEY\n');
   }
   process.exit(1);
 }
