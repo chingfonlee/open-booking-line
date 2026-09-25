@@ -22,5 +22,5 @@ LIFF_ID = "2000000000-XXXXXXXX"
 TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
 # 前端允許之 CORS 來源 (多個請用逗號隔開，支援萬用字元如 https://*.pages.dev)
 ALLOWED_ORIGINS = "https://*.pages.dev"
-# LINE Messaging API Channel Secret (選填：用於驗證 Webhook x-line-signature 防偽簽名)
-# LINE_CHANNEL_SECRET = "your-channel-secret"
+# LINE Messaging API Channel Secret (必填：用於密碼學驗證 Webhook x-line-signature 防偽簽名)
+LINE_CHANNEL_SECRET = "your-channel-secret"

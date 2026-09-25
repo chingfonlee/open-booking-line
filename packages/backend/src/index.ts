@@ -495,21 +495,23 @@ app.post('/api/line/webhook', async (c) => {
     const rawBody = await c.req.text();
     console.log('[LINE Webhook] Received request, payload length:', rawBody.length);
     
-    // 0. LINE 官方 Webhook 簽名驗證 (HMAC-SHA256 防偽驗證)
+    // 0. LINE 官方 Webhook 簽名驗證 (HMAC-SHA256 密碼學防偽驗簽，強制 Fail-Closed)
     const channelSecret = c.env.LINE_CHANNEL_SECRET;
+    if (!channelSecret) {
+      console.error('[LINE Webhook 安全阻擋] 系統未配置 LINE_CHANNEL_SECRET，依據安全標準拒絕處理所有 Webhook 事件');
+      return c.text('Server Configuration Error: LINE_CHANNEL_SECRET is required to verify webhook signatures. Please configure LINE_CHANNEL_SECRET in Wrangler.', 503);
+    }
+
     const signature = c.req.header('x-line-signature');
-    if (channelSecret) {
-      if (!signature) {
-        console.warn('[LINE Webhook 安全阻擋] 缺少 x-line-signature 標頭，拒絕處理');
-        return c.text('Missing signature', 401);
-      }
-      const isValid = await verifyLineSignature(rawBody, signature, channelSecret);
-      if (!isValid) {
-        console.warn('[LINE Webhook 安全阻擋] x-line-signature 簽名校驗失敗，可能為偽造請求');
-        return c.text('Invalid signature', 401);
-      }
-    } else {
-      console.warn('[LINE Webhook 安全提醒] 環境變數未配置 LINE_CHANNEL_SECRET，暫時略過簽名驗證（開源部署建議於正式環境設定）');
+    if (!signature) {
+      console.warn('[LINE Webhook 安全阻擋] 缺少 x-line-signature 標頭，拒絕處理 (HTTP 401)');
+      return c.text('Missing signature', 401);
+    }
+
+    const isValid = await verifyLineSignature(rawBody, signature, channelSecret);
+    if (!isValid) {
+      console.warn('[LINE Webhook 安全阻擋] x-line-signature 簽名校驗失敗，可能為偽造請求 (HTTP 401)');
+      return c.text('Invalid signature', 401);
     }
 
     let body: any = {};
