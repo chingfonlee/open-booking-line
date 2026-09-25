@@ -409,18 +409,18 @@ https://liff.line.me/<YOUR_LIFF_ID>
 
 ### 5. Cloudflare Turnstile 真人防護模式與正式金鑰申請（重要提醒）
 
-本專案預設已配置 Cloudflare 官方 **Invisible 隱形測試金鑰**（`2x00000000000000000000AB`），此模式下：
-- **零干擾體驗**：表單下方完全不會出現任何灰色方塊或「僅用於測試」等警告橫幅。
-- **背景自動鑑權**：農友送單時全自動通過檢核，體驗清爽順暢。
+本專案預設已配置 Cloudflare 官方 **Managed 智慧測試金鑰**（`1x00000000000000000000AA`），搭配前端 `appearance: 'interaction-only'`：
+- **零干擾體驗**：正常使用者體驗完全無感隱形，僅在流量異常時啟動輕量互動校驗。
+- **後端安全防禦**：預設測試金鑰支援完整通訊驗證流程，開箱即測。
 
 > 💡 **若要取得正式專屬防爬蟲保護（推薦生產環境申請，完全免費）：**
-> - **方式 A（Agent 全自動，推薦）**：直接執行 `npm run setup:turnstile`，由系統自動呼叫 Cloudflare API 建立 Widget 並安全加密存入 Worker Secret。
+> - **方式 A（Agent 全自動，推薦）**：直接執行 `npm run setup:turnstile`，系統具備**冪等性（Idempotency）**，會自動識別並復用既有 Widget（同步更新網域與 Managed 模式），避免重複建立資源。初次建立時會自動將 Secret Key 安全注入 Worker Secret（Zero-Disk）。若需強制重新建立，可加上 `--recreate`。
 > - **方式 B（手動申請託管）**：
 >   1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選左側選單的 **Turnstile**。
 >   2. 點擊 **Add site**（新增網站）：
 >      - **Site name**：輸入專案名稱（例如 `行農合作社預約`）
 >      - **Domain**：填入您的 Pages 網址（例如 `xingnong-farm.pages.dev`）
->      - **Widget Mode**：推薦選擇 **Managed（智慧互動模式）**。
+>      - **Widget Mode**：選擇 **Managed（智慧互動模式）**。
 >   3. 點擊 **Create**，取得金鑰：
 >      - **Site Key** ➡️ 填入前端 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`。
 >      - **Secret Key** ➡️ 於後端執行安全託管（絕不寫入 wrangler.toml 檔案）：
