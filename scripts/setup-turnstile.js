@@ -31,11 +31,9 @@ const targetPagesDomain = customDomain
   ? customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
   : 'xingnong-farm.pages.dev';
 
-const safeStationName = stationName.replace(/["`$%&;^|<>]/g, '').trim() || '農業服務站';
-const safePagesDomain = targetPagesDomain.replace(/["`$%&;^|<>]/g, '').trim();
-const domains = [safePagesDomain];
+const domains = [targetPagesDomain];
+const widgetName = `${stationName} 預約驗證`;
 
-const widgetName = `${safeStationName} 預約驗證`;
 console.log(`📌 準備建立/配置 Turnstile Widget：`);
 console.log(`   - 應用名稱: ${widgetName}`);
 console.log(`   - 授權網域: ${domains.join(', ')}`);
@@ -46,34 +44,79 @@ if (isForceRecreate) {
   console.log(`   - 執行模式: 冪等復用 (自動 Reuse/Update 既有 Widget，不重複建立)\n`);
 }
 
-// 2. 呼叫 Wrangler CLI 建立/更新 Widget
-const isWin = process.platform === 'win32';
-const npxCmd = isWin ? 'npx.cmd' : 'npx';
-const npmCmd = isWin ? 'npm.cmd' : 'npm';
+// 2. 解析 CLI 執行檔（零 Shell 執行：直接使用 Node.js 執行 JS 入口點，徹底消除 Windows/Unix 上的 Shell 注入風險）
+function getWranglerCli() {
+  const wranglerPkg = require.resolve('wrangler/package.json', { paths: [BACKEND_DIR] });
+  return path.join(path.dirname(wranglerPkg), 'bin', 'wrangler.js');
+}
+
+function getNpmCli() {
+  const nodeDir = path.dirname(process.execPath);
+  const candidates = [
+    path.join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+    path.join(nodeDir, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
+  ];
+  const found = candidates.find(p => fs.existsSync(p));
+  if (!found) {
+    throw new Error('FRONTEND_BUILD_FAILED');
+  }
+  return found;
+}
+
+const wranglerCli = getWranglerCli();
+const npmCli = getNpmCli();
+
+function isOAuthError(res) {
+  const errText = String((res && (res.stderr || '')) + '\n' + (res && (res.stdout || '')));
+  return errText.includes('code: 10000') || 
+         errText.includes('missing some expected Oauth scopes') || 
+         errText.includes('challenge-widgets.write');
+}
 
 function runSafe(command, args, cwd, errorCode) {
   const result = spawnSync(command, args, {
     cwd,
-    encoding: 'utf8',
-    shell: isWin
+    encoding: 'utf8'
   });
   if (result.status !== 0) {
+    if (isOAuthError(result)) {
+      throw new Error('OAUTH_SCOPE_MISSING');
+    }
     throw new Error(errorCode);
   }
+}
+
+function syncWorkerSecret(secretKey) {
+  if (!secretKey) return;
+  console.log('🔒 正在同步 Cloudflare Worker Secret (Zero-Disk-Storage)...');
+  const putSecret = spawnSync(process.execPath, [wranglerCli, 'secret', 'put', 'TURNSTILE_SECRET_KEY'], {
+    cwd: BACKEND_DIR,
+    input: secretKey + '\n',
+    encoding: 'utf8'
+  });
+
+  if (putSecret.status !== 0) {
+    if (isOAuthError(putSecret)) {
+      throw new Error('OAUTH_SCOPE_MISSING');
+    }
+    throw new Error('SECRET_WRITE_FAILED');
+  }
+  console.log('✅ Turnstile Secret 已安全加密儲存於 Cloudflare Worker Secret！\n');
 }
 
 try {
   let siteKey = null;
   let secretKey = null;
 
-  // 讀取前端既有 Site Key (判斷是否為非測試之正式金鑰)
+  // 讀取前端既有 Site Key (排除官方 1x / 2x / 3x 測試金鑰)
   let existingSiteKey = null;
   if (fs.existsSync(FRONTEND_ENV_PATH)) {
     const envContent = fs.readFileSync(FRONTEND_ENV_PATH, 'utf8');
     const match = envContent.match(/VITE_TURNSTILE_SITE_KEY\s*=\s*([^\s\r\n]+)/);
     if (match && match[1]) {
       const key = match[1].replace(/["']/g, '').trim();
-      if (key && !key.startsWith('1x')) {
+      const isTestKey = key.startsWith('1x') || key.startsWith('2x') || key.startsWith('3x');
+      if (key && !isTestKey) {
         existingSiteKey = key;
       }
     }
@@ -84,8 +127,8 @@ try {
     // 優先策略 A：若本地 .env 已有正式 Site Key，直接呼叫 update 同步網域與模式
     if (existingSiteKey) {
       console.log(`🔍 偵測到本地既有 Site Key (${existingSiteKey})，正在驗證並同步遠端設定 (Reuse/Update)...`);
-      const updateRes = spawnSync(npxCmd, [
-        'wrangler',
+      const updateRes = spawnSync(process.execPath, [
+        wranglerCli,
         'turnstile',
         'widget',
         'update',
@@ -99,77 +142,95 @@ try {
         '--json'
       ], {
         cwd: BACKEND_DIR,
-        encoding: 'utf8',
-        shell: isWin
+        encoding: 'utf8'
       });
 
       if (updateRes.status === 0) {
         siteKey = existingSiteKey;
         console.log(`✅ 已成功復用既有 Turnstile Widget (${siteKey})，網域與模式已同步更新！\n`);
       } else {
-        const errText = String((updateRes.stderr || '') + '\n' + (updateRes.stdout || ''));
-        if (errText.includes('code: 10000') || errText.includes('missing some expected Oauth scopes') || errText.includes('challenge-widgets.write')) {
+        if (isOAuthError(updateRes)) {
           throw new Error('OAUTH_SCOPE_MISSING');
         }
-        console.log('⚠️  本地記錄之 Site Key 在 Cloudflare 無法更新（可能已在遠端被刪除），將嘗試查詢或重新建立...');
+        const errText = String((updateRes.stderr || '') + '\n' + (updateRes.stdout || ''));
+        if (errText.includes('404') || errText.includes('not found') || errText.includes('code: 10007')) {
+          console.log('⚠️  本地記錄之 Site Key 在 Cloudflare 已不存在，將查詢既有清單或建立...\n');
+        } else {
+          // Fail-Closed: 非 404 之網路/API 錯誤，嚴格阻斷，不可誤落入新建
+          throw new Error('WIDGET_UPDATE_FAILED');
+        }
       }
     }
 
     // 優先策略 B：若未從本地取得有效 Site Key，查詢 Cloudflare 帳號內既有 Widget 清單
     if (!siteKey) {
       console.log('🔍 正在查詢 Cloudflare 帳號內既有 Turnstile Widget 清單以避免重複建立...');
-      const listRes = spawnSync(npxCmd, ['wrangler', 'turnstile', 'widget', 'list', '--json'], {
+      const listRes = spawnSync(process.execPath, [
+        wranglerCli,
+        'turnstile',
+        'widget',
+        'list',
+        '--json'
+      ], {
         cwd: BACKEND_DIR,
-        encoding: 'utf8',
-        shell: isWin
+        encoding: 'utf8'
       });
 
       if (listRes.status !== 0) {
-        const errText = String((listRes.stderr || '') + '\n' + (listRes.stdout || ''));
-        if (errText.includes('code: 10000') || errText.includes('missing some expected Oauth scopes') || errText.includes('challenge-widgets.write')) {
+        if (isOAuthError(listRes)) {
           throw new Error('OAUTH_SCOPE_MISSING');
         }
-      } else {
-        try {
-          const jsonMatch = (listRes.stdout || '').match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const widgets = JSON.parse(jsonMatch[0]);
-            if (Array.isArray(widgets)) {
-              const matched = widgets.find(w => 
-                w.name === widgetName || 
-                (Array.isArray(w.domains) && w.domains.includes(targetPagesDomain))
-              );
-              if (matched && (matched.sitekey || matched.site_key)) {
-                const foundKey = matched.sitekey || matched.site_key;
-                console.log(`ℹ️ 在 Cloudflare 找到相符既有 Widget (${matched.name || foundKey})，執行同步更新...`);
-                const updateRes = spawnSync(npxCmd, [
-                  'wrangler',
-                  'turnstile',
-                  'widget',
-                  'update',
-                  foundKey,
-                  '--name',
-                  widgetName,
-                  '--domains',
-                  domains.join(','),
-                  '--mode',
-                  'managed',
-                  '--json'
-                ], {
-                  cwd: BACKEND_DIR,
-                  encoding: 'utf8',
-                  shell: isWin
-                });
+        // Fail-Closed: list 查詢失敗嚴格阻斷，絕不誤建重複 Widget
+        throw new Error('WIDGET_LIST_FAILED');
+      }
 
-                if (updateRes.status === 0) {
-                  siteKey = foundKey;
-                  console.log(`✅ 已成功復用既有 Turnstile Widget (${siteKey})，避免建立重複資源！\n`);
-                }
-              }
-            }
-          }
+      const listOutput = listRes.stdout || '';
+      const jsonMatch = listOutput.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        let widgets = [];
+        try {
+          widgets = JSON.parse(jsonMatch[0]);
         } catch {
-          // JSON 解析失敗則退回新建流程
+          throw new Error('WIDGET_LIST_FAILED');
+        }
+
+        if (Array.isArray(widgets)) {
+          const matched = widgets.find(w => 
+            w.name === widgetName || 
+            (Array.isArray(w.domains) && w.domains.includes(targetPagesDomain))
+          );
+          if (matched && (matched.sitekey || matched.site_key)) {
+            const foundKey = matched.sitekey || matched.site_key;
+            console.log(`ℹ️ 在 Cloudflare 找到相符既有 Widget (${matched.name || foundKey})，執行同步更新...`);
+            const updateRes = spawnSync(process.execPath, [
+              wranglerCli,
+              'turnstile',
+              'widget',
+              'update',
+              foundKey,
+              '--name',
+              widgetName,
+              '--domains',
+              domains.join(','),
+              '--mode',
+              'managed',
+              '--json'
+            ], {
+              cwd: BACKEND_DIR,
+              encoding: 'utf8'
+            });
+
+            if (updateRes.status !== 0) {
+              if (isOAuthError(updateRes)) {
+                throw new Error('OAUTH_SCOPE_MISSING');
+              }
+              // Fail-Closed: update 失敗嚴格阻斷，絕不退回新建
+              throw new Error('WIDGET_UPDATE_FAILED');
+            }
+
+            siteKey = foundKey;
+            console.log(`✅ 已成功復用既有 Turnstile Widget (${siteKey})，避免建立重複資源！\n`);
+          }
         }
       }
     }
@@ -178,8 +239,8 @@ try {
   // 策略 C：若既有 Widget 不存在或使用者指定 --recreate，呼叫 create 建立新 Widget
   if (!siteKey) {
     console.log('🚀 正在透過 Cloudflare 原生 CLI 建立全新 Turnstile Widget...');
-    const createRes = spawnSync(npxCmd, [
-      'wrangler',
+    const createRes = spawnSync(process.execPath, [
+      wranglerCli,
       'turnstile',
       'widget',
       'create',
@@ -191,13 +252,11 @@ try {
       '--json'
     ], {
       cwd: BACKEND_DIR,
-      encoding: 'utf8',
-      shell: isWin
+      encoding: 'utf8'
     });
 
     if (createRes.status !== 0) {
-      const errText = String((createRes.stderr || '') + '\n' + (createRes.stdout || ''));
-      if (errText.includes('code: 10000') || errText.includes('missing some expected Oauth scopes') || errText.includes('challenge-widgets.write')) {
+      if (isOAuthError(createRes)) {
         throw new Error('OAUTH_SCOPE_MISSING');
       }
       throw new Error('WIDGET_CREATION_FAILED');
@@ -222,20 +281,41 @@ try {
     console.log('✅ Turnstile Widget 建立成功！');
     console.log(`   - Site Key: ${siteKey}`);
     console.log('   - Secret Key: [已安全捕獲，準備直接送入 Cloudflare 加密金鑰庫]\n');
+  }
 
-    // 3. 安全寫入 Cloudflare Worker Secret (密鑰直接由 stdin 管道送入，絕不落地檔案、不進 Git)
-    console.log('🔒 正在將 Secret 安全寫入 Cloudflare Worker Secret (Zero-Disk-Storage)...');
-    const putSecret = spawnSync(npxCmd, ['wrangler', 'secret', 'put', 'TURNSTILE_SECRET_KEY'], {
+  // 自我修復 (Self-Healing)：若為復用既有 Widget，透過 widget get 重新取得 Secret 並更新 Worker Secret
+  if (siteKey && !secretKey) {
+    console.log(`🔒 正在獲取既有 Widget (${siteKey}) 之 Secret 進行環境自我修復...`);
+    const getRes = spawnSync(process.execPath, [
+      wranglerCli,
+      'turnstile',
+      'widget',
+      'get',
+      siteKey,
+      '--json'
+    ], {
       cwd: BACKEND_DIR,
-      input: secretKey + '\n',
-      encoding: 'utf8',
-      shell: isWin
+      encoding: 'utf8'
     });
 
-    if (putSecret.status !== 0) {
-      throw new Error('SECRET_WRITE_FAILED');
+    if (getRes.status === 0) {
+      try {
+        const jsonMatch = (getRes.stdout || '').match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const widgetData = JSON.parse(jsonMatch[0]);
+          secretKey = widgetData.secret;
+        }
+      } catch {
+        // 保持靜默
+      }
+    } else if (isOAuthError(getRes)) {
+      throw new Error('OAUTH_SCOPE_MISSING');
     }
-    console.log('✅ Turnstile Secret 已安全加密儲存於 Cloudflare Worker Secret！\n');
+  }
+
+  // 統一將 Secret 寫入 Cloudflare Worker Secret (Zero-Disk Storage)
+  if (secretKey) {
+    syncWorkerSecret(secretKey);
   }
 
   // 4. 更新前端 Site Key 至 packages/frontend/.env
@@ -249,23 +329,21 @@ try {
   fs.writeFileSync(FRONTEND_ENV_PATH, envContent, 'utf8');
   console.log('✅ 前端 Site Key 已更新！\n');
 
-  // 5. 重新編譯前端並部署
+  // 5. 重新編譯前端並部署 (全部由 Node.js 直調，零 shell 執行)
   console.log('📦 正在重新打包前端應用 (npm run build)...');
-  runSafe(npmCmd, ['run', 'build'], FRONTEND_DIR, 'FRONTEND_BUILD_FAILED');
+  runSafe(process.execPath, [npmCli, 'run', 'build'], FRONTEND_DIR, 'FRONTEND_BUILD_FAILED');
 
   console.log('\n☁️  正在重新部署前端至 Cloudflare Pages...');
-  runSafe(npxCmd, [
-    '--prefix',
-    'packages/backend',
-    'wrangler',
+  runSafe(process.execPath, [
+    wranglerCli,
     'pages',
     'deploy',
-    'packages/frontend/dist',
+    path.join(FRONTEND_DIR, 'dist'),
     '--project-name=xingnong-farm'
   ], ROOT_DIR, 'PAGES_DEPLOY_FAILED');
 
   console.log('\n☁️  正在重新部署後端至 Cloudflare Workers...');
-  runSafe(npxCmd, ['wrangler', 'deploy'], BACKEND_DIR, 'WORKER_DEPLOY_FAILED');
+  runSafe(process.execPath, [wranglerCli, 'deploy'], BACKEND_DIR, 'WORKER_DEPLOY_FAILED');
 
   console.log('\n================================================================');
   console.log('🎉 恭喜！正式版 Cloudflare Turnstile 真人防護已全面上線！');
