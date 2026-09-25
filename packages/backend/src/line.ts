@@ -575,6 +575,7 @@ export interface VerifiedLineProfile {
   name?: string;
   picture?: string;
   email?: string;
+  exp?: number; // Token 過期時間戳 (UNIX 秒數)
 }
 
 export async function verifyLineIdToken(idToken: string, channelId?: string): Promise<VerifiedLineProfile | null> {
@@ -606,7 +607,8 @@ export async function verifyLineIdToken(idToken: string, channelId?: string): Pr
       sub: data.sub,
       name: data.name,
       picture: data.picture,
-      email: data.email
+      email: data.email,
+      exp: typeof data.exp === 'number' ? data.exp : undefined
     };
   } catch (err) {
     console.error('Failed to verify LINE ID token:', err);
