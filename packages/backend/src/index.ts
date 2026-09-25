@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { bodyLimit } from 'hono/body-limit';
 import {
   generateFlexNotification,
   generateCustomerConfirmationFlex,
@@ -161,12 +162,12 @@ app.use('*', async (c, next) => {
   c.res.headers.set('Content-Security-Policy', "default-src 'self'; frame-ancestors 'self' https://liff.line.me;");
 });
 
-// 全域未捕獲異常處理 (確保永不丟失 CORS 標頭且回傳結構化 JSON)
+// 全域未捕獲異常處理 (確保永不丟失 CORS 標頭，且不外洩內部資料庫或伺服器錯誤細節)
 app.onError((err, c) => {
   console.error('Unhandled server error:', err);
   return c.json({
     success: false,
-    message: err.message || '伺服器發生暫時性異常，請稍後再試或直接電話聯繫服務站。'
+    message: '伺服器發生暫時性異常，請稍後再試或直接電話聯繫服務站。'
   }, 500);
 });
 
@@ -175,172 +176,184 @@ app.get('/api/health', (c) => {
   return c.json({ status: 'ok', station: c.env.STATION_NAME || '高雄服務站', time: new Date().toISOString() });
 });
 
-// 1. 農友送出服務申請 (含 IP + 電話複合頻率限制、Turnstile 無感真人驗證與 LINE ID Token 簽名驗證)
-app.post('/api/requests', async (c) => {
-  try {
-    const rawBody = await c.req.text().catch(() => '');
-    let body: CreateServiceRequestDto | null = null;
+// 1. 農友送出服務申請 (含 Request Body 限制、IP + 電話複合頻率限制、Turnstile 無感真人驗證與 LINE ID Token 簽名驗證)
+app.post(
+  '/api/requests',
+  bodyLimit({
+    maxSize: 32 * 1024,
+    onError: (c) => c.json({ success: false, message: '送出的資料過大，超過 32KB 限制' }, 413)
+  }),
+  async (c) => {
     try {
-      body = JSON.parse(rawBody);
-    } catch {
-      return c.json({ success: false, message: '請求資料格式不正確，請重新整理後再試' }, 400);
-    }
+      const rawBody = await c.req.text().catch(() => '');
+      let body: CreateServiceRequestDto | null = null;
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        return c.json({ success: false, message: '請求資料格式不正確，請重新整理後再試' }, 400);
+      }
 
-    if (!body) {
-      return c.json({ success: false, message: '請求資料不能為空' }, 400);
-    }
+      if (!body) {
+        return c.json({ success: false, message: '請求資料不能為空' }, 400);
+      }
 
-    const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
-    const cleanPhone = (body.phone || '').replace(/[-\s]/g, '');
-    const rateLimitKey = `${clientIp}_${cleanPhone}`;
+      const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+      const cleanPhone = (body.phone || '').replace(/[-\s]/g, '');
+      const rateLimitKey = `${clientIp}_${cleanPhone}`;
 
-    if (isSubmissionRateLimited(rateLimitKey)) {
-      return c.json({
-        success: false,
-        message: '送單頻率過高，為保護系統資源請於 10 分鐘後再試，或直接電話聯繫服務站。'
-      }, 429);
-    }
-
-    // 1-1. Cloudflare Turnstile 無感真人驗證 (強制必填，防範無 Token 繞過)
-    const turnstileSecret = c.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
-    if (!body.turnstile_token) {
-      return c.json({ success: false, message: '缺少真人安全驗證標記，請重新整理頁面後再試。' }, 400);
-    }
-    const turnstileRes = await verifyTurnstileToken(body.turnstile_token, turnstileSecret, clientIp);
-    if (!turnstileRes.success) {
-      console.warn('Turnstile rejection:', turnstileRes.errorCodes);
-      return c.json({ success: false, message: '真人安全驗證未通過，請重新整理頁面後再試。' }, 403);
-    }
-    
-    if (!body.contact_name || !body.phone || !body.service_type || !body.preferred_date) {
-      return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
-    }
-
-    // 1-2. 資料長度上限校驗 (防止惡意超長文字灌爆 D1 資料庫)
-    if ((body.contact_name || '').length > 50) {
-      return c.json({ success: false, message: '姓名長度不能超過 50 個字' }, 400);
-    }
-    if ((body.phone || '').length > 25) {
-      return c.json({ success: false, message: '電話長度不能超過 25 個字' }, 400);
-    }
-    if ((body.service_type || '').length > 50) {
-      return c.json({ success: false, message: '服務項目長度不能超過 50 個字' }, 400);
-    }
-    if ((body.crop_type || '').length > 50) {
-      return c.json({ success: false, message: '作物種類長度不能超過 50 個字' }, 400);
-    }
-    if ((body.area_value || '').length > 30) {
-      return c.json({ success: false, message: '面積欄位長度不能超過 30 個字' }, 400);
-    }
-    const locationStr = (body.location || body.location_address || '');
-    if (locationStr.length > 200) {
-      return c.json({ success: false, message: '服務地點長度不能超過 200 個字' }, 400);
-    }
-    if (body.notes && body.notes.length > 1000) {
-      return c.json({ success: false, message: '補充備註長度不能超過 1000 個字' }, 400);
-    }
-
-    const isMobile = /^09\d{8}$/.test(cleanPhone);
-    const isLandline = /^0[2-8]\d{7}$/.test(cleanPhone);
-
-    if (!isMobile && !isLandline) {
-      return c.json({ success: false, message: '電話格式錯誤：手機需為 09 開頭 10 碼，市話需為 02-08 開頭 9 碼數字' }, 400);
-    }
-
-    if ((body.crop_type || '').includes('其他') && !body.notes?.trim()) {
-      return c.json({ success: false, message: '選擇其他作物種類時，請在補充備註填寫作物種類' }, 400);
-    }
-
-    // 1-2. 雙重日期額滿防護 (同步校驗後端 D1 封閉日期)
-    if (body.preferred_date) {
-      const isBlocked = await c.env.DB.prepare(
-        'SELECT date, reason FROM blocked_dates WHERE date = ?'
-      ).bind(body.preferred_date).first();
-      if (isBlocked) {
+      if (isSubmissionRateLimited(rateLimitKey)) {
         return c.json({
           success: false,
-          message: `您選擇的日期 (${body.preferred_date}) 目前服務站已額滿或暫停排程，請選擇其他日期！`
-        }, 400);
+          message: '送單頻率過高，為保護系統資源請於 10 分鐘後再試，或直接電話聯繫服務站。'
+        }, 429);
       }
-    }
 
-    // 1-3. LINE ID Token 簽名驗證（防偽身分綁定）
-    // 安全防護：絕不可盲目信任前端傳送之 body.line_user_id，徹底杜絕偽造他人 UID 進行身分冒用、騷擾推播或查詢竄改
-    // 只有經過 LINE 官方 OAuth 密碼學校驗成功的 ID Token，才能綁定該使用者的真實 UID (profile.sub)
-    let verifiedLineUserId: string | null = null;
-    if (body.id_token) {
-      const lineProfile = await verifyLineIdToken(body.id_token, c.env.LINE_LOGIN_CHANNEL_ID);
-      if (lineProfile && lineProfile.sub) {
-        verifiedLineUserId = lineProfile.sub;
+      // 1-1. Cloudflare Turnstile 無感真人驗證 (強制必填，防範無 Token 繞過)
+      const turnstileSecret = c.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+      if (!body.turnstile_token) {
+        return c.json({ success: false, message: '缺少真人安全驗證標記，請重新整理頁面後再試。' }, 400);
       }
+      const turnstileRes = await verifyTurnstileToken(body.turnstile_token, turnstileSecret, clientIp);
+      if (!turnstileRes.success) {
+        console.warn('Turnstile rejection:', turnstileRes.errorCodes);
+        return c.json({ success: false, message: '真人安全驗證未通過，請重新整理頁面後再試。' }, 403);
+      }
+      
+      if (!body.contact_name || !body.phone || !body.service_type || !body.preferred_date) {
+        return c.json({ success: false, message: '請完整填寫姓名、電話、服務項目與希望施工日期' }, 400);
+      }
+
+      // 1-2. 資料長度上限嚴格校驗 (直接驗證真實寫入 DB 之欄位，防止惡意文字灌爆 D1 資料庫)
+      if ((body.contact_name || '').length > 50) {
+        return c.json({ success: false, message: '姓名長度不能超過 50 個字' }, 400);
+      }
+      if ((body.phone || '').length > 25) {
+        return c.json({ success: false, message: '電話長度不能超過 25 個字' }, 400);
+      }
+      if ((body.service_type || '').length > 50) {
+        return c.json({ success: false, message: '服務項目長度不能超過 50 個字' }, 400);
+      }
+      if ((body.crop_type || '').length > 50) {
+        return c.json({ success: false, message: '作物種類長度不能超過 50 個字' }, 400);
+      }
+      if ((body.area_value || '').length > 30) {
+        return c.json({ success: false, message: '面積欄位長度不能超過 30 個字' }, 400);
+      }
+      if ((body.location_area || '').length > 30) {
+        return c.json({ success: false, message: '服務地區長度不能超過 30 個字' }, 400);
+      }
+      if ((body.location_address || '').length > 200) {
+        return c.json({ success: false, message: '服務詳細地址長度不能超過 200 個字' }, 400);
+      }
+      if (body.notes && body.notes.length > 1000) {
+        return c.json({ success: false, message: '補充備註長度不能超過 1000 個字' }, 400);
+      }
+
+      const isMobile = /^09\d{8}$/.test(cleanPhone);
+      const isLandline = /^0[2-8]\d{7}$/.test(cleanPhone);
+
+      if (!isMobile && !isLandline) {
+        return c.json({ success: false, message: '電話格式錯誤：手機需為 09 開頭 10 碼，市話需為 02-08 開頭 9 碼數字' }, 400);
+      }
+
+      if ((body.crop_type || '').includes('其他') && !body.notes?.trim()) {
+        return c.json({ success: false, message: '選擇其他作物種類時，請在補充備註填寫作物種類' }, 400);
+      }
+
+      // 1-2. 雙重日期額滿防護 (同步校驗後端 D1 封閉日期)
+      if (body.preferred_date) {
+        const isBlocked = await c.env.DB.prepare(
+          'SELECT date, reason FROM blocked_dates WHERE date = ?'
+        ).bind(body.preferred_date).first();
+        if (isBlocked) {
+          return c.json({
+            success: false,
+            message: `您選擇的日期 (${body.preferred_date}) 目前服務站已額滿或暫停排程，請選擇其他日期！`
+          }, 400);
+        }
+      }
+
+      // 1-3. LINE ID Token 簽名驗證（防偽身分綁定）
+      // 安全防護：絕不可盲目信任前端傳送之 body.line_user_id，徹底杜絕偽造他人 UID 進行身分冒用、騷擾推播或查詢竄改
+      // 只有經過 LINE 官方 OAuth 密碼學校驗成功的 ID Token，才能綁定該使用者的真實 UID (profile.sub)
+      let verifiedLineUserId: string | null = null;
+      if (body.id_token) {
+        const lineProfile = await verifyLineIdToken(body.id_token, c.env.LINE_LOGIN_CHANNEL_ID);
+        if (lineProfile && lineProfile.sub) {
+          verifiedLineUserId = lineProfile.sub;
+        }
+      }
+
+      // 訂單編號高熵防碰撞：使用 10 碼 HEX（16^10 = 1.09 兆種隨機組合）
+      const randomSuffix = crypto.randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase();
+      const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const id = 'REQ-' + datePrefix + '-' + randomSuffix;
+      const now = new Date().toISOString();
+
+      // 安全防護：不信任未校驗之 body.area_size，統一從經檢核之 area_value 與 area_unit 組合計算
+      const computedAreaSize = body.area_value ? `${body.area_value} ${body.area_unit || '分'}` : '未填寫';
+
+      const insertSql = 'INSERT INTO service_requests (' +
+        'id, created_at, updated_at, contact_name, phone, service_type, crop_type, ' +
+        'area_size, area_value, area_unit, branch_volume, location_area, location_address, preferred_date, preferred_time_slot, ' +
+        'date_flexibility, notes, status, line_user_id' +
+        ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+
+      await c.env.DB.prepare(insertSql).bind(
+        id, now, now,
+        (body.contact_name || '').trim(),
+        cleanPhone,
+        body.service_type,
+        body.crop_type || '其他',
+        computedAreaSize,
+        body.area_value ? String(body.area_value) : null,
+        body.area_unit || null,
+        body.branch_volume || '中量',
+        body.location_area || '',
+        body.location_address || '',
+        body.preferred_date,
+        body.preferred_time_slot || 'morning',
+        body.date_flexibility || '前後 3 天皆可',
+        body.notes || '',
+        'to_contact',
+        verifiedLineUserId
+      ).run();
+
+      // 1. 推播給服務人員（通知有新案件需求，附農民電話一鍵撥打按鈕）
+      if (c.env.LINE_CHANNEL_ACCESS_TOKEN && c.env.ADMIN_NOTIFY_USER_ID) {
+        const adminFlexMsg = generateFlexNotification({
+          ...body,
+          area_size: computedAreaSize,
+          id
+        }, c.env.LIFF_ID, c.env.STATION_NAME);
+        c.executionCtx.waitUntil(
+          pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg)
+        );
+      }
+
+      // 2. 推播給申請農民（發送服務申請確認收據卡片）
+      if (c.env.LINE_CHANNEL_ACCESS_TOKEN && verifiedLineUserId) {
+        const customerFlexMsg = generateCustomerConfirmationFlex({
+          ...body,
+          area_size: computedAreaSize,
+          id
+        }, c.env.LIFF_ID, c.env.STATION_NAME);
+        c.executionCtx.waitUntil(
+          pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg)
+        );
+      }
+
+      return c.json({
+        success: true,
+        message: '服務申請已成功送出，服務站人員將儘速電話與您聯繫！',
+        data: { id }
+      }, 201);
+    } catch (error: any) {
+      console.error('Submit request error:', error);
+      return c.json({ success: false, message: '伺服器暫時發生錯誤，請稍後再試或電話聯繫服務站' }, 500);
     }
-
-    const randomSuffix = crypto.randomUUID().replace(/-/g, '').slice(0, 5).toUpperCase();
-    const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const id = 'REQ-' + datePrefix + '-' + randomSuffix;
-    const now = new Date().toISOString();
-
-    const computedAreaSize = body.area_size || (body.area_value ? (body.area_value + ' ' + (body.area_unit || '分')) : '未填寫');
-
-    const insertSql = 'INSERT INTO service_requests (' +
-      'id, created_at, updated_at, contact_name, phone, service_type, crop_type, ' +
-      'area_size, area_value, area_unit, branch_volume, location_area, location_address, preferred_date, preferred_time_slot, ' +
-      'date_flexibility, notes, status, line_user_id' +
-      ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-
-    await c.env.DB.prepare(insertSql).bind(
-      id, now, now,
-      (body.contact_name || '').trim(),
-      cleanPhone,
-      body.service_type,
-      body.crop_type || '其他',
-      computedAreaSize,
-      body.area_value ? String(body.area_value) : null,
-      body.area_unit || null,
-      body.branch_volume || '中量',
-      body.location_area || '',
-      body.location_address || '',
-      body.preferred_date,
-      body.preferred_time_slot || 'morning',
-      body.date_flexibility || '前後 3 天皆可',
-      body.notes || '',
-      'to_contact',
-      verifiedLineUserId
-    ).run();
-
-    // 1. 推播給服務人員（通知有新案件需求，附農民電話一鍵撥打按鈕）
-    if (c.env.LINE_CHANNEL_ACCESS_TOKEN && c.env.ADMIN_NOTIFY_USER_ID) {
-      const adminFlexMsg = generateFlexNotification({
-        ...body,
-        area_size: computedAreaSize,
-        id
-      }, c.env.LIFF_ID, c.env.STATION_NAME);
-      c.executionCtx.waitUntil(
-        pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg)
-      );
-    }
-
-    // 2. 推播給申請農民（發送服務申請確認收據卡片）
-    if (c.env.LINE_CHANNEL_ACCESS_TOKEN && verifiedLineUserId) {
-      const customerFlexMsg = generateCustomerConfirmationFlex({
-        ...body,
-        area_size: computedAreaSize,
-        id
-      }, c.env.LIFF_ID, c.env.STATION_NAME);
-      c.executionCtx.waitUntil(
-        pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg)
-      );
-    }
-
-    return c.json({
-      success: true,
-      message: '服務申請已成功送出，服務站人員將儘速電話與您聯繫！',
-      data: { id }
-    }, 201);
-  } catch (error: any) {
-    return c.json({ success: false, message: error.message || '伺服器發生錯誤' }, 500);
   }
-});
+);
 
 // 服務人員 LINE 白名單身分驗證端點
 app.post('/api/admin/auth/line', async (c) => {
@@ -391,7 +404,8 @@ app.post('/api/admin/auth/line', async (c) => {
       }
     });
   } catch (err: any) {
-    return c.json({ success: false, message: err.message || '身分驗證程序異常' }, 500);
+    console.error('Admin auth error:', err);
+    return c.json({ success: false, message: '身分驗證程序異常，請稍後再試' }, 500);
   }
 });
 
@@ -445,7 +459,8 @@ app.get('/api/admin/requests', async (c) => {
       }
     });
   } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 500);
+    console.error('Admin get requests error:', error);
+    return c.json({ success: false, message: '讀取申請單失敗，伺服器暫時發生錯誤' }, 500);
   }
 });
 
@@ -479,7 +494,8 @@ app.patch('/api/admin/requests/:id', async (c) => {
 
     return c.json({ success: true, message: '狀態已更新' });
   } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 500);
+    console.error('Admin update request error:', error);
+    return c.json({ success: false, message: '更新失敗，伺服器暫時發生錯誤' }, 500);
   }
 });
 
@@ -489,7 +505,8 @@ app.get('/api/config/blocked-dates', async (c) => {
     const result = await c.env.DB.prepare('SELECT date, reason FROM blocked_dates ORDER BY date ASC').all();
     return c.json({ success: true, data: result.results });
   } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 500);
+    console.error('Config get blocked dates error:', error);
+    return c.json({ success: false, message: '讀取封閉日期失敗，伺服器暫時發生錯誤' }, 500);
   }
 });
 
@@ -509,7 +526,8 @@ app.post('/api/admin/blocked-dates', async (c) => {
       return c.json({ success: true, message: '已手動關閉 ' + date });
     }
   } catch (error: any) {
-    return c.json({ success: false, message: error.message }, 500);
+    console.error('Admin toggle blocked date error:', error);
+    return c.json({ success: false, message: '調整封閉日期失敗，伺服器暫時發生錯誤' }, 500);
   }
 });
 
@@ -712,7 +730,7 @@ app.get('/api/admin/debug/test-card', async (c) => {
     return c.json({ success: false, message: '缺少目標 userId 參數' }, 400);
   }
   const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!token) return c.json({ error: 'Missing LINE_CHANNEL_ACCESS_TOKEN' }, 500);
+  if (!token) return c.json({ success: false, message: '伺服器未配置推播金鑰' }, 500);
 
   // 安全防護：僅查詢卡片必要顯示欄位，排除內部敏感備註 (admin_memo 等)
   const records = await c.env.DB.prepare(

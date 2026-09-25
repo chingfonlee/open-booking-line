@@ -85,7 +85,22 @@
   - **移除衝突代理**：徹底刪除冗餘的 `[[path]].ts`，全面統一由 `[[catchall]].ts` 讀取 `BACKEND_API_URL` 代理。
   - **CORS 雙層防護**：若管理者配置 `ALLOWED_ORIGINS`，嚴格限制僅允許白名單網域通過；未配置時自動維持相容所有 `*.pages.dev`，確保新手安裝體驗 0 摩擦。
   - **診斷端點安全收斂**：移除 `/api/admin/debug/test-card` 的 `latestRecord` 資料實體回傳，查詢改採安全欄位投影白名單，阻絕內部欄位外洩。
-  - **日誌個資脫敏（PII Sanitization）**：LINE UID 遮罩為 `Uxxx***xxxx`、replyToken 遮罩為 `xxxxxx...`，訊息日誌僅記錄意圖分類（Intent）與字數，徹底杜絕敏感農友訊息與手機紀錄滲入日誌。
+#### 13. Request Body 限制、欄位繞過修補、高熵單號與伺服器錯誤防洩漏 (Body Limit, Validation Guard, High Entropy ID & Safe Errors)
+- **問題**：
+  - `/api/requests` 在驗證前讀入完整 HTTP Body，無大小限制，易遭超大 JSON 消耗 Worker 記憶體。
+  - `locationStr` 檢核存在繞過漏洞：送出假 `location` 可繞過 200 字限制，但後端寫入未限制之 `location_address`；同理 `body.area_size` 可被攻擊者自訂超長文字塞入資料庫。
+  - 訂單後綴僅 5 碼 Hex（約 100 萬種組合），並非真正高熵。
+  - 後端 API 拋出未捕獲例外或資料庫錯誤時，直接將 `error.message` 回傳給前端，存在資料表結構與內部 SQL 外洩風險。
+  - 前端 `_redirects` 包含寫死 Worker 網址的 `/api/*` 規則，與 Pages Functions 重疊造成維護困惑。
+- **修復**：
+  - **引入 Hono `bodyLimit` 中介軟體**：`/api/requests` 嚴格限制 Payload 上限為 32 KB，超出直接 HTTP 413 阻擋，保護 Worker 運算與記憶體資源。
+  - **修補欄位驗證繞過**：
+    - 直接檢驗 `body.location_address`（上限 200 字）與 `body.location_area`（上限 30 字），杜絕假欄位繞過。
+    - 徹底捨棄未信任之 `body.area_size`，改由檢核過之 `area_value` 與 `area_unit` 伺服器端動態計算拼裝。
+  - **單號升級真高熵（10 碼 Hex）**：單號隨機尾碼擴增為 10 碼（$16^{10} \approx 1.1$ 兆種排列），徹底杜絕併發碰撞。
+  - **內部錯誤全面脫敏**：全域與各端點 500 捕捉錯誤時，僅在內部輸出伺服器日誌，對外統一回傳友善安全訊息，防止 SQL/D1 內部結構洩漏。
+  - **收斂 `_redirects` 與刪除衝突代理**：使用 PowerShell `-LiteralPath` 徹底刪除實體檔案 `[[path]].ts`，並清理 `_redirects` 僅保留 SPA 路由規則。
+  - **更新新手指南**：於 `BEGINNER_GUIDE.md` 清楚標示 Starter Turnstile 之「測試防護模式」說明與正式商轉之申請升級步驟。
 
 ---
 

@@ -121,3 +121,25 @@ STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
 4. 按下 **Update（儲存）**。
 
 🎉 **大功告成！** 現在你可以把 LIFF URL（例如 `https://liff.line.me/2011709076-09FdfkjH`）設定到你 LINE 官方帳號的圖文選單（Rich Menu），或是直接傳給親朋好友與農民測試填單囉！
+
+---
+
+## ⚠️ 重要提醒：目前為「體驗測試防護」模式
+
+> **🟡 測試完成判斷指引**：
+> - **只是自己與內部同仁測試？** ➔ **到此即可！** 目前系統功能 100% 完整，開箱即可開始測試填單與接收 LINE 推播。
+> - **準備公開給真實客戶使用？** ➔ 請多花 2 分鐘完成下方「正式 Turnstile 真人防護」設定！
+
+目前系統預設採用 Cloudflare 官方的 **Always-Pass 測試金鑰**（`1x...AA`），因此任何送單都會自動通過驗證。在正式對外營運、開放給公眾填寫前，強烈建議申請一組專屬的免費 Cloudflare Turnstile 金鑰，防止惡意網路爬蟲或腳本自動化洗單、耗損您每個月的 LINE 免費推播額度：
+
+1. 前往 [Cloudflare 控制台](https://dash.cloudflare.com/) ➔ 點擊左側選單 **Turnstile**。
+2. 點擊 **Add site**：
+   - **Site name**：填入你的站點名稱（例如：`阿蓮芭樂預約站`）。
+   - **Domain**：填入你的 Pages 網址（例如：`my-farm.pages.dev`）。
+   - **Widget Mode**：選擇 **Managed**（無感自動驗證）。
+3. 取得 **Site Key** 與 **Secret Key** 兩組字串。
+4. 設定至系統：
+   - **後端**：在 `packages/backend/wrangler.toml` 更新 `TURNSTILE_SECRET_KEY = "你的_Secret_Key"` 並重新部署後端（`npx wrangler deploy`）。
+   - **前端**：在 `packages/frontend/.env` 設定 `VITE_TURNSTILE_SITE_KEY=你的_Site_Key` 並重新打包部署前端。
+
+> 💡 系統具備**智慧雙軌防禦**機制：一旦更換為正式金鑰，後端將自動啟動嚴格的 Fail-Closed 密碼學核驗，全面封鎖任何機器人與虛擬測試 Token！
