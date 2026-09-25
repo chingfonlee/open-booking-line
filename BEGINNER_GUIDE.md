@@ -132,14 +132,14 @@ STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
 
 目前系統預設採用 Cloudflare 官方的 **Always-Pass 測試金鑰**（`1x...AA`），因此任何送單都會自動通過驗證。在正式對外營運前，建議啟用專屬免費的 Cloudflare Turnstile 真人防護，防止自動化腳本或惡意爬蟲刷單、耗損您每個月的 LINE 免費推播額度：
 
-### 🤖 推薦方式：讓 AI Agent 全自動幫你完成（0 秒手動，最推薦！）
+### 🤖 推薦方式：讓 AI Agent 全自動幫你完成（正常情況全自動；若 Cloudflare 授權較舊，只需額外點一次 Allow）
 你完全不需要自己進入 Cloudflare 後台摸索！只要打開終端機，對 AI Agent 說這句話：
 ```text
 我測試完成了，請幫我啟用正式 Turnstile 防護！
 ```
 AI 就會全自動：
-1. 在你的 Cloudflare 帳號下建立專屬 Turnstile Widget。
-2. 自動取得金鑰並寫入前端與後端安全密鑰。
+1. 透過 Cloudflare CLI 在你的帳號下建立專屬 Turnstile Widget。
+2. 自動取得 Site Key 寫入前端，並將 Secret 安全存入 Worker Secret（無檔案落地、不進 Git）。
 3. 自動重新打包並完成雲端發布！
 
 ---
@@ -152,7 +152,12 @@ AI 就會全自動：
    - **Widget Mode**：選擇 **Managed**（無感自動驗證）。
 3. 取得 **Site Key** 與 **Secret Key** 兩組字串。
 4. 設定至系統：
-   - **後端**：在 `packages/backend/wrangler.toml` 更新 `TURNSTILE_SECRET_KEY = "你的_Secret_Key"` 並重新部署後端（`npx wrangler deploy`）。
    - **前端**：在 `packages/frontend/.env` 設定 `VITE_TURNSTILE_SITE_KEY=你的_Site_Key` 並重新打包部署前端。
+   - **後端**：在 `packages/backend` 執行指令安全存入 Worker Secret（絕不寫入檔案、不進 Git）：
+     ```bash
+     cd packages/backend
+     npx wrangler secret put TURNSTILE_SECRET_KEY
+     ```
+     （依提示貼上 Secret Key 即可）
 
 > 💡 系統具備**智慧雙軌防禦**機制：一旦更換為正式金鑰，後端將自動啟動嚴格的 Fail-Closed 密碼學核驗，全面封鎖任何機器人與虛擬測試 Token！
