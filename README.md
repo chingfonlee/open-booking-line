@@ -114,10 +114,9 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
 | `ADMIN_NOTIFY_USER_ID` | 接收預約推播通知的服務人員 LINE User ID | `Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
 | `ADMIN_LINE_IDS` | 授權管理服務人員的 LINE User ID 白名單（逗號分隔） | `Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,U123456...` |
 | `LINE_LOGIN_CHANNEL_ID` | LIFF 所屬的 LINE Login Channel ID | `2000000000` |
-| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile 密鑰 | 測試：`1x0000000000000000000000000000000AA`（正式請自建） |
 | `ALLOWED_ORIGINS` | 前端允許之 CORS 來源（逗號分隔） | `https://your-app.pages.dev,https://*.pages.dev` |
 
-將 LINE 關鍵密鑰設為 Worker Secret（避免明文納入版本控制）：
+將關鍵密鑰設為 Worker Secret（絕不寫入檔案，避免納入版本控制）：
 ```bash
 cd packages/backend
 # 1. LINE Messaging API Channel Access Token (必填，用於發送通知與查詢進度)
@@ -125,6 +124,9 @@ npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
 
 # 2. LINE Messaging API Channel Secret (強烈推薦，用於 Webhook HMAC-SHA256 驗簽)
 npx wrangler secret put LINE_CHANNEL_SECRET
+
+# 3. Cloudflare Turnstile 密鑰 (非必填，預設走測試金鑰；正式環境推薦執行 npm run setup:turnstile 自動配置，或手動安全寫入)
+npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
 ### 4. 部署至 Cloudflare
@@ -241,13 +243,15 @@ flowchart TD
 1. **[LINE OA 後台 (manager.line.biz)](https://manager.line.biz/)**：右上角「設定」➡️「回應設定」➡️ **「Webhook」務必切換為「開啟」**（預設為關閉！）。
 2. **[LINE Developers 後台](https://developers.line.biz/)**：Messaging API 分頁 ➡️ **Webhook settings** 填入 `https://<YOUR_WORKER_DOMAIN>/api/line/webhook`，點擊 Verify，並將 **「Use webhook」切換為「開啟（綠色 Enabled）」**。
 
-### 5. Cloudflare Turnstile 真人防護設定（去除警語橫幅）
-- **預設狀態**：本專案預設採用 Cloudflare 官方 **Invisible 隱形模式**（`2x00000000000000000000AB`），表單完全不顯示灰色方塊與「僅用於測試」字樣，背景自動鑑權。
-- **正式營運推薦（申請免費專屬金鑰）**：
-  1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選 **Turnstile** ➡️ **Add site**。
-  2. 填入網站名稱與網域（例如 `xingnong-farm.pages.dev`）。
-  3. **Widget Mode 強烈推薦選擇「Invisible（隱形無感）」**。
-  4. 取得 Site Key（填入前端 `VITE_TURNSTILE_SITE_KEY`）與 Secret Key（填入後端 `TURNSTILE_SECRET_KEY`）後重新部署即可。
+### 5. Cloudflare Turnstile 真人防護設定（防機器人刷單）
+- **預設狀態**：本專案預設採用 Cloudflare 官方 **Managed 智慧模式**（測試 Site Key 為 `1x00000000000000000000AA`），搭配前端 `appearance: 'interaction-only'`，正常情況下完全隱形無感，僅在異常流量時進行輕量互動校驗。
+- **正式營運推薦設定**：
+  1. **全自動配置（推薦）**：直接在專案根目錄執行 `npm run setup:turnstile`，腳本會自動透過 Cloudflare 原生 CLI 建立 Managed Widget、將 Secret Key 安全寫入 Worker Secret（Zero-Disk），並自動更新前端配置重新發布。
+  2. **手動建立**：
+     - 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選 **Turnstile** ➡️ **Add site**。
+     - 填入網站名稱與網域（例如 `xingnong-farm.pages.dev`），Widget Mode 選擇 **Managed**。
+     - 取得 Site Key（填入前端 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`）。
+     - 取得 Secret Key，於後端執行 `npx wrangler secret put TURNSTILE_SECRET_KEY` 安全託管。
 
 ---
 
