@@ -75,6 +75,18 @@
   - 快取時間嚴格取 `Math.min(lineExp, now + 10 分鐘)`，絕不超過 LINE 官方壽命，且本地快取不超過 10 分鐘以維持時效性。
   - 加入過期快取自動清理機制。
 
+#### 12. 架構收斂、日誌隱私脫敏與診斷端點防護 (Architecture Cleanup & PII Privacy Hardening)
+- **問題**：
+  - 前端 Functions 同時存在 `[[path]].ts` 與 `[[catchall]].ts`，前者寫死特定網址且造成路由歧義。
+  - CORS 設定未與 `ALLOWED_ORIGINS` 聯動，即使管理者配置特定網域，系統仍會無差別 fallback 放行所有 `*.pages.dev`。
+  - `/api/admin/debug/test-card` 診斷端點在推播測試卡片時，回傳資料包含 `latestRecord` 完整物件與 `SELECT *` 內部資訊。
+  - 日誌輸出包含使用者訊息內容、LINE UID 與 replyToken，存在個資洩漏風險。
+- **修復**：
+  - **移除衝突代理**：徹底刪除冗餘的 `[[path]].ts`，全面統一由 `[[catchall]].ts` 讀取 `BACKEND_API_URL` 代理。
+  - **CORS 雙層防護**：若管理者配置 `ALLOWED_ORIGINS`，嚴格限制僅允許白名單網域通過；未配置時自動維持相容所有 `*.pages.dev`，確保新手安裝體驗 0 摩擦。
+  - **診斷端點安全收斂**：移除 `/api/admin/debug/test-card` 的 `latestRecord` 資料實體回傳，查詢改採安全欄位投影白名單，阻絕內部欄位外洩。
+  - **日誌個資脫敏（PII Sanitization）**：LINE UID 遮罩為 `Uxxx***xxxx`、replyToken 遮罩為 `xxxxxx...`，訊息日誌僅記錄意圖分類（Intent）與字數，徹底杜絕敏感農友訊息與手機紀錄滲入日誌。
+
 ---
 
 ## [1.0.0] - 2026-09-24

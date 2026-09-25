@@ -286,17 +286,19 @@ export async function pushLineMessage(token: string, targetId: string, flexMessa
     });
     if (!res.ok) {
       const err = await res.text();
-      console.error('Failed to push LINE message to ' + targetId + ':', res.status, err);
+      const maskedTarget = targetId && targetId.length > 8 ? targetId.slice(0, 4) + '***' + targetId.slice(-4) : '***';
+      console.error('Failed to push LINE message to ' + maskedTarget + ':', res.status, err);
     }
   } catch (err) {
-    console.error('Failed to push LINE message to ' + targetId + ':', err);
+    const maskedTarget = targetId && targetId.length > 8 ? targetId.slice(0, 4) + '***' + targetId.slice(-4) : '***';
+    console.error('Failed to push LINE message to ' + maskedTarget + ':', err);
   }
 }
 
 export async function replyLineMessage(token: string, replyToken: string, messages: any[]): Promise<boolean> {
   const cleanToken = sanitizeToken(token);
   if (!cleanToken || !replyToken || !messages.length) {
-    console.warn('replyLineMessage skipped: missing parameters', { hasToken: !!cleanToken, replyToken, msgCount: messages?.length });
+    console.warn('replyLineMessage skipped: missing parameters', { hasToken: !!cleanToken, hasReplyToken: !!replyToken, msgCount: messages?.length });
     return false;
   }
   try {
@@ -316,7 +318,8 @@ export async function replyLineMessage(token: string, replyToken: string, messag
       console.error('Failed to reply LINE message:', res.status, err);
       return false;
     }
-    console.log('Successfully replied LINE message to token:', replyToken);
+    const maskedReplyToken = replyToken && replyToken.length > 8 ? replyToken.slice(0, 6) + '...' : '***';
+    console.log('Successfully replied LINE message to token:', maskedReplyToken);
     return true;
   } catch (err) {
     console.error('Failed to reply LINE message exception:', err);
