@@ -82,25 +82,11 @@ function copyAndSanitize(srcDir, destDir) {
         content = content.replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX');
       }
 
-      if (srcPath.endsWith('[[catchall]].ts') || srcPath.endsWith('[[path]].ts')) {
-        content = content.replace(
-          /https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev/g,
-          'https://line-bot-farm-api.your-subdomain.workers.dev'
-        );
-      }
-
-      if (srcPath.endsWith('_redirects')) {
-        content = content.replace(
-          /https:\/\/line-bot-farm-api\.chingfon-lee\.workers\.dev/,
-          'https://line-bot-farm-api.your-subdomain.workers.dev'
-        );
-      }
-
       if (srcPath.endsWith('package.json') && path.dirname(srcPath) === ROOT_DIR) {
         content = content.replace(/"name":\s*"line-bot-farm"/, '"name": "open-booking-line"');
       }
 
-      if (srcPath.endsWith('README.md') || srcPath.endsWith('DEPLOYMENT_GUIDE.md')) {
+      if (srcPath.endsWith('README.md') || srcPath.endsWith('DEPLOYMENT_GUIDE.md') || srcPath.endsWith('BEGINNER_GUIDE.md')) {
         content = content
           .replace(/U7c0c955[a-zA-Z0-9.]+/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
           .replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX')
@@ -116,6 +102,22 @@ function copyAndSanitize(srcDir, destDir) {
   }
 }
 
+// 清理目標目錄中已不存在於來源的檔案（保留 .git 目錄）
+function cleanDest(dir) {
+  if (!fs.existsSync(dir)) return;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === '.git') continue;
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      fs.rmSync(fullPath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(fullPath);
+    }
+  }
+}
+
+cleanDest(EXPORT_DIR);
 copyAndSanitize(ROOT_DIR, EXPORT_DIR);
 console.log('✅ 檔案已成功複製並完成隱私去識別化清理！');
 
