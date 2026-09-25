@@ -164,8 +164,8 @@ try {
           throw new Error('OAUTH_SCOPE_MISSING');
         }
         const errText = String((updateRes.stderr || '') + '\n' + (updateRes.stdout || ''));
-        if (errText.includes('404') || errText.includes('not found') || errText.includes('code: 10007')) {
-          console.log('⚠️  本地記錄之 Site Key 在 Cloudflare 已不存在，將查詢既有清單或建立...\n');
+        if (errText.includes('404') || errText.includes('not found') || errText.includes('code: 10007') || errText.includes('10407') || errText.includes('deleted widget')) {
+          console.log('⚠️  本地記錄之 Site Key 在 Cloudflare 已不存在（或已被刪除），將查詢既有清單或重新建立...\n');
         } else {
           // Fail-Closed: 非 404 之網路/API 錯誤，嚴格阻斷，不可誤落入新建
           throw new Error('WIDGET_UPDATE_FAILED');
