@@ -82,11 +82,26 @@ async function getAdminFromToken(c: any): Promise<{ sub: string; name?: string; 
     return null;
   }
 
+  // 遵守 LINE ID Token 壽命：若 LINE 本身 exp 較早過期則以 LINE 為準，本地快取最多不超過 10 分鐘
+  const lineExpMs = profile.exp ? profile.exp * 1000 : (now + 10 * 60 * 1000);
+  const effectiveExp = Math.min(lineExpMs, now + 10 * 60 * 1000);
+
+  if (effectiveExp <= now) {
+    return null;
+  }
+
+  // 自動清理過期快取
+  if (verifiedAdminTokens.size > 200) {
+    for (const [k, v] of verifiedAdminTokens.entries()) {
+      if (v.exp <= now) verifiedAdminTokens.delete(k);
+    }
+  }
+
   const adminData = {
     sub: profile.sub,
     name: profile.name,
     picture: profile.picture,
-    exp: now + 30 * 60 * 1000
+    exp: effectiveExp
   };
   verifiedAdminTokens.set(token, adminData);
   return adminData;
@@ -356,12 +371,16 @@ app.post('/api/admin/auth/line', async (c) => {
       }, 403);
     }
 
-    // 加入服務人員 Session 快取
+    // 加入服務人員 Session 快取 (遵守 LINE 官方 Token 壽命，最長 10 分鐘)
+    const authNow = Date.now();
+    const lineExpMs = profile.exp ? profile.exp * 1000 : (authNow + 10 * 60 * 1000);
+    const effectiveExp = Math.min(lineExpMs, authNow + 10 * 60 * 1000);
+
     verifiedAdminTokens.set(body.id_token, {
       sub: profile.sub,
       name: profile.name,
       picture: profile.picture,
-      exp: Date.now() + 30 * 60 * 1000
+      exp: effectiveExp
     });
 
     return c.json({

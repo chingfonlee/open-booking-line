@@ -68,6 +68,13 @@
   - HMAC-SHA256 簽名不符 ➔ 拒絕處理並回傳 HTTP 401 Unauthorized。
   - 同步更新 `wrangler.toml.example` 與部署指南，正式將 Channel Secret 標記為必備安全密鑰。
 
+#### 11. LINE 管理員 Token 快取壽命精確化 (Strict Token Expiry Alignment)
+- **問題**：原後端管理快取固定為 30 分鐘，忽視了 LINE Verify API 官方回傳的真實 `exp`，可能在 Token 已在 LINE 端過期後仍被快取誤認有效。
+- **修復**：
+  - `verifyLineIdToken` 完整解析並回傳官方 `exp`（UNIX 秒數）。
+  - 快取時間嚴格取 `Math.min(lineExp, now + 10 分鐘)`，絕不超過 LINE 官方壽命，且本地快取不超過 10 分鐘以維持時效性。
+  - 加入過期快取自動清理機制。
+
 ---
 
 ## [1.0.0] - 2026-09-24
