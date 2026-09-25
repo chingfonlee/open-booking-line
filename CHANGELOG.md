@@ -54,6 +54,12 @@
   - 前端與推播卡片徹底拔除 `admin_memo` 的對外渲染，客戶進度卡片統一採用客製化之官方標準狀態指引（`statusNote`）。
   - 後端查詢資料庫時，以「嚴格欄位白名單投影（Column Projection Whitelist）」取代 `SELECT *`，主動阻絕未授權欄位滲漏至對外響應。
 
+#### 9. Turnstile 雙軌防禦架構升級 (Smart Dual-Mode Fail-Closed Guard)
+- **問題**：原後端驗證邏輯無條件放行 `XXXX.DUMMY.TOKEN.XXXX` 虛擬測試 Token，若使用者在正式生產環境未更換真實金鑰，會造成真人驗證存在「假防禦、真放行（Fail Open）」之漏洞。若強制拔除測試金鑰，又會導致新手初次部署時卡死於建立 Turnstile Widget。
+- **修復**：實施智慧雙軌防禦（Smart Dual-Mode）：
+  - **Starter 體驗軌道**：保留官方測試金鑰（`1x...`），讓新手初次架設與體驗維持 0 門檻開箱即測，並於後端日誌輸出明確安全提醒。
+  - **Production 生產加固軌道**：一旦管理者配置真實 Turnstile 密鑰（非 `1x...` 測試前綴），系統自動鎖定為 **Fail-Closed 鋼鐵防禦**，全面拒絕任何虛擬測試 Token，強制走 Cloudflare 官方 `siteverify` 密碼學核驗，驗證未過或連線異常一律 403 阻擋。
+
 ---
 
 ## [1.0.0] - 2026-09-24
