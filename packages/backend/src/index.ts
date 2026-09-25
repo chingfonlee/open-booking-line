@@ -184,6 +184,7 @@ app.post('/api/requests', async (c) => {
     }
     const turnstileRes = await verifyTurnstileToken(body.turnstile_token, turnstileSecret, clientIp);
     if (!turnstileRes.success) {
+      console.warn('Turnstile rejection:', turnstileRes.errorCodes);
       return c.json({ success: false, message: '真人安全驗證未通過，請重新整理頁面後再試。' }, 403);
     }
     
