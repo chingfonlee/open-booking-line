@@ -23,11 +23,12 @@ if (fs.existsSync(WRANGLER_TOML_PATH)) {
 }
 
 // 確定授權網域清單 (Turnstile 規格：禁止 * 萬用字元，填入主要網域自動涵蓋其所有子網域如預覽部署)
+// 資安最佳實踐：正式營運 Production Widget 僅限真實網域，不開放 localhost（本機測試直接走 1x...AA 測試金鑰）
 const targetPagesDomain = customDomain 
   ? customDomain.replace(/^https?:\/\//, '').replace(/\/$/, '')
   : 'xingnong-farm.pages.dev';
 
-const domains = ['localhost', '127.0.0.1', targetPagesDomain];
+const domains = [targetPagesDomain];
 
 const widgetName = `${stationName} 預約驗證`;
 console.log(`📌 準備建立/配置 Turnstile Widget：`);
@@ -35,16 +36,36 @@ console.log(`   - 應用名稱: ${widgetName}`);
 console.log(`   - 授權網域: ${domains.join(', ')}`);
 console.log(`   - 驗證模式: Managed (智慧互動模式，正常時完全無感隱形)\n`);
 
-// 2. 呼叫 Wrangler CLI 建立 Widget
+// 2. 呼叫 Wrangler CLI 建立 Widget (使用 spawnSync 參數陣列傳遞，防止 Command Injection)
+const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
 try {
   console.log('🚀 正在透過 Cloudflare 原生 CLI 建立 Turnstile Widget...');
-  const createCmd = `npx wrangler turnstile widget create "${widgetName}" --domains "${domains.join(',')}" --mode managed --json`;
-  
-  const result = execSync(createCmd, {
+  const createRes = spawnSync(npxCmd, [
+    'wrangler',
+    'turnstile',
+    'widget',
+    'create',
+    widgetName,
+    '--domains',
+    domains.join(','),
+    '--mode',
+    'managed',
+    '--json'
+  ], {
     cwd: BACKEND_DIR,
-    encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe']
+    encoding: 'utf8'
   });
+
+  if (createRes.status !== 0) {
+    const errText = String(createRes.stderr || createRes.stdout || '');
+    if (errText.includes('code: 10000') || errText.includes('missing some expected Oauth scopes') || errText.includes('challenge-widgets.write')) {
+      throw new Error('OAUTH_SCOPE_MISSING');
+    }
+    throw new Error('WIDGET_CREATION_FAILED');
+  }
+
+  const result = createRes.stdout || '';
 
   let siteKey = null;
   let secretKey = null;
@@ -70,11 +91,10 @@ try {
 
   // 3. 安全寫入 Cloudflare Worker Secret (密鑰直接由 stdin 管道送入，絕不落地檔案、不進 Git)
   console.log('🔒 正在將 Secret 安全寫入 Cloudflare Worker Secret (Zero-Disk-Storage)...');
-  const putSecret = spawnSync('npx', ['wrangler', 'secret', 'put', 'TURNSTILE_SECRET_KEY'], {
+  const putSecret = spawnSync(npxCmd, ['wrangler', 'secret', 'put', 'TURNSTILE_SECRET_KEY'], {
     cwd: BACKEND_DIR,
     input: secretKey + '\n',
-    encoding: 'utf8',
-    shell: true
+    encoding: 'utf8'
   });
 
   if (putSecret.status !== 0) {
