@@ -59,8 +59,6 @@ function copyAndSanitize(srcDir, destDir) {
           .replace(/LINE_LOGIN_CHANNEL_ID\s*=\s*"[^"]*"/, 'LINE_LOGIN_CHANNEL_ID = "2000000000"')
           .replace(/LIFF_ID\s*=\s*"[^"]*"/, 'LIFF_ID = "2000000000-XXXXXXXX"')
           .replace(/STATION_NAME\s*=\s*"[^"]*"/, 'STATION_NAME = "示範農場服務站"')
-          .replace(/ADMIN_PIN\s*=\s*"[^"]*"\r?\n?/g, '')
-          .replace(/TURNSTILE_SECRET_KEY\s*=\s*"[^"]*"/, 'TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"')
           .replace(/ALLOWED_ORIGINS\s*=\s*"[^"]*"/, 'ALLOWED_ORIGINS = "https://*.pages.dev"');
       }
 

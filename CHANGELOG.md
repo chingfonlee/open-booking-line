@@ -101,10 +101,13 @@
   - **內部錯誤全面脫敏**：全域與各端點 500 捕捉錯誤時，僅在內部輸出伺服器日誌，對外統一回傳友善安全訊息，防止 SQL/D1 內部結構洩漏。
   - **收斂 `_redirects` 與刪除衝突代理**：使用 PowerShell `-LiteralPath` 徹底刪除實體檔案 `[[path]].ts`，並清理 `_redirects` 僅保留 SPA 路由規則。
 #### 14. AI Agent 驅動之 Cloudflare Turnstile 零接觸自動化配置 (Zero-Touch Turnstile Automation by Agent)
-- **問題**：原正式商轉需引導新手手動登入 Cloudflare Web 控制台、建立 Turnstile Widget、手動複製 Site Key 與 Secret Key 至程式碼與後台，流程繁複且容易出錯。
+- **問題**：原正式商轉需引導新手手動登入 Cloudflare Web 控制台、建立 Turnstile Widget、手動複製 Site Key 與 Secret Key 至程式碼與後台，流程繁複且容易出錯；且初期實作存在 Secret 寫入 `wrangler.toml`、日誌輸出 raw JSON 洩漏密鑰、`*.pages.dev` 萬用字元不相容，以及前端 `invisible` 與後端 `managed` 模式不一致等問題。
 - **修復**：
-  - **升級 Wrangler 核心工具鏈**：後端升級至原生支援 Turnstile CLI 管理之最新版本（Wrangler 4.139+）。
-  - **新增自動化配置腳本 (`npm run setup:turnstile`)**：透過 Cloudflare 官方 API / CLI 原生呼叫 `wrangler turnstile widget create`，全自動建立 Managed 模式 Widget、提取金鑰、更新前端 `.env`、更新後端密鑰，並自動觸發前端與後端之重新編譯與發布。
+  - **升級與鎖定 Wrangler 版本**：後端鎖定至原生支援 Turnstile CLI 管理之最新穩定版本（`wrangler: "4.139.0"`），並將環境要求統整為 Node.js 22 LTS。
+  - **Zero-Disk 密鑰零落地託管**：徹底自 `wrangler.toml` 移除 `TURNSTILE_SECRET_KEY`，Starter 模式自動走程式碼預設測試金鑰；生產環境由 `setup:turnstile` 透過 `stdin` 管道直接串接 `npx wrangler secret put TURNSTILE_SECRET_KEY`，密鑰絕不寫入磁碟與 Git 倉庫。
+  - **日誌防洩漏安全防護**：移除所有錯誤與除錯階段可能輸出包含 Secret 明文的 raw API 回傳，杜絕憑證滲漏至終端機日誌。
+  - **Hostname 精確化**：因應 Cloudflare Turnstile 不支援萬用字元規範，自動以實際專案網域（如 `xingnong-farm.pages.dev`）作為關聯 Hostname，並自動繼承其所有預覽子網域。
+  - **前端全面對齊 Managed 智慧模式**：前端改採 `appearance: 'interaction-only'`，搭配官方 `1x...AA` Managed Always-Pass 測試金鑰，達成平時完全無感隱形、異常時自動啟用互動驗證之最佳化體驗。
   - **全面導入 Agent 一鍵升級指示**：於 `DEPLOYMENT_GUIDE.md` 與 `BEGINNER_GUIDE.md` 制定零摩擦升級規範。使用者僅需對 Agent 發出「我測試完成了，請幫我啟用正式 Turnstile 防護」自然語言指令，即可由 Agent 完成生產環境 Fail-Closed 密碼學鋼鐵防護之切換。
 
 ---

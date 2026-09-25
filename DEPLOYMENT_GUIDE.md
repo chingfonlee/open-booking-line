@@ -142,10 +142,10 @@ git --version
 npx wrangler -v
 ```
 
-- 若缺少 **Node.js**（需 >= 18.0.0）：
+- 若缺少 **Node.js**（需 >= 22.0.0 LTS）：
   - **Windows**: `winget install OpenJS.NodeJS.LTS`
   - **macOS**: `brew install node`
-  - **Ubuntu/Debian**: `curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs`
+  - **Ubuntu/Debian**: `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs`
 - 若缺少 **Git**:
   - **Windows**: `winget install Git.Git`
   - **macOS**: `brew install git`
@@ -238,7 +238,6 @@ ADMIN_NOTIFY_USER_ID = "<REPLACE_WITH_ADMIN_NOTIFY_USER_ID>"
 ADMIN_LINE_IDS = "<REPLACE_WITH_ADMIN_NOTIFY_USER_ID>"
 LINE_LOGIN_CHANNEL_ID = "<REPLACE_WITH_LINE_LOGIN_CHANNEL_ID>"
 LIFF_ID = "<REPLACE_WITH_LIFF_ID>"
-TURNSTILE_SECRET_KEY = "1x0000000000000000000000000000000AA"
 ALLOWED_ORIGINS = "https://*.pages.dev"
 ```
 
@@ -415,15 +414,21 @@ https://liff.line.me/<YOUR_LIFF_ID>
 - **背景自動鑑權**：農友送單時全自動通過檢核，體驗清爽順暢。
 
 > 💡 **若要取得正式專屬防爬蟲保護（推薦生產環境申請，完全免費）：**
-> 1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選左側選單的 **Turnstile**。
-> 2. 點擊 **Add site**（新增網站）：
->    - **Site name**：輸入專案名稱（例如 `行農合作社預約`）
->    - **Domain**：填入您的 Pages 網址（例如 `xingnong-farm.pages.dev`）
->    - **Widget Mode**：強烈推薦選擇 **Invisible（隱形無感模式）**，畫面完全乾淨無任何方塊！
-> 3. 點擊 **Create**，複製產生的：
->    - **Site Key** ➡️ 填入前端 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`
->    - **Secret Key** ➡️ 填入後端 `packages/backend/wrangler.toml` 的 `TURNSTILE_SECRET_KEY`
-> 4. 重新執行 `npm run build:frontend` 與 `npx wrangler deploy` 即可生效。
+> - **方式 A（Agent 全自動，推薦）**：直接執行 `npm run setup:turnstile`，由系統自動呼叫 Cloudflare API 建立 Widget 並安全加密存入 Worker Secret。
+> - **方式 B（手動申請託管）**：
+>   1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選左側選單的 **Turnstile**。
+>   2. 點擊 **Add site**（新增網站）：
+>      - **Site name**：輸入專案名稱（例如 `行農合作社預約`）
+>      - **Domain**：填入您的 Pages 網址（例如 `xingnong-farm.pages.dev`）
+>      - **Widget Mode**：推薦選擇 **Managed（智慧互動模式）**。
+>   3. 點擊 **Create**，取得金鑰：
+>      - **Site Key** ➡️ 填入前端 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`。
+>      - **Secret Key** ➡️ 於後端執行安全託管（絕不寫入 wrangler.toml 檔案）：
+>        ```bash
+>        cd packages/backend
+>        npx wrangler secret put TURNSTILE_SECRET_KEY
+>        ```
+>   4. 重新發布前端 `npm run build:frontend` 與後端 `npx wrangler deploy` 即可生效。
 
 ---
 
@@ -447,15 +452,17 @@ https://liff.line.me/<YOUR_LIFF_ID>
 ### 2. 替換為專屬 Cloudflare Turnstile 正式金鑰
 - **原因**：預設測試金鑰（`1x000...`）僅供展示與本機驗證，正式上線必須啟用專屬真人行為分析，阻擋爬蟲與機器人刷單。
 - **作法**：
-  1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 左側選單 **Turnstile** ➡️ 點擊 **Add site**。
-  2. 輸入站點名稱，網域填入您的 Pages 網址（例如 `your-app.pages.dev`），模式選擇 **Invisible（隱形無感）**。
-  3. 將產生的 **Site Key** 填入 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`。
-  4. 將產生的 **Secret Key** 透過指令安全託管：
-     ```bash
-     cd packages/backend
-     npx wrangler secret put TURNSTILE_SECRET_KEY
-     ```
-  5. 重新發布前端：`npm run build:frontend && npm run deploy:frontend`。
+  - **推薦全自動執行**：在專案根目錄執行 `npm run setup:turnstile`（或告知 AI Agent 執行），自動呼叫 Cloudflare API 建立 Widget 並寫入 Worker Secret。
+  - **手動替代方式**：
+    1. 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 左側選單 **Turnstile** ➡️ 點擊 **Add site**。
+    2. 輸入站點名稱，網域填入您的 Pages 網址（例如 `xingnong-farm.pages.dev`），模式選擇 **Managed**。
+    3. 將產生的 **Site Key** 填入 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`。
+    4. 將產生的 **Secret Key** 透過指令安全託管至 Worker Secret（絕不寫入檔案）：
+       ```bash
+       cd packages/backend
+       npx wrangler secret put TURNSTILE_SECRET_KEY
+       ```
+    5. 重新發布前端：`npm run build:frontend && npm run deploy:frontend`。
 
 ### 3. (選用) 開啟 Cloudflare 免費 WAF Rate Limiting 邊緣限流
 - **原因**：本專案代碼內建 `IP + Phone` 滑動視窗限流（0 外部依賴）。若需要進一步抵禦跨區域分散式攻擊，可直接利用 Cloudflare 免費 WAF 規則達成全域邊緣即時阻斷。
