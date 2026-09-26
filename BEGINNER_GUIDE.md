@@ -81,19 +81,32 @@
 
 ---
 
-## 🤖 步驟三：把 5 個必要值交給 AI，全自動安裝完成！
+## 🤖 步驟三：把 3 個設定交給 AI，2 個金鑰在終端機安全輸入！
 
-現在你已經有了所有資料，你可以直接開啟 **[一鍵提示詞範本 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**，或是直接複製下方文字填寫：
+> 🔒 **極致資安體驗：連 AI 都不需要知道你的密碼！**  
+> 為了杜絕密碼外洩到雲端 AI 對話中，**你準備好的 5 個值中，3 個一般設定可直接貼給 AI，2 個核心金鑰自己保留在記事本**，等 AI 部署到對應步驟時，終端機會提示你直接貼入 Cloudflare，完全不經 AI 之手！
+
+你可以直接開啟 **[一鍵提示詞範本 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**，或是直接複製下方文字填寫：
 
 ```text
-你好！請幫我全自動安裝這套 LINE 預約系統，以下是我準備好的金鑰資訊：
+你好！請幫我安裝 open-booking-line。
 
-LINE_CHANNEL_ACCESS_TOKEN=（貼上第 1 項長串密碼）
-ADMIN_NOTIFY_USER_ID=（貼上第 2 項 U 開頭的 ID）
-LINE_CHANNEL_SECRET=（貼上第 3 項 32 碼 Secret）
-LINE_LOGIN_CHANNEL_ID=（貼上第 4 項 10 位數字）
-VITE_LIFF_ID=（貼上第 5 項 LIFF ID）
+以下是我的一般設定：
+ADMIN_NOTIFY_USER_ID=（貼上第 ② 項 U 開頭的 ID）
+LINE_LOGIN_CHANNEL_ID=（貼上第 ④ 項 10 位數字）
+VITE_LIFF_ID=（貼上第 ⑤ 項 LIFF ID）
 STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
+
+我已經在本地另外準備好：
+- LINE_CHANNEL_ACCESS_TOKEN
+- LINE_CHANNEL_SECRET
+
+🔒 基於安全性考量，我不會把這兩個 Secret 貼進 AI 對話。
+當部署進行到設定 Secret 的步驟時，請於終端機啟動：
+cd packages/backend && npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+cd packages/backend && npx wrangler secret put LINE_CHANNEL_SECRET
+並提示我直接在終端機貼入 Secret。請不要要求我把 Secret 傳給你，也不要寫入 .env 或日誌。
+其餘建置與部署請全自動完成。謝謝！
 ```
 
 ### 給使用者的操作指令：
@@ -105,7 +118,9 @@ STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
    瀏覽器會自動彈出 Cloudflare 授權視窗，點一下 **「Allow（允許）」** 就完成了！
 2. **交給 AI**：  
    在終端機打開 AI Agent（例如 Claude Code、Antigravity 或 Cursor），把上面的資料貼給它。
-3. **泡杯咖啡等 2 分鐘**：  
+3. **終端機貼入 Secret**：  
+   當 AI 執行到 Secret 設定時，終端機會出現提示，請依序把第 ① 項 `LINE_CHANNEL_ACCESS_TOKEN` 與第 ③ 項 `LINE_CHANNEL_SECRET` 貼入終端機並按 Enter。
+4. **泡杯咖啡等 2 分鐘**：  
    AI 會自動在 Cloudflare 上建立雲端資料庫、打包網頁、部署 Worker 後端，完成後會交給你一個專屬的網址（例如：`https://my-farm.pages.dev`）！
 
 ---
