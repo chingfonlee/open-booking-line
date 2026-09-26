@@ -3,7 +3,9 @@
 全純文字輕量化、高效能且安全嚴謹的農業與在地資源預約管理系統。基於 **Cloudflare Serverless（Workers + D1 + Pages）** 與 **LINE LIFF** 架構打造，無需負擔高昂伺服器與資料庫月租費，全案皆可在 Cloudflare 與 LINE 免費額度內極速運行。
 
 > 🌾 **完全新手 / 零程式基礎 5 分鐘架站懶人包**：請直接參閱 **[新手白話圖文部署指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)**，跟著圖解複製 5 個代碼交給 AI 即可全自動完成架設！  
-> 🤖 **AI Coding Agent / 開發者自動化 SOP**：請參閱 **[Agent 全自動化部署手冊 (DEPLOYMENT_GUIDE.md)](DEPLOYMENT_GUIDE.md)**，內含環境自動檢測、Cloudflare D1 初始化、金鑰配置與全自動發布之 SOP。
+> 🤖 **AI Coding Agent / 開發者自動化 SOP**：請參閱 **[Agent 全自動化部署手冊 (DEPLOYMENT_GUIDE.md)](DEPLOYMENT_GUIDE.md)**，內含環境自動檢測、Cloudflare D1 初始化、金鑰配置與全自動發布之 SOP。  
+> 🛡️ **安全基線與架構守則**：請參閱 **[系統安全基線規範 (SECURITY_BASELINE.md)](SECURITY_BASELINE.md)**，包含 10 大不可違反基線、信任邊界圖、威脅模型與失效模型。  
+> 🚀 **AI 協同開發生命週期**：請參閱 **[AI Agent 協同標準開發程序 (DEVELOPMENT_SOP.md)](DEVELOPMENT_SOP.md)**，從 Figma 原型、安全基線定錨、垂直切片到生產驗收的完整方法論。
 
 ---
 
@@ -221,6 +223,8 @@ flowchart TD
   - **Zero-Shell Node 原生直調**：全面移除 `shell: true`，由 `node.exe` 直接執行 JavaScript 入口點，徹底消除 Windows/Unix 上的 Shell 注入攻擊面。
   - **三層冪等復用 (Idempotency)**：自動識別本地既有 Key 或遠端清單，執行 `Reuse/Update` 同步網域與模式，絕不產生重複 Widget；支援 `--recreate` 明確重置。
   - **全流程 Fail-Closed & 自我修復 (Self-Healing)**：任一 API 失敗立即安全中止，絕不降級盲目新建；復用時自動從雲端重新取得配對 Secret 灌回 Worker，確保環境自我修復。
+
+> 📖 **深入閱讀**：更多安全邊界、威脅模型、失效模型與 10 大不可違反基線，請參閱 **[SECURITY_BASELINE.md](SECURITY_BASELINE.md)**；完整 8 階段開發生命週期與 Agent 協同規範，請參閱 **[DEVELOPMENT_SOP.md](DEVELOPMENT_SOP.md)**。
 
 ---
 

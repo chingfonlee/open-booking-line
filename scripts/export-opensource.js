@@ -84,7 +84,7 @@ function copyAndSanitize(srcDir, destDir) {
         content = content.replace(/"name":\s*"line-bot-farm"/, '"name": "open-booking-line"');
       }
 
-      if (srcPath.endsWith('README.md') || srcPath.endsWith('DEPLOYMENT_GUIDE.md') || srcPath.endsWith('BEGINNER_GUIDE.md')) {
+      if (srcPath.endsWith('.md')) {
         content = content
           .replace(/U7c0c955[a-zA-Z0-9.]+/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
           .replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX')
