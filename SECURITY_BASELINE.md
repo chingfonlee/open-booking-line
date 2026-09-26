@@ -1,117 +1,123 @@
-# 🛡️ 系統安全基線規範 (Security Baseline)
+# 🛡️ 系統安全基線規範 (Security Baseline) — 通用工程原則
 
-> **核心原則**：本文件定義專案開發與維護時**「不可違反的最低安全基線 (Non-Negotiable Baseline)」**。  
-> 任何 AI Agent 或工程師在進行架構修改、新增 API、調整資料庫或執行部署自動化前，**必須優先遵守本規範**。
+> **核心定位**：本文件定義所有專案開發與維護時**「不可違反的抽象安全基線 (Universal Non-Negotiable Baseline)」**。  
+> 本規範為**跨平臺、語言無關（Platform-Agnostic）的通用工程準則**。  
+> 具體專案（如 Cloudflare Workers、LINE Bot、Supabase 或 AWS 等）之技術對齊細節，請參閱各專案獨立的 [`SECURITY_PROFILE.md`](SECURITY_PROFILE.md)。
 
 ---
 
-## 🔒 10 大不可違反的安全基線 (The 10 Golden Rules)
+## 🔒 10 大不可妥協之通用安全基線 (The 10 Golden Rules)
 
 ```mermaid
 flowchart TD
     subgraph Untrusted["⚠️ 不信任區域 (Untrusted Zone)"]
-        Client["前端客戶端 (LIFF / Web Browser)"]
-        Attacker["第三方網路 / 偽造請求"]
+        Client["客戶端環境 (Web / Mobile / Third-party)"]
+        Attacker["外部非瀏覽器請求 (curl / Bots / Scripts)"]
     end
 
-    subgraph Edge["🛡️ Cloudflare 邊緣防禦與驗證 (Trust Boundary)"]
-        CORS["CORS 白名單過濾"]
-        Turnstile["Cloudflare Turnstile 密碼學驗證"]
-        Hono["Hono API 閘道 (32KB bodyLimit)"]
-        RateLimit["複合限流 (IP + Phone)"]
-        Auth["LINE ID Token / HMAC 驗簽"]
+    subgraph Defense["🛡️ 邊緣防禦與身分網關 (Trust Boundary)"]
+        BrowserIso["瀏覽器隔離 (CORS / Security Headers)"]
+        Gatekeeper["API 閘道 (Payload 大小限制 / 複合限流)"]
+        Auth["身分與鑑權驗證 (Server-Side Crypto Verification)"]
     end
 
-    subgraph Trusted["✅ 受信任核心區域 (Secure Zone)"]
-        Worker["Cloudflare Worker (記憶體不落地)"]
-        Secrets["Worker Secrets 憑證庫"]
-        DB[(Cloudflare D1 資料庫)]
+    subgraph Core["✅ 受信任核心運算 (Secure Execution)"]
+        App["應用伺服器 / Serverless (記憶體運算)"]
+        Secrets["雲端憑證管理庫 (Zero-Disk Vault)"]
+        DB[(資料庫 / 永續儲存)]
     end
 
-    subgraph External["🌐 外部第三方 (External APIs)"]
-        LINE["LINE Messaging API"]
-        CF["Cloudflare REST API"]
+    subgraph External["🌐 外部依賴服務 (External Dependencies)"]
+        SecCritical["資安關鍵服務 (Auth / Captcha) ➔ Fail-Closed"]
+        NonCritical["非關鍵副作用 (Notifications / Analytics) ➔ Degrade Safely"]
     end
 
-    Client -->|HTTPS 請求| CORS
-    Attacker -.->|惡意跨域 / 爬蟲| CORS
-    CORS --> Turnstile --> Hono --> RateLimit --> Auth --> Worker
-    Worker <--> Secrets
-    Worker <--> DB
-    Worker -->|Fail-Closed 呼叫| External
+    Client -->|Browser Request| BrowserIso
+    Attacker -->|Direct API Call| Gatekeeper
+    BrowserIso --> Gatekeeper --> Auth --> App
+    App <--> Secrets
+    App <--> DB
+    App --> SecCritical
+    App -.-> NonCritical
 ```
 
-### 1. 客戶端輸入永遠不可信任 (Client input is always untrusted)
-- 前端傳入之任何欄位（姓名、電話、地址、備註）必須於後端執行二次資料防呆與長度限制。
-- 嚴格限制 Payload 大小（全站 32KB bodyLimit），防範記憶體耗盡（Memory Exhaustion）與阻斷服務攻擊。
+---
 
-### 2. 身分識別必須由伺服器端密碼學驗證 (Server-enforced Identity Verification)
-- 嚴格禁止由前端直接傳入 `userId` 或角色權限並予以採信。
-- 一般使用者與管理員身分必須透過 LINE Login 官方核發之 `id_token`，由後端使用 LINE 公鑰驗簽解碼取得 `sub`（User ID）。
-- 管理員權限必須在後端 `ADMIN_LINE_IDS` 白名單嚴格比對，禁止任何前端權限旁路（Bypass）。
+### 1. 所有外部輸入必須具備伺服器端強制校驗 (Server-Side Input Validation)
+- **原則**：客戶端傳入之任何輸入欄位（無論來自網頁、行動端或 Webhook）皆不可信任。
+- **要求**：
+  - 伺服器端必須限制 Request Body / Payload 總體積上限，杜絕記憶體耗盡（Memory Exhaustion）與 DoS 阻斷攻擊。
+  - 所有欄位必須經由嚴格之資料 Schema 驗證（包含型別、長度上下限、格式正則檢查與列舉值過濾）。
+
+### 2. 身分識別與授權由伺服器端密碼學強制實施 (Server-Enforced Authentication & Authorization)
+- **原則**：嚴格禁止伺服器盲目信任由客戶端聲稱傳入之使用者 ID 或身分旗標。
+- **要求**：
+  - 身分必須由伺服器使用公鑰解碼或密碼學非對稱驗簽可信之 ID Token 取得。
+  - 資源存取權限（Role/Permission）必須在伺服器端嚴格核對白名單或資料庫歸屬權，禁止前端邏輯旁路（Bypass）。
 
 ### 3. 憑證與密鑰零磁碟落地 (Zero-Disk Secrets Management)
-- 所有 API Key、Channel Secret、Turnstile Secret **只允許存在於 Cloudflare Worker Secrets 或安全環境變數中**。
-- **嚴禁將真實密鑰寫入 Git 倉庫、`.env` 檔案、`wrangler.toml`、測試日誌或磁碟檔案中**。
+- **原則**：任何 API Key、私鑰、簽名金鑰、資料庫連線字串皆屬於高機密憑證。
+- **要求**：
+  - 憑證僅能託管於雲端 Secret 服務（如 Secret Manager、Worker Secrets）或執行期記憶體中。
+  - **嚴禁將真實密鑰存入 Git 版本庫、磁碟檔案（如 `.env`）、公開配置檔、或記錄至除錯日誌**。
 
-### 4. 敏感金鑰絕不輸出至日誌與錯誤訊息 (Zero-Leak Logging & Error Masking)
-- 所有日誌禁止輸出未經過濾的 `request.body`、`headers` 或第三方原始回應。
-- 對外回傳之錯誤訊息全面泛化（如回傳 `DATABASE_ERROR`），禁止將 SQL 語法、資料庫錯誤代碼或系統堆疊追蹤（Stack Trace）回傳給客戶端。
+### 4. 敏感資料遮蔽與錯誤訊息對外泛化 (Data Masking & Error Generalization)
+- **原則**：對外介面與內部日誌必須落實最小揭露原則。
+- **要求**：
+  - 個人隱私資訊（PII：電話、身分證號、詳細地址等）在日誌與除錯追蹤中必須實施自動遮蔽。
+  - 對外回傳之錯誤訊息全面代碼化與語意泛化，**禁止將內部資料庫語法、系統路徑、第三方 raw 錯誤或堆疊追蹤（Stack Trace）回傳客戶端**。
 
-### 5. 第三方 Webhook 驗簽失敗預設全阻斷 (Fail-Closed Webhook Verification)
-- 接收 LINE Webhook 時，必須以 `LINE_CHANNEL_SECRET` 進行 `HMAC-SHA256` 簽章運算。
-- 驗證必須使用**恆定時間比較（Constant-time comparison）**，防止時序攻擊（Timing Attacks）。驗簽未通過立即阻斷（Fail-Closed, 401 Unauthorized）。
+### 5. 第三方 Webhook 與回調強制密碼學驗簽 (Cryptographic Webhook Verification)
+- **原則**：接收任何外部服務推播（如 LINE、Stripe、GitHub）時，必須確認來源真實性。
+- **要求**：
+  - 必須以預共享金鑰計算 HMAC 簽章，並使用**恆定時間比較演算法（Constant-Time Comparison）**，防範時序攻擊（Timing Attacks）。驗簽未通過者一律直接中斷（Fail-Closed, 401 Unauthorized）。
 
-### 6. 生產環境真人檢核嚴格 Fail-Closed (Production Fail-Closed Verification)
-- 進入生產環境後，Cloudflare Turnstile 驗證必須開啟 Fail-Closed 密碼學核驗。
-- 任何無效 Token、過期 Token、虛擬測試金鑰（`1x...`、`2x...`、`3x...`）或驗證服務異常，一律拒絕預約送出，絕不降級放行。
+### 6. 依賴失效之雙軌分流原則 (Fail-Closed vs Safe Degradation)
+- **原則**：**區分「資安關鍵依賴」與「非關鍵副作用依賴」之失效處理邏輯**。
+- **要求**：
+  - **資安關鍵依賴（Security-Critical）**（例如：真人 Captcha 檢核、身分驗證服務、Webhook 簽章）：  
+    👉 **一律嚴格 Fail-Closed（安全阻斷）**。當外部驗證服務 500 或斷網時，寧可暫停交易，絕不降級盲目放行。
+  - **非關鍵副作用依賴（Non-Critical Side-Effects）**（例如：推播通知、信件提醒、數據分析）：  
+    👉 **安全降級並非同步重試（Degrade Safely & Retry）**。若核心交易（如預約成功寫入 DB）已完成，通知 API 暫態 500 不得回滾主要交易；系統應標記待發送狀態，交由非同步佇列稍後補發。
 
-### 7. 雲端資源佈署與腳本必須具備冪等性 (Idempotent Provisioning)
-- 自動化腳本（如 Turnstile 建立、D1 初始化）重新執行多次時，結果必須與執行一次相同。
-- 遵循三層復用邏輯：**本地 Key 復用 ➔ 遠端清單比對接管 ➔ 乾淨新建**，並提供 `--recreate` 明確重整旗標，嚴禁重跑腳本產生重複孤兒資源。
+### 7. 雙層冪等性設計 (Dual-Layer Idempotency: Infrastructure & Business)
+- **原則**：系統必須具備抵禦「重複執行」與「重放請求」之自我修復能力。
+- **要求**：
+  - **基礎設施冪等（Infrastructure / Provisioning Idempotency）**：雲端資源建立與部署腳本重新執行 $N$ 次的結果必須與執行 1 次相同。具備檢查既有資源、同步更新（Update/Reuse）之能力，絕不產生孤兒重複資源。
+  - **業務邏輯冪等（Business Idempotency）**：核心狀態變更與寫入 API 不能只依賴前端 UI 按鈕 Disable。後端架構層必須具備 `Idempotency-Key`、資料庫唯一鍵約束（Unique Constraints）或 Webhook Event ID 去重機制，防範網路抖動引發的重複扣款或重複下單。
 
-### 8. 正式環境與測試環境憑證徹底分離 (Credential & Environment Separation)
-- 開發與測試階段僅允許使用官方公開測試金鑰（Always-Pass）。
-- 生產環境部署時，自動切換至隔離之專屬 Site Key 與 Secret Key，測試用假資料不得污染生產資料庫。
+### 8. 正確劃分 CORS 與 API 真實安全邊界 (CORS is Browser Isolation, NOT API Security)
+- **原則**：不可將 CORS 誤認為 API 後端的安全防火牆。
+- **要求**：
+  - **CORS（跨域資源共享）**：本質為**「瀏覽器端隔離機制」**，用以防範惡意網站利用合法使用者的瀏覽器 Cookie 竊取資料。
+  - **API 本體安全**：任何非瀏覽器客戶端（如 `curl`、Postman、自動化 Python 腳本、惡意爬蟲）皆不受 CORS 限制。API 安全必須建立在 **身分鑑權（Token）、真人檢核（Turnstile）、頻率限制（Rate Limiting）與簽章驗證** 之上。
 
-### 9. 個人隱私資訊遮蔽（PII Masking）
-- 日誌與推播除錯中，涉及電話號碼、身分證號、詳細地址等個資必須自動遮蔽（例如電話 `0912***456`）。
-- API 查詢時採欄位投影（Projection），嚴禁使用 `SELECT *` 直接回傳包含內部備註（`admin_memo`）或未脫敏資料。
+### 9. 正式環境與測試環境徹底隔離 (Credential & Environment Separation)
+- **原則**：嚴禁測試憑證與資料污染正式營運環境。
+- **要求**：
+  - 測試環境採用公開或專用測試金鑰（如 Always-Pass Key），生產環境切換為高強度專屬金鑰。
+  - 程式碼邏輯中必須明確偵測並排除測試金鑰流入正式環境（例如防止測試 Site Key 在生產環境被誤用）。
 
-### 10. 自動化工具鏈嚴禁暴露原始輸出與 Shell 注入 (Agent-Safe & Zero-Shell)
-- 自動化腳本全面拔除 `shell: true`，採用原生二進位執行（如 `process.execPath` 直調 JS 入口點），根絕 Shell Injection 漏洞。
-- 子程序執行一律以記憶體緩衝區（Buffer）隔離，輸出經過白名單字典轉換，絕不向外部或 Agent 終端洩漏含有 Secret 的 raw stdout/stderr。
+### 10. 自動化工具鏈原生安全與零注入 (Agent-Safe & Zero-Shell Provisioning)
+- **原則**：AI Agent 執行之自動化工具與腳本必須消除所有注入途徑。
+- **要求**：
+  - 跨平臺執行程序全面拔除 `shell: true`，採用原生二進位執行（如由 Node.js 直調 JS 入口點），杜絕 Shell Injection 攻擊面。
+  - 執行輸出採用緩衝記憶體隔離與白名單字典轉換，嚴防包含敏感 Secret 的 raw stdout/stderr 流入日誌。
 
 ---
 
-## 🎯 威脅模型檢核 (Threat Model Checklist)
+## 🎯 雙模型評估框架 (Threat & Failure Model Framework)
 
-在審查任何新功能時，必須詢問以下「惡意威脅」問題：
+在架構設計完成、寫扣之前，必須對系統執行以下兩大維度問答：
 
-- [ ] **有人故意偽造別人的 LINE ID 查預約怎麼辦？**  
-  👉 依賴 LINE Login ID Token 伺服器端驗簽解碼，禁止前端任意指定查詢 User ID。
-- [ ] **有人用自動化腳本 1 秒送出 100 筆假預約怎麼辦？**  
-  👉 由 Turnstile Managed 真人檢核 + IP/電話複合滑動視窗限流（Rate Limit）雙重封鎖。
-- [ ] **有人嘗試在地址欄位輸入 10MB 的超長字串怎麼辦？**  
-  👉 Hono 32KB bodyLimit 立即攔截拋出 413 Payload Too Large，且 Schema 限制 200 字元。
-- [ ] **有人嘗試枚舉（Enumeration）預約單號怎麼辦？**  
-  👉 預約單號採用 `BK-YYYYMMDD-10hex` 高熵亂數產生（$16^{10} \approx 1.1$ 兆種組合），徹底消除連續號猜測攻擊面。
-- [ ] **有人從其他網站發起跨域請求盜用 API 怎麼辦？**  
-  👉 後端動態驗證 CORS Origin 白名單，不合規來源一律拒絕跨域存取。
+### 1. 威脅模型 (Threat Model) ——「有人故意攻擊會怎樣？」
+1. **身分偽造**：攻擊者是否能偽造身分識別發起請求？（透過伺服器公鑰驗簽抵禦）
+2. **重放攻擊**：攻擊者截獲合法封包重複發送會怎樣？（透過 Nonce、時戳、單號亂數或狀態機抵禦）
+3. **爆破與阻斷**：攻擊者用高頻並發灌爆系統會怎樣？（透過複合限流與 Captcha 抵禦）
+4. **巨量封包攻擊**：攻擊者傳入畸形長字串會怎樣？（透過 Payload 上限與 Schema 限制抵禦）
 
----
-
-## 💥 失效模型檢核 (Failure Model Checklist)
-
-在審查系統可靠性與自我修復能力時，必須詢問以下「非人為惡意、而是系統故障」問題：
-
-- [ ] **Cloudflare Turnstile API 暫時 500 或斷網怎麼辦？**  
-  👉 採取 Fail-Closed 原則，暫停受理預約並給予友善提示，絕不在無驗簽保護下降級放行。
-- [ ] **Agent 執行自動化腳本中途斷線，重跑第二次怎麼辦？**  
-  👉 腳本具備三層冪等性（本地復用 ➔ 遠端比對 ➔ 新建），自動偵測並同步既有資源，絕不堆疊孤兒資源。
-- [ ] **雲端 Worker Secret 意外被手動刪除怎麼辦？**  
-  👉 佈署腳本具備 Self-Healing（自我修復）機制，自動從雲端 Widget 提取配對 Secret 並經 `stdin` 重新灌回。
-- [ ] **使用者手滑連續點擊送出按鈕兩次怎麼辦？**  
-  👉 前端按鈕 Disable 防連點 + 預約單號與資料庫寫入防重機制。
-- [ ] **資料庫連線逾時（Timeout）或出錯怎麼辦？**  
-  👉 系統捕捉例外並以 `DATABASE_ERROR` 脫敏訊息回傳，內部堆疊寫入受限日誌，保護架構細節不外洩。
+### 2. 失效模型 (Failure Model) ——「沒人攻擊，純粹系統出錯或重跑會怎樣？」
+1. **資安驗證服務異常**：Captcha 或 Auth 伺服器掛掉時，是 Fail-Closed 還是 Fail-Open？
+2. **外部通知服務異常**：發訊 API 斷線時，核心交易是否會被錯誤回滾？（應安全降級與重試）
+3. **部署與維運重跑**：腳本跑到一半斷線重來，是否能安全復原？（應自動三層復用與自我修復）
+4. **網路重傳抖動**：使用者端網路延遲導致送出兩次，後端是否會寫入兩筆重複資料？（應靠業務冪等設計抵禦）
