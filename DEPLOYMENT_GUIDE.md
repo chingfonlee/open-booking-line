@@ -332,13 +332,14 @@ Agent 向使用者提示：
 Agent 自動執行終端指令：
 ```bash
 npm run setup:turnstile
+# 若需要強制廢棄重整，亦支援：npm run setup:turnstile -- --recreate
 ```
-此指令全自動執行以下 5 個步驟：
-1. 呼叫 `npx wrangler turnstile widget create` 建立 Managed 模式之專屬 Widget。
-2. 自動取得產生的 `sitekey` 並注入 `packages/frontend/.env`（`VITE_TURNSTILE_SITE_KEY`）。
-3. 自動取得產生的 `secret` 並安全更新至後端 Worker。
-4. 自動重新編譯打包前端並發布至 Cloudflare Pages。
-5. 自動重新部署後端 Worker，系統即刻鎖定為 **Fail-Closed 密碼學鋼鐵真人驗證**，全面阻絕爬蟲與腳本刷單！
+此指令具備 **Zero-Shell 原生執行**、**三層冪等性 (Idempotency)**、**Zero-Disk 密鑰零落地** 與 **全流程 Fail-Closed 自我修復** 防護：
+1. **三層冪等復用**：自動檢查本地 Key 或遠端既有 Widget，若已存在則直接同步更新（`update`）網域與模式，絕不在 Cloudflare 堆疊孤兒重複資源。
+2. **Zero-Disk 憑證託管**：Secret 僅在記憶體流轉，由 Node.js 透過 `stdin` 管道直接注入 Worker Secret，杜絕寫入磁碟檔案與 Git 歷史。
+3. **金鑰自我修復 (Self-Healing)**：復用 Widget 時自動重新由雲端提取配對 Secret 灌回 Worker，確保環境脫節時自動癒合。
+4. **全流程 Fail-Closed 阻斷**：網路異常或 API 失敗立即安全中止，絕不盲目降級新建；日誌全面脫敏與白名單過濾。
+5. **前端自動更新與全站部署**：自動注入前端 `VITE_TURNSTILE_SITE_KEY`、重新編譯發布 Pages，並重新部署後端 Worker。系統即刻鎖定為 **Fail-Closed 密碼學鋼鐵真人驗證**，全面阻絕爬蟲與腳本刷單！
 
 > 🤖 **給使用者的超簡易升級指令**：
 > 當您內部測試滿意、準備正式給大眾填單時，只需在終端機對 Agent 說：

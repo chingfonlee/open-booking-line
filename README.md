@@ -148,7 +148,7 @@ npx wrangler pages deploy dist --project-name xingnong-farm
 
 ## 🔒 企業級安全性架構與已修復項目說明 (Security Hardening)
 
-本專案經過嚴謹的安全審計與重構，全面解決了常見的 Serverless 與 LINE Bot 部署資安漏洞，具備以下 8 重防護機制：
+本專案經過嚴謹的安全審計與重構，全面解決了常見的 Serverless 與 LINE Bot 部署資安漏洞，具備以下 9 重資安防護與自動化防禦機制：
 
 ```mermaid
 flowchart TD
@@ -213,6 +213,14 @@ flowchart TD
   - `X-Frame-Options: SAMEORIGIN`（防止管理介面遭受 Clickjacking 點擊劫持）
   - `Referrer-Policy: strict-origin-when-cross-origin`（防止敏感路徑洩漏至外部參照）
   - `Strict-Transport-Security: max-age=31536000; includeSubDomains`（強制 HTTPS 傳輸）
+
+### 9. 🤖 Zero-Disk 憑證託管與 Agent-Safe 自動化部署
+* **修復漏洞**：傳統部署將 API 金鑰/密鑰寫入 `.env` 或 `wrangler.toml` 容易失誤提交至公開 Git；或透過 shell 腳本拼接參數時面臨指令注入（Command Injection）風險；且部署腳本重跑時容易在雲端產生無效孤兒資源。
+* **防護機制**：
+  - **Zero-Disk 密鑰零落地**：Secret 僅在記憶體流轉，由 `stdin` 管道直接寫入 Cloudflare Worker Secret，杜絕寫入磁碟與 Git 倉庫。
+  - **Zero-Shell Node 原生直調**：全面移除 `shell: true`，由 `node.exe` 直接執行 JavaScript 入口點，徹底消除 Windows/Unix 上的 Shell 注入攻擊面。
+  - **三層冪等復用 (Idempotency)**：自動識別本地既有 Key 或遠端清單，執行 `Reuse/Update` 同步網域與模式，絕不產生重複 Widget；支援 `--recreate` 明確重置。
+  - **全流程 Fail-Closed & 自我修復 (Self-Healing)**：任一 API 失敗立即安全中止，絕不降級盲目新建；復用時自動從雲端重新取得配對 Secret 灌回 Worker，確保環境自我修復。
 
 ---
 
