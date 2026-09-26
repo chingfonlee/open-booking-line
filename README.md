@@ -2,10 +2,15 @@
 
 全純文字輕量化、高效能且安全嚴謹的農業與在地資源預約管理系統。基於 **Cloudflare Serverless（Workers + D1 + Pages）** 與 **LINE LIFF** 架構打造，無需負擔高昂伺服器與資料庫月租費，全案皆可在 Cloudflare 與 LINE 免費額度內極速運行。
 
-> 🌾 **完全新手 / 零程式基礎 5 分鐘架站懶人包**：請直接參閱 **[新手白話圖文部署指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)**，跟著圖解複製 5 個代碼交給 AI 即可全自動完成架設！  
-> 🤖 **AI Coding Agent / 開發者自動化 SOP**：請參閱 **[Agent 全自動化部署手冊 (DEPLOYMENT_GUIDE.md)](DEPLOYMENT_GUIDE.md)**，內含環境自動檢測、Cloudflare D1 初始化、金鑰配置與全自動發布之 SOP。  
-> 🛡️ **安全基線與架構守則**：請參閱 **[系統安全基線規範 (SECURITY_BASELINE.md)](SECURITY_BASELINE.md)**，包含 10 大不可違反基線、信任邊界圖、威脅模型與失效模型。  
-> 🚀 **AI 協同開發生命週期**：請參閱 **[AI Agent 協同標準開發程序 (DEVELOPMENT_SOP.md)](DEVELOPMENT_SOP.md)**，從 Figma 原型、安全基線定錨、垂直切片到生產驗收的完整方法論。
+> 🤖 **AI Agent 協同入口規範**：請參閱 **[AGENTS.md](AGENTS.md)**，所有 AI 工具進入專案之首要讀取約束與核心守則。  
+> 🌾 **完全新手 5 分鐘架站懶人包**：請直接參閱 **[新手白話圖文部署指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)**，跟著圖解複製代碼交給 AI 全自動完成架設。  
+> 📖 **完整技術文件體系**：
+> - 🏗️ **[系統架構設計書 (ARCHITECTURE.md)](ARCHITECTURE.md)**：系統拓撲、模組職責與 D1 Schema。
+> - 🛡️ **[通用系統安全基線 (SECURITY_BASELINE.md)](SECURITY_BASELINE.md)**：跨平臺、語言無關之 10 大不可妥協原則與雙模型框架。
+> - 🔐 **[專案安全實作設定 (SECURITY_PROFILE.md)](SECURITY_PROFILE.md)**：本專案（Cloudflare + LINE + Hono）具體安全落地規格。
+> - 🚀 **[AI 協同開發生命週期 (DEVELOPMENT_SOP.md)](DEVELOPMENT_SOP.md)**：8 階段標準開發流程與垂直切片先行心法。
+> - ✅ **[驗收測試與情境清單 (ACCEPTANCE_TESTS.md)](ACCEPTANCE_TESTS.md)**：業務功能、邊界防護與 5 大 E2E 失效復原測試。
+> - 🛠️ **[Agent 自動化部署手冊 (DEPLOYMENT_GUIDE.md)](DEPLOYMENT_GUIDE.md)**：環境檢測、D1 初始化、金鑰配置與雲端發布 SOP。
 
 ---
 
@@ -224,7 +229,7 @@ flowchart TD
   - **三層冪等復用 (Idempotency)**：自動識別本地既有 Key 或遠端清單，執行 `Reuse/Update` 同步網域與模式，絕不產生重複 Widget；支援 `--recreate` 明確重置。
   - **全流程 Fail-Closed & 自我修復 (Self-Healing)**：任一 API 失敗立即安全中止，絕不降級盲目新建；復用時自動從雲端重新取得配對 Secret 灌回 Worker，確保環境自我修復。
 
-> 📖 **深入閱讀**：更多安全邊界、威脅模型、失效模型與 10 大不可違反基線，請參閱 **[SECURITY_BASELINE.md](SECURITY_BASELINE.md)**；完整 8 階段開發生命週期與 Agent 協同規範，請參閱 **[DEVELOPMENT_SOP.md](DEVELOPMENT_SOP.md)**。
+> 📖 **深入閱讀**：通用安全基線與雙模型請參閱 **[SECURITY_BASELINE.md](SECURITY_BASELINE.md)**；本專案具體實作規格請參閱 **[SECURITY_PROFILE.md](SECURITY_PROFILE.md)**；完整 8 階段開發生命週期請參閱 **[DEVELOPMENT_SOP.md](DEVELOPMENT_SOP.md)**；驗收測試清單請參閱 **[ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)**。
 
 ---
 
