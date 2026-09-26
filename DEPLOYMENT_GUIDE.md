@@ -40,11 +40,14 @@ flowchart TD
 
 ### 🤖 給 Agent 的重要指引
 1. **盡可能自動化**：除「平台帳號註冊」與「取得 LINE 金鑰」需使用者手動提供外，環境檢查、依賴安裝、資料庫建立、檔案設定、建置與部署皆應由 Agent 透過終端機指令全自動完成。
-2. **參數收集原則**：向使用者索取以下 4 個必要參數後即可啟動全自動部署流程：
-   - `LINE_CHANNEL_ACCESS_TOKEN`（Messaging API 長效金鑰）
-   - `ADMIN_NOTIFY_USER_ID`（接收通知的服務人員 LINE User ID，以 `U` 開頭）
+2. **參數收集原則**：向使用者索取以下 **5 個必要值**（含 1 個選填站點名稱）後即可啟動全自動部署流程：
+   - `LINE_CHANNEL_ACCESS_TOKEN`（Messaging API 長效存取憑證）
+   - `LINE_CHANNEL_SECRET`（Messaging API Channel Secret 32 碼，用於 Webhook 密碼學防偽驗簽）
+   - `ADMIN_NOTIFY_USER_ID`（接收通知的服務人員個人 LINE User ID，以 `U` 開頭）
    - `LINE_LOGIN_CHANNEL_ID`（LINE Login Channel ID，數字）
    - `VITE_LIFF_ID`（LIFF 應用 ID，格式如 `2000000000-XXXXXXXX`）
+   - `STATION_NAME`（選填，預設為示範服務站）
+   > 💡 **其餘所有參數由 Agent 自動推導**：`ADMIN_LINE_IDS` 自動對齊 `ADMIN_NOTIFY_USER_ID`；`LIFF_ID` 自動對齊 `VITE_LIFF_ID`；`database_id` 與網址皆由 Agent 自動建立並取得。
 
 ---
 
@@ -70,7 +73,7 @@ flowchart TD
 
 ## 3. 使用者前置準備（需人工操作清單）
 
-請使用者依照以下 3 個步驟建立帳號並取得 4 個核心參數：
+請使用者依照以下 3 個步驟建立帳號並取得 **5 個必要值**（或直接參考 [新手圖文指南 BEGINNER_GUIDE.md](BEGINNER_GUIDE.md) 與 [一鍵提示詞 INSTALL_PROMPT.md](INSTALL_PROMPT.md)）：
 
 ### 步驟 1：Cloudflare 帳號註冊與登入
 1. 開啟 [Cloudflare 註冊頁面](https://dash.cloudflare.com/sign-up)。
@@ -113,19 +116,23 @@ flowchart TD
 
 ---
 
-### 步驟 3：將取得的參數提供給 Agent
-使用者請將下列資訊複製並填寫後，發送給 AI Agent：
+### 步驟 3：將 5 個必要值提供給 Agent
+使用者請將下列資訊複製並填寫後（或直接使用 [INSTALL_PROMPT.md](INSTALL_PROMPT.md)），整段發送給 AI Agent：
 
 ```text
 LINE_CHANNEL_ACCESS_TOKEN=（填入 Messaging API Channel Access Token）
 LINE_CHANNEL_SECRET=（填入 Messaging API Channel Secret 32 碼，必填安全項）
 ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的服務人員個人 LINE User ID）
-ADMIN_LINE_IDS=（填入授權服務人員 LINE User ID 白名單，可多個以逗號隔開）
 LINE_LOGIN_CHANNEL_ID=（填入 LINE Login Channel ID 數字）
-VITE_LIFF_ID=（填入 LIFF ID，供前端使用）
-LIFF_ID=（填入與上方相同之 LIFF ID，供後端推播卡片跳轉按鈕使用）
+VITE_LIFF_ID=（填入 LIFF ID，格式如 2000000000-XXXXXXXX）
 STATION_NAME=高雄服務站（選填，預設為高雄服務站）
 ```
+
+> 🤖 **Agent 自動化處置說明**：
+> - `ADMIN_LINE_IDS`：Agent 自動對齊 `ADMIN_NOTIFY_USER_ID`，無需使用者重複填寫。
+> - `LIFF_ID`：Agent 自動對齊 `VITE_LIFF_ID`，無需使用者重複填寫。
+> - `database_id`：Agent 在 Step 4 自動建立 D1 並讀取注入。
+> - `ALLOWED_ORIGINS`：Agent 在 Step 6 部署 Pages 後自動設定並綁定。
 
 ---
 

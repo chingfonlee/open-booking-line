@@ -81,9 +81,9 @@
 
 ---
 
-## 🤖 步驟三：把資料交給 AI，全自動安裝完成！
+## 🤖 步驟三：把 5 個必要值交給 AI，全自動安裝完成！
 
-現在你已經有了所有代碼，請把以下這段文字複製下來，填上你的真實資訊：
+現在你已經有了所有資料，你可以直接開啟 **[一鍵提示詞範本 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**，或是直接複製下方文字填寫：
 
 ```text
 你好！請幫我全自動安裝這套 LINE 預約系統，以下是我準備好的金鑰資訊：
@@ -110,17 +110,22 @@ STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
 
 ---
 
-## 🎯 最後一步（30 秒收尾）：綁定 LINE 網址
+## 🎯 最後兩步（1 分鐘收尾）：綁定 LINE 網址與正式公開
 
-當 AI 告訴你部署成功並給你網址（例如 `https://my-farm.pages.dev`）後：
+當 AI 告訴你部署成功並給你網址（例如 `https://my-farm.pages.dev`）後，請回到 [LINE Developers Console](https://developers.line.biz/console/) 進行最後兩步設定：
 
-1. 回到 **LINE Developers Console**。
-2. 進入剛剛建立的 **LINE Login** 頻道 ➔ 點擊 **LIFF** 分頁。
-3. 找到剛剛建立的 LIFF 應用，點進去修改 **Endpoint URL**：
+### 1. 綁定 LIFF 網址
+1. 進入剛剛建立的 **LINE Login** 頻道 ➔ 點擊 **LIFF** 分頁。
+2. 找到剛剛建立的 LIFF 應用，點進去修改 **Endpoint URL**：
    - 把原本隨便填的 `https://example.com` 改成 AI 給你的網址：`https://my-farm.pages.dev`。
-4. 按下 **Update（儲存）**。
+3. 按下 **Update（儲存）**。
 
-🎉 **大功告成！** 現在你可以把 LIFF URL（例如 `https://liff.line.me/2000000000-XXXXXXXX`）設定到你 LINE 官方帳號的圖文選單（Rich Menu），或是直接傳給親朋好友與農民測試填單囉！
+### 2. 將 LINE Login 頻道切換為「Published（公開）」
+> 🚨 **關鍵步驟**：LINE 平台新建立的頻道預設為 **`Developing`（開發中）**。此時只有你自己能打開，**外部客人的手機打開會顯示「此服務目前正在開發中」**！
+1. 在 **LINE Login** 頻道頁面最頂部，找到頻道名稱旁邊的狀態標籤。
+2. 點擊 **`Developing`** 並切換為 **`Published`**。
+
+🎉 **大功告成！** 現在任何人點擊你的 LIFF 連結，都能順暢打開表單完成預約囉！
 
 ---
 

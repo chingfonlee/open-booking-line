@@ -59,7 +59,18 @@ open-booking-line/
 
 ---
 
-## 🚀 快速開始
+## 🚀 部署路徑選擇 (Choose Your Installation Path)
+
+| 🎯 您的身分 | 推薦路徑 | 說明 |
+| :--- | :--- | :--- |
+| 👶 **完全不懂程式 / 一般使用者** | **[一鍵 AI 提示詞 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**<br/>搭配 **[新手白話指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)** | **只需準備 5 個必要值**，整段複製貼給 AI Agent，AI 全自動完成資料庫、金鑰、後端、前端與雲端部署，**零指令敲打**！ |
+| 👨‍💻 **專業軟體工程師 / 開發者** | **下方「開發者手動部署」**<br/>或參閱 **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | 自行透過終端機逐步執行 git clone、wrangler d1、build、deploy 等完整命令列工具鏈。 |
+
+> ⚠️ **新手提醒**：如果您不是要手動修改程式碼，**請直接走「新手 AI 自動部署」路徑**，切勿往下看繁瑣的工程師指令！
+
+---
+
+## 👨‍💻 開發者手動部署 (Technical Manual Installation)
 
 ### 1. 取得專案並安裝相依套件
 
