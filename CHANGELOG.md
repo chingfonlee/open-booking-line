@@ -110,6 +110,31 @@
   - **前端全面對齊 Managed 智慧模式**：前端改採 `appearance: 'interaction-only'`，搭配官方 `1x...AA` Managed Always-Pass 測試金鑰，達成平時完全無感隱形、異常時自動啟用互動驗證之最佳化體驗。
   - **全面導入 Agent 一鍵升級指示**：於 `DEPLOYMENT_GUIDE.md` 與 `BEGINNER_GUIDE.md` 制定零摩擦升級規範。使用者僅需對 Agent 發出「我測試完成了，請幫我啟用正式 Turnstile 防護」自然語言指令，即可由 Agent 完成生產環境 Fail-Closed 密碼學鋼鐵防護之切換。
 
+#### 15. Agent-Safe Turnstile 自動化加固與冪等性 (Zero-Shell, Full Fail-Closed, Self-Healing & Idempotency)
+- **問題**：
+  - **指令注入與相容性風險**：跨平臺透過 `spawnSync` 執行 `.cmd` 批次檔時，啟用 `shell: true` 在 Node.js 22+ 會觸發安全性警告，且參數拼接存在潜在的 Windows Shell Injection 注入漏洞。
+  - **重複 Widget 資源洩漏**：若自動化腳本因部署網路異常中斷後重新執行，每次重跑皆會呼叫 `widget create` 於 Cloudflare 帳號內堆疊大量重複無效的孤兒 Widget。
+  - **金鑰脫節故障**：若既有環境復用既有 Widget 但 Cloudflare Worker Secret 遭刪除或未同步，缺少自動修復機制會導致後端驗簽失敗。
+  - **例外非預期建立**：`widget list` 或 `widget update` 若發生非 OAuth 的暫態網路抖動或 500 錯誤，若未實施嚴格 Fail-Closed，程式會誤判為「無既有資源」而錯誤掉入建立新 Widget。
+  - **未脫敏日誌洩漏**：CLI 執行預設 `stdio: 'inherit'` 或捕捉未知錯誤時直接輸出 `error.message`，存在將系統路徑、除錯細節或堆疊追蹤洩漏至日誌之風險。
+- **修復**：
+  - **Zero-Shell 原生執行架構**：徹底移除所有 `shell: true` 設定，改由 `process.execPath`（原生 `node.exe` 二進位程式）直接調用 `wrangler.js` 與 `npm-cli.js` 入口點，徹底消除 Windows/Unix 上的 Shell 注入攻擊面，並將 `process.env.npm_execpath` 列為 CLI 第一順位解析。
+  - **三層冪等復用機制 (Idempotency)**：
+    - **Strategy A（本地 Key 復用）**：自動讀取本地 `.env`，若已存在正式 Site Key，呼叫 `widget update` 同步網域與 Managed 模式，不重複建立。
+    - **Strategy B（遠端清單比對）**：若本地無配置（例如新 clone 分支），自動查詢 `widget list` 並比對服務站名稱與網域，自動接管既有資源。
+    - **Strategy C（乾淨建立）**：僅在遠端確定無相符資源、或明確傳入 `--recreate` / `--force` 旗標時，才執行新 Widget 建立。
+  - **全流程 Fail-Closed 鋼鐵阻斷**：
+    - `widget list` 失敗或回傳非標準 JSON 陣列時，立即阻斷拋出 `WIDGET_LIST_FAILED`，絕不降級誤建。
+    - 比對到既有 Widget 但 `update` 失敗時，立即阻斷拋出 `WIDGET_UPDATE_FAILED`，絕不退回新建。
+    - 精確辨識 Cloudflare 專屬錯誤碼 `10407 / deleted widget`，僅在資源確遭遠端刪除時才安全降級重新建立。
+  - **密鑰環境自我修復 (Self-Healing Worker Secret Sync)**：復用既有 Widget 時，自動調用 `widget get <sitekey> --json` 在記憶體安全獲取配對 Secret，並透過 `stdin` 重新同步至 Cloudflare Worker Secret，保證前後端金鑰永久 100% 配對。
+  - **嚴格白名單錯誤日誌 (Strict Whitelist-Only Logging)**：
+    - 全面移除 `stdio: inherit`，所有子程序輸出收斂於 child process 緩衝區。
+    - 實裝 `ERROR_DESCRIPTIONS` 白名單字典映射，未分類異常一律隱藏詳細內容（`UNKNOWN_ERROR`），杜絕 raw error 洩漏。
+    - 將 CLI 解析引導納入主 `try/catch` 區塊，若未安裝依賴以 `CLI_RESOLUTION_FAILED` 受控輸出，杜絕 raw stack trace。
+  - **測試金鑰全防偽排除**：擴充測試 Site Key 前綴識別（全面排除 `1x`, `2x`, `3x`），並淨化 `.env.example` 移除測試 Secret。
+  - **5 大端對端實機測試驗收（E2E Acceptance Tests）**：已於實際 Cloudflare 雲端環境完成 5 大情境實測並全數 100% 通過（首次建立、二次復用、刪除 Secret 自我修復、遠端刪除重置、模擬斷網 Fail-Closed 阻斷）。
+
 ---
 
 ## [1.0.0] - 2026-09-24
