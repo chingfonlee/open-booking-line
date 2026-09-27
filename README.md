@@ -68,6 +68,34 @@ line-bot-farm/
 
 > ⚠️ **新手提醒**：如果您不是要手動修改程式碼，**請直接走「新手 AI 自動部署」路徑**，切勿往下看繁瑣的工程師指令！
 
+### 👶 新手 5 分鐘零門檻安裝全景流程 (Beginner Journey)
+
+```mermaid
+flowchart TD
+    subgraph S1["1. 前置準備 (約 3 分鐘)"]
+        A["📁 建立專屬空資料夾 (如 my-booking) 保持桌面乾淨"]
+        B["🔑 依照 BEGINNER_GUIDE.md 取得 5 個必要值<br/>(3 個一般設定 + 2 個安全金鑰)"]
+        A --> B
+    end
+
+    subgraph S2["2. 呼叫 AI 全自動部署 (約 2 分鐘)"]
+        C["📋 複製 INSTALL_PROMPT.md 提示詞<br/>填入 3 個一般設定貼給 AI Agent"]
+        D["🌐 瀏覽器彈窗點擊 Cloudflare Allow 允許授權"]
+        E["🔒 依終端機安全提示貼入 2 個金鑰<br/>(密碼直連 Cloudflare，連 AI 都無須知曉)"]
+        F["🤖 AI 自動建立 D1、打包前端並發布 Workers API<br/>回傳專屬網址: https://xxx.pages.dev"]
+        C --> D --> E --> F
+    end
+
+    subgraph S3["3. LINE 綁定與正式公開 (約 1 分鐘)"]
+        G["🔗 回 LINE Developers ➔ 將網址填入 LIFF Endpoint URL"]
+        H["🚀 將 LINE Login 狀態由 Developing 切換為 Published"]
+        I["🎉 大功告成！正式開放農民與大眾在 LINE 預約"]
+        G --> H --> I
+    end
+
+    S1 --> S2 --> S3
+```
+
 ---
 
 ## 👨‍💻 開發者手動部署 (Technical Manual Installation)
