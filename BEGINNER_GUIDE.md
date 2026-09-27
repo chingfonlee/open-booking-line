@@ -58,12 +58,14 @@ flowchart TD
 
 ---
 
-## 📋 步驟一：免費註冊 2 個帳號
+## 📋 步驟一：免費準備好 4 項資源
 
-在開始前，請確認你擁有以下兩個平台帳號（皆可免費註冊）：
+在開始前，請確認你擁有以下免費資源（免花錢、免綁信用卡）：
 
-1. **[Cloudflare 帳號](https://dash.cloudflare.com/sign-up)**：全球雲端平台，用來放預約系統的資料庫與網頁。只需要 Email 即可免費註冊。
-2. **[LINE Developers 開發者帳號](https://developers.line.biz/console/)**：用你平常用的個人 LINE 帳號直接登入即可。
+1. **[LINE 官方帳號 (LINE Official Account)](https://manager.line.biz/)**：發送預約推播通知與放置圖文選單的機器人，可免費線上申請（每月 200 則免費推播）。
+2. **[LINE Developers 開發者帳號](https://developers.line.biz/console/)**：用你平常用的個人 LINE 帳號直接登入即可（免審核），用來取得 5 個必要值與 LIFF 預約門牌號碼。
+3. **[Cloudflare 帳號](https://dash.cloudflare.com/sign-up)**：全球雲端平台，託管預約資料庫與網頁。支援以 Google 帳號一鍵免費登入（完全免綁信用卡）。
+4. **一個 AI Coding Agent**：你的專屬雲端工程師（例如 Claude Code、Antigravity、Cursor 等），負責替你自動跑完全部安裝程序。
 
 ---
 
