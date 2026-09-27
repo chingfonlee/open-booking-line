@@ -1,10 +1,8 @@
 # 📋 AI 自動安裝提示詞範本 (INSTALL_PROMPT.md)
 
 > 💡 **使用說明**：  
-> 如果您是完全零程式基礎的新手，請勿手動執行任何複雜指令！  
-> 只要在 [新手圖文指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md) 中準備好 **5 個必要值**：  
-> **3 個一般設定**直接複製貼給 AI Agent（推薦完全免費 0 元首選：**OpenCode 搭配 Zen 免費帳號 + Muse spark free 1.3**，或 Antigravity、Claude Code、Cursor），**2 個敏感金鑰**自己留在本機，待部署時由終端機提示直接輸入 Cloudflare Secret。  
-> 🔒 **真正的 Agent-Safe 資安體驗：連 AI 都不需要知道您的密碼！**
+> **完全免碰終端機！零指令、對話一鍵全自動搞定！**  
+> 只要在 [新手圖文指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md) 中準備好 **5 個必要值**，直接複製下方文字方塊、填入資料後**整段貼進 AI 對話視窗**（推薦免費首選：**OpenCode 搭配 Zen 免費帳號 + Muse spark free 1.3**，或 Antigravity、Claude Code、Cursor），AI 就會在背景全自動為您完成所有雲端部署！
 
 ---
 
@@ -17,16 +15,18 @@
 
 ---
 
-### ✂️ 請複製以下提示詞並發送給 AI Agent：
+### ✂️ 請複製以下提示詞，填寫後直接發送給 AI Agent：
 
 ```text
-你好！請幫我安裝 open-booking-line（農業與在地資源預約管理系統）。
+你好！請幫我全自動安裝 open-booking-line（農業與在地資源預約管理系統）。
 
 【目錄安全檢查】：
 請先確認當前目錄是否為 open-booking-line 專案根目錄。
 若不是，請先在當前位置建立獨立資料夾「open-booking-line」（或執行 git clone https://github.com/chingfonlee/open-booking-line.git 並切換進去），確保所有後續指令與檔案皆在該資料夾內執行，嚴禁污染外層目錄。
 
-以下是我的一般設定：
+這是我的 5 個必要值：
+LINE_CHANNEL_ACCESS_TOKEN=（填入 Messaging API Channel Access Token 長串金鑰）
+LINE_CHANNEL_SECRET=（填入 Messaging API Channel Secret 32 碼）
 ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的服務人員個人 LINE User ID）
 LINE_LOGIN_CHANNEL_ID=（填入 LINE Login Channel ID 數字）
 VITE_LIFF_ID=（填入 LIFF ID，格式如 2000000000-XXXXXXXX）
@@ -34,23 +34,20 @@ VITE_LIFF_ID=（填入 LIFF ID，格式如 2000000000-XXXXXXXX）
 服務站名稱（選填，預設為「高雄示範站」）：
 STATION_NAME=
 
-我已經在本地另外準備好：
-- LINE_CHANNEL_ACCESS_TOKEN
-- LINE_CHANNEL_SECRET
-
-🔒 基於 Zero-Disk 與 Zero-Leak 安全規範，我不會把這兩個 Secret 貼進 AI 對話。
-當部署進行到設定 Secret 的步驟時，請於終端機啟動：
-cd packages/backend && npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-cd packages/backend && npx wrangler secret put LINE_CHANNEL_SECRET
-並提示我直接在終端機貼入 Secret，請勿要求我把 Secret 傳給 AI，也絕不寫入 .env、設定檔、Git 或日誌。
+🔒 【Zero-Disk 零磁碟落地資安守則】：
+請嚴格遵守專案的 Zero-Disk 安全規範：
+- 將 LINE_CHANNEL_ACCESS_TOKEN 與 LINE_CHANNEL_SECRET 透過記憶體管線（stdin）直接注入 Cloudflare Worker Secret。
+- 嚴禁將上述任何金鑰寫入硬碟檔案（如 .env、wrangler.toml）、Git 倉庫或終端日誌。
 
 請依照專案內的 AGENTS.md 與 DEPLOYMENT_GUIDE.md 規範，全自動完成：
-1. Cloudflare D1 資料庫建立與 Schema 初始化（自動取得 database_id）。
-2. 自動推導 ADMIN_LINE_IDS 與 LIFF_ID，並配置 packages/backend/wrangler.toml。
-3. 自動產生 packages/frontend/.env 並編譯發布 Cloudflare Pages 與 Worker API。
-4. 執行連線健康檢查（/api/health），並提供我部署完成的 Pages 網址。
+1. 執行 npx wrangler login 喚起瀏覽器供我授權 Cloudflare（我只需在網頁點擊 Allow）。
+2. Cloudflare D1 資料庫建立與 Schema 初始化（自動取得 database_id）。
+3. 自動推導 ADMIN_LINE_IDS 與 LIFF_ID，並配置 packages/backend/wrangler.toml。
+4. 透過 Zero-Disk 安全管線將 LINE 金鑰寫入 Worker Secrets。
+5. 自動產生 packages/frontend/.env 並編譯發布 Cloudflare Pages 與 Worker API。
+6. 執行連線健康檢查（/api/health），並提供我部署完成的 Pages 網址。
 
-除了 Cloudflare 瀏覽器授權（wrangler login）與終端機貼入 Secret 需我本人確認外，其餘所有建置與設定步驟請自行全自動完成。謝謝！
+除了 Cloudflare 瀏覽器授權（wrangler login）需要我點擊「Allow」外，其餘所有建置與設定步驟請自行全自動完成，我不需要在終端機輸入任何指令。謝謝！
 ```
 
 ---

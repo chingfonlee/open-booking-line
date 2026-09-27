@@ -13,9 +13,9 @@
    - 確保所有建置與指令皆於專屬專案目錄內執行，嚴禁在使用者外層目錄（如桌面、個人目錄）散落檔案或污染環境。
 2. **絕不私自降級安全基線 (Never Weaken Security Baselines)**：
    - 未經人類明確許可，不得為求「跑通測試」或「快速部署」而關閉安全檢查、將 Fail-Closed 改為 Fail-Open、放寬 CORS 或繞過驗簽。
-3. **零磁碟憑證託管與無對話洩漏 (Zero-Disk & Zero-Prompt Secrets)**：
+3. **零磁碟憑證託管 (Zero-Disk Secrets Management)**：
    - 任何 API Key、Secret、Token **嚴禁寫入 Git 追蹤檔案、本機 `.env`、配置檔、或記錄在日誌中**。
-   - **嚴禁要求使用者在 AI 對話/Prompt 中張貼真實敏感金鑰**。需要注入憑證時，應啟動 CLI 原生安全輸入管道（如 `wrangler secret put`），引導使用者直接在終端機輸入，連 AI 都無須知曉密碼。
+   - 當使用者在對話中提供金鑰以利一鍵自動化部署時，Agent 必須嚴格落實 Zero-Disk 原則：金鑰僅在執行期記憶體中流轉，由標準輸入管道（stdin）直接注入 Cloudflare Worker Secret，絕不在任何磁碟檔案中留存。
 4. **伺服器端強制身分與鑑權 (Server-Enforced Auth)**：
    - 永遠不信任客戶端（前端、LIFF、App）傳入的使用者 ID 或身分旗標。身分必須源自伺服器端密碼學驗證（如驗證官方核發之 ID Token），權限必須在 Server 端強制校驗。
 5. **所有外部輸入強制校驗 (Validate All External Inputs)**：

@@ -39,11 +39,10 @@ flowchart TD
     end
 
     subgraph S2["2. 呼叫 AI 全自動部署 (約 2 分鐘)"]
-        C["📋 複製 INSTALL_PROMPT.md 提示詞<br/>填入 3 個一般設定貼給 AI Agent"]
+        C["📋 複製 INSTALL_PROMPT.md 提示詞<br/>填入 5 個必要值貼進 AI 對話視窗"]
         D["🌐 瀏覽器彈窗點擊 Cloudflare Allow 允許授權"]
-        E["🔒 依終端機安全提示貼入 2 個金鑰<br/>(密碼直連 Cloudflare，連 AI 都無須知曉)"]
-        F["🤖 AI 自動建立 D1、打包前端並發布 Workers API<br/>回傳專屬網址: https://xxx.pages.dev"]
-        C --> D --> E --> F
+        E["🤖 AI 背景全自動注入 Secret、建立 D1 並發布<br/>(完全免碰終端機！回傳: https://xxx.pages.dev)"]
+        C --> D --> E
     end
 
     subgraph S3["3. LINE 綁定與正式公開 (約 1 分鐘)"]
@@ -113,10 +112,10 @@ flowchart TD
 
 ---
 
-## 🤖 步驟三：把 3 個設定交給 AI，2 個金鑰在終端機安全輸入！
+## 🤖 步驟三：把 5 個必要值在對話中直接發給 AI，全自動安裝完成！
 
-> 🔒 **極致資安體驗：連 AI 都不需要知道你的密碼！**  
-> 為了杜絕密碼外洩到雲端 AI 對話中，**你準備好的 5 個值中，3 個一般設定可直接貼給 AI，2 個核心金鑰自己保留在記事本**，等 AI 部署到對應步驟時，終端機會提示你直接貼入 Cloudflare，完全不經 AI 之手！
+> 💡 **完全免碰終端機！零指令、對話一鍵全搞定！**  
+> 你不需要在終端機輸入任何繁瑣指令。只要在 AI 對話視窗（如 OpenCode, Claude Code, Antigravity, Cursor）中貼上下方填好的 5 個必要值，AI 就會在背景全自動將金鑰安全注入 Cloudflare，並建置好所有資料庫與網頁！
 
 ---
 
@@ -128,7 +127,7 @@ flowchart TD
 3. **隨時「一鍵乾淨重來」**：萬一哪天你不想用了，或者手滑弄壞了想重新裝，只要**把這個資料夾按右鍵丟進「資源回收筒」**，整台電腦 100% 恢復原狀，完全不留垃圾！
 
 > 💡 **新手建議做法（二選一即可）**：
-> - **做法 A（手動開箱，最推薦）**：在桌面空白處按右鍵 ➔「新增資料夾」（例如取名 `my-booking`）➔ 點進去這個空資料夾，再啟動終端機與 AI。
+> - **做法 A（手動開箱，最推薦）**：在桌面空白處按右鍵 ➔「新增資料夾」（例如取名 `my-booking`）➔ 點進去這個空資料夾，再啟動 AI。
 > - **做法 B（懶人全包）**：直接使用下方的提示詞，提示詞已經寫入目錄檢查指令，AI 會自動幫你在當前位置建立並收納進獨立資料夾！
 
 ---
@@ -136,43 +135,43 @@ flowchart TD
 你可以直接開啟 **[一鍵提示詞範本 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**，或是直接複製下方文字填寫：
 
 ```text
-你好！請幫我安裝 open-booking-line。
+你好！請幫我全自動安裝 open-booking-line。
 
 【目錄安全檢查】：
 請先確認當前目錄是否為 open-booking-line 專案根目錄。
 若不是，請先在當前位置建立獨立資料夾「open-booking-line」（或執行 git clone https://github.com/chingfonlee/open-booking-line.git 並切換進去），確保所有後續指令與檔案皆在該資料夾內執行，嚴禁污染外層目錄。
 
-以下是我的一般設定：
+這是我的 5 個必要值：
+LINE_CHANNEL_ACCESS_TOKEN=（貼上第 ① 項長串密碼）
+LINE_CHANNEL_SECRET=（貼上第 ③ 項 32 碼 Secret）
 ADMIN_NOTIFY_USER_ID=（貼上第 ② 項 U 開頭的 ID）
 LINE_LOGIN_CHANNEL_ID=（貼上第 ④ 項 10 位數字）
 VITE_LIFF_ID=（貼上第 ⑤ 項 LIFF ID）
 STATION_NAME=阿蓮芭樂服務站（寫上你的農場或服務站名字）
 
-我已經在本地另外準備好：
-- LINE_CHANNEL_ACCESS_TOKEN
-- LINE_CHANNEL_SECRET
+🔒 【Zero-Disk 零磁碟落地資安守則】：
+請嚴格遵守專案的 Zero-Disk 安全規範：
+- 將 LINE_CHANNEL_ACCESS_TOKEN 與 LINE_CHANNEL_SECRET 透過記憶體管線（stdin）直接注入 Cloudflare Worker Secret。
+- 嚴禁將上述任何金鑰寫入硬碟檔案（如 .env、wrangler.toml）、Git 倉庫或終端日誌。
 
-🔒 基於安全性考量，我不會把這兩個 Secret 貼進 AI 對話。
-當部署進行到設定 Secret 的步驟時，請於終端機啟動：
-cd packages/backend && npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-cd packages/backend && npx wrangler secret put LINE_CHANNEL_SECRET
-並提示我直接在終端機貼入 Secret。請不要要求我把 Secret 傳給你，也不要寫入 .env 或日誌。
-其餘建置與部署請全自動完成。謝謝！
+請依照專案內的 AGENTS.md 與 DEPLOYMENT_GUIDE.md 規範，全自動完成：
+1. 執行 npx wrangler login 喚起瀏覽器供我授權 Cloudflare（我只需在網頁點擊 Allow）。
+2. Cloudflare D1 資料庫建立與 Schema 初始化（自動取得 database_id）。
+3. 自動推導 ADMIN_LINE_IDS 與 LIFF_ID，並配置 packages/backend/wrangler.toml。
+4. 透過 Zero-Disk 安全管線將 LINE 金鑰寫入 Worker Secrets。
+5. 自動產生 packages/frontend/.env 並編譯發布 Cloudflare Pages 與 Worker API。
+6. 執行連線健康檢查（/api/health），並提供我部署完成的 Pages 網址。
+
+除了 Cloudflare 瀏覽器授權（wrangler login）需要我點擊「Allow」外，其餘所有建置與設定步驟請自行全自動完成，我不需要在終端機輸入任何指令。謝謝！
 ```
 
-### 給使用者的操作指令：
-1. **連結 Cloudflare**：  
-   在電腦打開命令提示字元（CMD 或 PowerShell），輸入：
-   ```bash
-   npx wrangler login
-   ```
-   瀏覽器會自動彈出 Cloudflare 授權視窗，點一下 **「Allow（允許）」** 就完成了！
-2. **交給 AI**：  
-   在終端機打開 AI Agent（例如 Claude Code、Antigravity 或 Cursor），把上面的資料貼給它。
-3. **終端機貼入 Secret**：  
-   當 AI 執行到 Secret 設定時，終端機會出現提示，請依序把第 ① 項 `LINE_CHANNEL_ACCESS_TOKEN` 與第 ③ 項 `LINE_CHANNEL_SECRET` 貼入終端機並按 Enter。
-4. **泡杯咖啡等 2 分鐘**：  
-   AI 會自動在 Cloudflare 上建立雲端資料庫、打包網頁、部署 Worker 後端，完成後會交給你一個專屬的網址（例如：`https://my-farm.pages.dev`）！
+### 給使用者的極簡操作（只需 3 動）：
+1. **在 AI 對話視窗貼上**：  
+   把上方填好的提示詞整段複製，發送給 AI Agent。
+2. **瀏覽器點擊允許 (Allow)**：  
+   AI 執行到雲端登入時，瀏覽器會自動彈出 Cloudflare 授權視窗，點一下 **「Allow（允許）」** 即可。
+3. **泡杯咖啡等 2 分鐘**：  
+   AI 會在背景全自動建立雲端資料庫、注入金鑰、打包網頁、部署 Worker 後端，完成後會交給你一個專屬的網址（例如：`https://my-farm.pages.dev`）！
 
 ---
 

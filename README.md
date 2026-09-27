@@ -76,7 +76,7 @@ line-bot-farm/
 
 | 🎯 您的身分 | 推薦路徑 | 說明 |
 | :--- | :--- | :--- |
-| 👶 **完全不懂程式 / 一般使用者** | **[一鍵 AI 提示詞 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**<br/>搭配 **[新手白話指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)** | **只需準備 5 個必要值**：3 個一般設定交給 AI，2 個安全金鑰由終端機提示直接輸入 Cloudflare（**連 AI 都不用知道你的密碼**），**零指令敲打**！ |
+| 👶 **完全不懂程式 / 一般使用者** | **[一鍵 AI 提示詞 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**<br/>搭配 **[新手白話指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)** | **只需準備 5 個必要值**：直接整段貼進 AI 對話視窗，AI 全自動完成資料庫、金鑰注入與網頁發布，**完全免碰終端機！** |
 | 👨‍💻 **專業軟體工程師 / 開發者** | **下方「開發者手動部署」**<br/>或參閱 **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | 自行透過終端機逐步執行 git clone、wrangler d1、build、deploy 等完整命令列工具鏈。 |
 
 > ⚠️ **新手提醒**：如果您不是要手動修改程式碼，**請直接走「新手 AI 自動部署」路徑**，切勿往下看繁瑣的工程師指令！
@@ -87,16 +87,15 @@ line-bot-farm/
 flowchart TD
     subgraph S1["1. 前置準備 (約 3 分鐘)"]
         A["📁 建立專屬空資料夾 (如 my-booking) 保持桌面乾淨"]
-        B["🔑 依照 BEGINNER_GUIDE.md 取得 5 個必要值<br/>(3 個一般設定 + 2 個安全金鑰)"]
+        B["🔑 依照 BEGINNER_GUIDE.md 取得 5 個必要值<br/>(直接複製貼在記事本備用)"]
         A --> B
     end
 
     subgraph S2["2. 呼叫 AI 全自動部署 (約 2 分鐘)"]
-        C["📋 複製 INSTALL_PROMPT.md 提示詞<br/>填入 3 個一般設定貼給 AI Agent"]
+        C["📋 複製 INSTALL_PROMPT.md 提示詞<br/>填入 5 個必要值貼進 AI 對話視窗"]
         D["🌐 瀏覽器彈窗點擊 Cloudflare Allow 允許授權"]
-        E["🔒 依終端機安全提示貼入 2 個金鑰<br/>(密碼直連 Cloudflare，連 AI 都無須知曉)"]
-        F["🤖 AI 自動建立 D1、打包前端並發布 Workers API<br/>回傳專屬網址: https://xxx.pages.dev"]
-        C --> D --> E --> F
+        E["🤖 AI 背景全自動注入金鑰、建立 D1 並發布 API<br/>(完全免碰終端機！回傳網址: https://xxx.pages.dev)"]
+        C --> D --> E
     end
 
     subgraph S3["3. LINE 綁定與正式公開 (約 1 分鐘)"]

@@ -116,18 +116,20 @@ flowchart TD
 
 ---
 
-### 步驟 3：提供 3 個一般設定給 Agent，2 個安全金鑰留待終端機安全輸入
-使用者請將下列資訊複製並填寫後（或直接使用 [INSTALL_PROMPT.md](INSTALL_PROMPT.md)），發送給 AI Agent：
+### 步驟 3：將 5 個必要值在對話中提供給 Agent
+使用者請將下列資訊複製並填寫後（或直接使用 [INSTALL_PROMPT.md](INSTALL_PROMPT.md)），整段發送給 AI Agent：
 
 ```text
+LINE_CHANNEL_ACCESS_TOKEN=（填入 Messaging API Channel Access Token 長串金鑰）
+LINE_CHANNEL_SECRET=（填入 Messaging API Channel Secret 32 碼）
 ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的服務人員個人 LINE User ID）
 LINE_LOGIN_CHANNEL_ID=（填入 LINE Login Channel ID 數字）
 VITE_LIFF_ID=（填入 LIFF ID，格式如 2000000000-XXXXXXXX）
 STATION_NAME=高雄服務站（選填，預設為高雄服務站）
 ```
 
-> 🔒 **極致 Zero-Prompt 資安防護**：
-> - `LINE_CHANNEL_ACCESS_TOKEN` 與 `LINE_CHANNEL_SECRET` **請勿貼入 AI 對話**。請在本地記事本保留，於後續 Step 5-2 由 Agent 引導您**直接貼入終端機提示**，連 AI 都無須知曉密碼！
+> 🔒 **Agent 自動化與 Zero-Disk 處置說明**：
+> - **Zero-Disk 零磁碟落地**：Agent 接收到金鑰後，**嚴禁寫入本機 `.env`、`wrangler.toml` 或 Git**。在 Step 5-2 必須由記憶體管線（stdin）直接注入 Cloudflare Worker Secrets。
 > - `ADMIN_LINE_IDS`：Agent 自動對齊 `ADMIN_NOTIFY_USER_ID`，無需使用者重複填寫。
 > - `LIFF_ID`：Agent 自動對齊 `VITE_LIFF_ID`，無需使用者重複填寫。
 > - `database_id`：Agent 在 Step 4 自動建立 D1 並讀取注入。
@@ -258,28 +260,19 @@ LIFF_ID = "<REPLACE_WITH_LIFF_ID>"
 ALLOWED_ORIGINS = "https://*.pages.dev"
 ```
 
-#### 5-2 注入 LINE 金鑰至 Worker Secret（Zero-Prompt 安全互動模式）
-> 🔒 **Agent 資安準則**：為防止金鑰洩漏至雲端 AI 對話，**Agent 嚴禁要求使用者在 Chat 中傳送 Secret**。  
-> Agent 應依序於終端機啟動安全輸入，並提示使用者直接貼入終端機：
+#### 5-2 注入 LINE 金鑰至 Worker Secret（Zero-Disk 零磁碟管道模式）
+> 🔒 **Agent 資安準則**：Agent 接收到使用者提供的 Secret 後，**嚴禁寫入 `.env`、`wrangler.toml`、Git 或終端日誌**。  
+> Agent 應於 `packages/backend` 透過標準記憶體管道（stdin）直接注入 Cloudflare Worker Secret，讓使用者全程無需手動碰終端機：
 
-1. Agent 於 `packages/backend` 執行：
+1. Agent 於 `packages/backend` 執行記憶體注入：
 ```bash
 cd packages/backend
-npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-```
-Agent 向使用者提示：📢 **「請將您的 `LINE_CHANNEL_ACCESS_TOKEN` 貼入終端機提示中，按 Enter 送出。」**
-
-2. Agent 接續執行：
-```bash
-npx wrangler secret put LINE_CHANNEL_SECRET
-```
-Agent 向使用者提示：📢 **「請將您的 `LINE_CHANNEL_SECRET`（32 碼）貼入終端機提示中，按 Enter 送出。」**
-
-3. 注入完成後切回根目錄：
-```bash
+# 透過管道直接注入，不落地於磁碟：
+echo "$LINE_CHANNEL_ACCESS_TOKEN" | npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+echo "$LINE_CHANNEL_SECRET" | npx wrangler secret put LINE_CHANNEL_SECRET
 cd ../..
 ```
-*（若使用者身處於無人值守之 CI/CD 自動化管線，才可使用記憶體環境變數管道 `echo "$SECRET" | npx wrangler secret put ...` 方式注入）*。
+*（在 Windows PowerShell 或跨平臺環境下，Agent 亦可透過原生 Node 子程序傳遞 stdin 管道完成注入，確保密鑰不在檔案中留存）*。
 
 #### 5-3 寫入前端 `.env`
 Agent 建立 `packages/frontend/.env`：
