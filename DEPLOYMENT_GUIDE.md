@@ -139,6 +139,17 @@ STATION_NAME=高雄服務站（選填，預設為高雄服務站）
 
 > **Agent 執行環境要求**：Windows PowerShell / macOS Terminal / Linux Bash。
 
+### Step 0: 工作目錄沙盒檢查 (Workspace Directory Isolation)
+Agent 在開始執行任何操作前，**必須先檢查當前工作目錄**：
+- 若當前目錄尚未包含專案原始碼（例如使用者在桌面或家目錄直接啟動 Agent），Agent 應主動建立獨立資料夾並切換進入：
+  ```bash
+  git clone https://github.com/chingfonlee/open-booking-line.git
+  cd open-booking-line
+  ```
+- **核心準則**：確保所有依賴套件（`node_modules`）、編譯產物（`dist`）與快取（`.wrangler`）完全收納於專屬目錄內，**嚴禁於外層目錄散落檔案或污染使用者環境**。
+
+---
+
 ### Step 1: 環境檢查與自動安裝
 Agent 執行以下指令檢查本機工具鏈：
 ```bash

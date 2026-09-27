@@ -10,6 +10,7 @@
 1. **先讀規範再動工 (Read Before Modifying)**：
    - 進行任何架構或功能修改前，優先閱讀 [`DEVELOPMENT_SOP.md`](DEVELOPMENT_SOP.md) 與 [`SECURITY_BASELINE.md`](SECURITY_BASELINE.md)。
    - 針對本專案特定技術實作，參閱 [`SECURITY_PROFILE.md`](SECURITY_PROFILE.md) 與 [`ARCHITECTURE.md`](ARCHITECTURE.md)。
+   - 確保所有建置與指令皆於專屬專案目錄內執行，嚴禁在使用者外層目錄（如桌面、個人目錄）散落檔案或污染環境。
 2. **絕不私自降級安全基線 (Never Weaken Security Baselines)**：
    - 未經人類明確許可，不得為求「跑通測試」或「快速部署」而關閉安全檢查、將 Fail-Closed 改為 Fail-Open、放寬 CORS 或繞過驗簽。
 3. **零磁碟憑證託管與無對話洩漏 (Zero-Disk & Zero-Prompt Secrets)**：
