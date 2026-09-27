@@ -65,7 +65,9 @@ flowchart TD
 1. **[LINE 官方帳號 (LINE Official Account)](https://manager.line.biz/)**：發送預約推播通知與放置圖文選單的機器人，可免費線上申請（每月 200 則免費推播）。
 2. **[LINE Developers 開發者帳號](https://developers.line.biz/console/)**：用你平常用的個人 LINE 帳號直接登入即可（免審核），用來取得 5 個必要值與 LIFF 預約門牌號碼。
 3. **[Cloudflare 帳號](https://dash.cloudflare.com/sign-up)**：全球雲端平台，託管預約資料庫與網頁。支援以 Google 帳號一鍵免費登入（完全免綁信用卡）。
-4. **一個 AI Coding Agent**：你的專屬雲端工程師（例如 Claude Code、Antigravity、Cursor 等），負責替你自動跑完全部安裝程序。
+4. **一個 AI Coding Agent**：你的專屬雲端工程師，負責替你自動跑完全部安裝程序。
+   - 🎁 **完全免費 0 元首選**：推薦使用 **OpenCode**（搭配 **Zen 免費帳號 + Muse spark free 1.3** 免費模型，完全免花一毛錢！）。
+   - ⚡ **其他常見 AI 工具**：Google Antigravity、Claude Code、Cursor、Windsurf 等皆可。
 
 ---
 

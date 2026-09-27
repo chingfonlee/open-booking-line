@@ -3,7 +3,7 @@
 > 💡 **使用說明**：  
 > 如果您是完全零程式基礎的新手，請勿手動執行任何複雜指令！  
 > 只要在 [新手圖文指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md) 中準備好 **5 個必要值**：  
-> **3 個一般設定**直接複製貼給 AI，**2 個敏感金鑰**自己留在本機，待部署時由終端機提示直接輸入 Cloudflare Secret。  
+> **3 個一般設定**直接複製貼給 AI Agent（推薦完全免費 0 元首選：**OpenCode 搭配 Zen 免費帳號 + Muse spark free 1.3**，或 Antigravity、Claude Code、Cursor），**2 個敏感金鑰**自己留在本機，待部署時由終端機提示直接輸入 Cloudflare Secret。  
 > 🔒 **真正的 Agent-Safe 資安體驗：連 AI 都不需要知道您的密碼！**
 
 ---

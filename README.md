@@ -68,7 +68,7 @@ line-bot-farm/
 | **1. LINE 官方帳號 (LINE OA)** | 您的**「預約推播小秘書」**。用來發送預約成功的推播通知給幹部，並可在官方帳號聊天室放置圖文選單讓農友點擊秒開預約。 | 🔗 **[LINE Official Account Manager 後台](https://manager.line.biz/)**<br/>（可用個人 LINE 免費線上申請，每月享有免費 200 則推播額度） |
 | **2. LINE 開發者帳號 (LINE Developers)** | 取得串接代碼的**「金鑰控制台」**。用來建立機器人頻道、啟用 Webhook、以及取得 5 個必要值與 LIFF 預約門牌號碼。 | 🔗 **[LINE Developers Console](https://developers.line.biz/console/)**<br/>（用平常用的個人 LINE 帳號直接登入即可，免額外審核） |
 | **3. Google 帳號 (註冊 Cloudflare)** | 免費開通全球最大的**「24 小時雲端大腦」**。託管預約資料庫 (D1) 與前端網頁 (Pages)，每個月享有海量免費額度，完全不需要綁定信用卡！ | 🔗 **[Cloudflare 免費註冊](https://dash.cloudflare.com/sign-up)**<br/>（支援使用 Google 帳號一鍵登入） |
-| **4. 一個能執行的 AI Coding Agent** | 您的**「專屬雲端工程師」**。負責替您執行所有指令、建立資料庫、打包網頁與發布上線，完全不需要您手動寫代碼！ | 推薦任選其一使用：<br/>• **Claude Code** (Anthropic 終端 AI)<br/>• **Antigravity** (Google 智慧助理)<br/>• **Cursor / Windsurf** (AI 整合編輯器)<br/>*(電腦需安裝 Node.js >= 22 LTS 與 Git，AI 通常會自動偵測)* |
+| **4. 一個能執行的 AI Coding Agent** | 您的**「專屬雲端工程師」**。負責替您執行所有指令、建立資料庫、打包網頁與發布上線，完全不需要手動寫代碼！ | 推薦任選其一（皆可完成）：<br/>🎁 **完全免費 0 元首選**：<br/>• **OpenCode**（搭配 **Zen 免費帳號 + Muse spark free 1.3** 免費模型，完全免花錢！）<br/>• **Google Antigravity**（內建智慧助理）<br/>⚡ **其他常見 AI 工具**：<br/>• **Claude Code** / **Cursor** / **Windsurf**<br/>*(電腦需安裝 Node.js >= 22 LTS 與 Git，AI 通常會自動偵測)* |
 
 ---
 
