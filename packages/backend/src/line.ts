@@ -630,10 +630,12 @@ export async function verifyLineSignature(
 ): Promise<boolean> {
   if (!rawBody || !signature || !channelSecret) return false;
   try {
+    const cleanSecret = channelSecret.trim();
+    const cleanSignature = signature.trim();
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
       'raw',
-      encoder.encode(channelSecret),
+      encoder.encode(cleanSecret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
@@ -644,7 +646,7 @@ export async function verifyLineSignature(
       encoder.encode(rawBody)
     );
     const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
-    return constantTimeEqual(computedSignature, signature);
+    return constantTimeEqual(computedSignature, cleanSignature);
   } catch (err) {
     console.error('Failed to verify LINE signature:', err);
     return false;

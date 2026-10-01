@@ -574,7 +574,7 @@ app.post('/api/line/webhook', async (c) => {
       return c.text('OK', 200);
     }
 
-    const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
+    const token = c.env.LINE_CHANNEL_ACCESS_TOKEN?.trim();
     if (!token) {
       console.error('LINE_CHANNEL_ACCESS_TOKEN is not configured');
       return c.text('OK', 200);
