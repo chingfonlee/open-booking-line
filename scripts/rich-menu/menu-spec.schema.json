@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineRichMenuSpec",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "canvas",
+    "name",
+    "chatBarText",
+    "theme",
+    "buttons"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "const": 2500 },
+        "height": { "type": "integer", "const": 1686 }
+      }
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "chatBarText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 14
+    },
+    "theme": {
+      "type": "object",
+      "required": ["primaryColor", "secondaryColor", "textColor"],
+      "properties": {
+        "primaryColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "secondaryColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "textColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      }
+    },
+    "buttons": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "subtitle", "bounds", "action"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "maxLength": 50 },
+          "subtitle": { "type": "string", "maxLength": 100 },
+          "bounds": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 0, "maximum": 2500 },
+              "y": { "type": "integer", "minimum": 0, "maximum": 1686 },
+              "width": { "type": "integer", "minimum": 1, "maximum": 2500 },
+              "height": { "type": "integer", "minimum": 1, "maximum": 1686 }
+            }
+          },
+          "action": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "enum": ["uri", "message", "postback"] },
+              "uri": { "type": "string", "format": "uri" },
+              "text": { "type": "string", "maxLength": 300 },
+              "data": { "type": "string", "maxLength": 300 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

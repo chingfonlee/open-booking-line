@@ -8,9 +8,9 @@
 
 ## Current Status (當前狀態)
 
-* **Current Task**: `Ep02-1 — Spec + Builder`
+* **Current Task**: `Ep02-2 — Deterministic Renderer`
 * **Episode Status**: `In Progress`
-* **Next Task**: `Ep02-1 — Spec + Builder`
+* **Next Task**: `Ep02-2 — Deterministic Renderer`
 
 ---
 
@@ -19,8 +19,8 @@
 | Task ID | 名稱 | 狀態 | 負責 Agent / 交付紀錄 |
 | :--- | :--- | :--- | :--- |
 | **Ep02-0** | Discovery / Preflight | **Complete** | 通過目標解析與前置檢測，產出 targets.json，測試 100% PASS |
-| **Ep02-1** | Spec + Builder | **Ready** | 可立即接續執行規格定義與幾何產生器 |
-| **Ep02-2** | Deterministic Renderer | **Pending** | 等待 Ep02-1 結案 |
+| **Ep02-1** | Spec + Builder | **Complete** | 實作 menu-spec Schema、幾何計算與 LINE API 轉換器，測試 100% PASS |
+| **Ep02-2** | Deterministic Renderer | **Ready** | 可立即接續執行確定性圖形渲染器實作 |
 | **Ep02-3** | Preview + Approval | **Pending** | 等待 Ep02-2 結案 |
 | **Ep02-4** | Safe Publisher | **Pending** | 等待 Ep02-3 結案 |
 | **Ep02-5** | Acceptance / Freeze | **Pending** | 等待 Ep02-4 結案 |
@@ -37,6 +37,16 @@
   * **進度查詢詞**：`查詢預約`（來源：`packages/backend/src/index.ts` lines 603-611）
   * **遠端預檢**：記錄為 `requires-operation-token`（未洩漏任何金鑰）
 * **測試套件**：`tests/rich-menu/discovery.test.mjs`（5 項測試 100% PASS）
+
+### Ep02-1:
+* **產物路徑**：
+  * `scripts/rich-menu/menu-spec.schema.json`（規格 Schema 定義）
+  * `scripts/rich-menu/builder.mjs`（幾何產生器與 LINE 轉換器）
+* **驗證成果**：
+  * **確定性幾何**：固定 2500×1686 雙分區佈局（左 1250×1686 預約，右 1250×1686 查詢），無重疊、無越界。
+  * **嚴格欄位防禦**：`chatBarText` 嚴格限制 $\le 14$ 字，`name` 限制 $\le 300$ 字。
+  * **LINE 物件轉換**：符合 LINE 官方 `POST /v2/bot/richmenu` 規格要求。
+* **測試套件**：`tests/rich-menu/builder.test.mjs`（6 項測試 100% PASS）
 
 ---
 
