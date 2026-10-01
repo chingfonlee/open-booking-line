@@ -8,9 +8,9 @@
 
 ## Current Status (當前狀態)
 
-* **Current Task**: `Ep02-2 — Deterministic Renderer`
+* **Current Task**: `Ep02-3 — Preview + Approval`
 * **Episode Status**: `In Progress`
-* **Next Task**: `Ep02-2 — Deterministic Renderer`
+* **Next Task**: `Ep02-3 — Preview + Approval`
 
 ---
 
@@ -20,8 +20,8 @@
 | :--- | :--- | :--- | :--- |
 | **Ep02-0** | Discovery / Preflight | **Complete** | 通過目標解析與前置檢測，產出 targets.json，測試 100% PASS |
 | **Ep02-1** | Spec + Builder | **Complete** | 實作 menu-spec Schema、幾何計算與 LINE API 轉換器，測試 100% PASS |
-| **Ep02-2** | Deterministic Renderer | **Ready** | 可立即接續執行確定性圖形渲染器實作 |
-| **Ep02-3** | Preview + Approval | **Pending** | 等待 Ep02-2 結案 |
+| **Ep02-2** | Deterministic Renderer | **Complete** | 本地確定性 SVG + Sharp 渲染引擎（2500×1686, 157KB $\le$ 1MB），測試 100% PASS |
+| **Ep02-3** | Preview + Approval | **Ready** | 可立即接續執行預覽展示與人類授權門禁鎖 |
 | **Ep02-4** | Safe Publisher | **Pending** | 等待 Ep02-3 結案 |
 | **Ep02-5** | Acceptance / Freeze | **Pending** | 等待 Ep02-4 結案 |
 
@@ -47,6 +47,18 @@
   * **嚴格欄位防禦**：`chatBarText` 嚴格限制 $\le 14$ 字，`name` 限制 $\le 300$ 字。
   * **LINE 物件轉換**：符合 LINE 官方 `POST /v2/bot/richmenu` 規格要求。
 * **測試套件**：`tests/rich-menu/builder.test.mjs`（6 項測試 100% PASS）
+
+### Ep02-2:
+* **產物路徑**：
+  * `scripts/rich-menu/renderer.mjs`（確定性本地 SVG + Sharp 渲染引擎）
+  * `.booking/rich-menu/preview.png`（實體輸出圖檔，受 `.gitignore` 保護）
+* **驗證成果**：
+  * **確定性像素與畫布**：解析度精確為 $2500 \times 1686$。
+  * **極致輕量壓縮**：檔案大小僅 **157.4 KB**（161,172 bytes），遠低於 LINE 1 MB 限制（上限 1,048,576 bytes）。
+  * **字型與視覺設計**：支援繁體中文（Noto Sans TC / 微軟正黑體）、清晰向量日曆與放大鏡圖標、行動端大字按鈕。
+  * **二進位雜湊確定性**：相同輸入重複渲染之 SHA-256 二進位完全一致。
+* **架構決策**：`DECISIONS.md` 之 `ADR-EP02-006`。
+* **測試套件**：`tests/rich-menu/renderer.test.mjs`（4 項測試 100% PASS）
 
 ---
 
