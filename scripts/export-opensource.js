@@ -77,7 +77,7 @@ function copyAndSanitize(srcDir, destDir) {
       }
 
       if (srcPath.endsWith('line.ts') || srcPath.endsWith('index.ts')) {
-        content = content.replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX');
+        content = content.replace(/\b\d{10}-[A-Za-z0-9_-]{8}\b/g, '2000000000-XXXXXXXX');
       }
 
       if (srcPath.endsWith('package.json') && path.dirname(srcPath) === ROOT_DIR) {
@@ -86,10 +86,10 @@ function copyAndSanitize(srcDir, destDir) {
 
       if (srcPath.endsWith('.md')) {
         content = content
-          .replace(/U7c0c955[a-zA-Z0-9.]+/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
-          .replace(/2011709076-09FdfkjH/g, '2000000000-XXXXXXXX')
-          .replace(/2011709076/g, '2000000000')
-          .replace(/9ab7d6d6-6e29-421b-8674-6e6bf0d3e770/g, 'your-cloudflare-d1-database-id')
+          .replace(/\bU[0-9a-fA-F]{32}\b/g, 'Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+          .replace(/\b\d{10}-[A-Za-z0-9_-]{8}\b/g, '2000000000-XXXXXXXX')
+          .replace(/\b2\d{9}\b/g, '2000000000')
+          .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, 'your-cloudflare-d1-database-id')
           .replace(/chingfonlee\/biz-resource-reservation/g, 'chingfonlee/open-booking-line')
           .replace(/biz-resource-reservation/g, 'open-booking-line')
           .replace(/line-bot-farm\//g, 'open-booking-line/');

@@ -127,6 +127,18 @@ export async function deleteRemoteRichMenu(token, richMenuId, customFetch = line
   return true;
 }
 
+export async function getRemoteRichMenu(token, richMenuId, customFetch = lineFetch) {
+  const res = await customFetch(`/richmenu/${richMenuId}`, token, {
+    method: 'GET'
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`LINE_GET_MENU_FAILED: HTTP ${res.status} - ${errorText}`);
+  }
+  return await res.json();
+}
+
 /**
  * Main Publisher Execution
  */
@@ -175,19 +187,25 @@ export async function runPublisher(options = {}) {
   // Step 4: Atomic Creation
   const newRichMenuId = await createRemoteRichMenu(token, lineObj, customFetch);
 
-  // Pre-persist staging state to ensure interrupted runs can be tracked and rolled back
+  // Pre-persist staging state to ensure interrupted runs can be tracked and rolled back (Fail-Closed)
+  const stagingData = {
+    status: 'deploying',
+    pendingMenuId: newRichMenuId,
+    previousMenuId: previousDefaultMenuId,
+    ownedMenuIds: [newRichMenuId],
+    menuName: spec.name,
+    specHash: approval.specHash,
+    imageHash: approval.imageHash,
+    startedAt: new Date().toISOString()
+  };
+
   try {
-    const stagingData = {
-      status: 'deploying',
-      pendingMenuId: newRichMenuId,
-      previousMenuId: previousDefaultMenuId,
-      menuName: spec.name,
-      specHash: approval.specHash,
-      imageHash: approval.imageHash,
-      startedAt: new Date().toISOString()
-    };
     fs.writeFileSync(managedPath, JSON.stringify(stagingData, null, 2), 'utf8');
-  } catch {}
+  } catch (persistErr) {
+    // If staging state cannot be persisted, fail closed immediately and clean up remote menu
+    await deleteRemoteRichMenu(token, newRichMenuId, customFetch).catch(() => {});
+    throw new Error(`STAGING_PERSIST_FAILED: Could not persist deployment staging state: ${persistErr.message}`);
+  }
 
   let defaultSwitched = false;
 
@@ -195,9 +213,21 @@ export async function runPublisher(options = {}) {
     // Step 5: Upload Image
     await uploadRemoteRichMenuImage(token, newRichMenuId, imageBuffer, 'image/png', customFetch);
 
+    // Step 5.5: Pre-switch Remote Verification (Ensure menu exists remotely before activating)
+    await getRemoteRichMenu(token, newRichMenuId, customFetch);
+
     // Step 6: Set New Default
-    await setRemoteDefaultRichMenu(token, newRichMenuId, customFetch);
-    defaultSwitched = true;
+    try {
+      await setRemoteDefaultRichMenu(token, newRichMenuId, customFetch);
+      defaultSwitched = true;
+    } catch (switchErr) {
+      // If switch call threw (e.g. timeout / connection dropped), probe if LINE applied it anyway
+      const probeDefault = await getCurrentRemoteDefault(token, customFetch).catch(() => null);
+      if (probeDefault === newRichMenuId) {
+        defaultSwitched = true;
+      }
+      throw switchErr;
+    }
 
     // Step 7: Verify Default
     const verifiedDefault = await getCurrentRemoteDefault(token, customFetch);
@@ -210,6 +240,7 @@ export async function runPublisher(options = {}) {
       status: 'active',
       currentMenuId: newRichMenuId,
       previousMenuId: previousDefaultMenuId,
+      ownedMenuIds: [newRichMenuId],
       menuName: spec.name,
       chatBarText: spec.chatBarText,
       specHash: approval.specHash,
@@ -227,24 +258,52 @@ export async function runPublisher(options = {}) {
       managedData
     };
   } catch (err) {
-    // If default was switched before failure, restore previous default before deleting menu
-    if (defaultSwitched) {
+    let defaultRestored = false;
+    let restorationError = null;
+
+    // Check if default was switched or if it is currently pointing to newRichMenuId
+    let needsRevert = defaultSwitched;
+    if (!needsRevert) {
+      const probeCurrent = await getCurrentRemoteDefault(token, customFetch).catch(() => null);
+      if (probeCurrent === newRichMenuId) {
+        needsRevert = true;
+      }
+    }
+
+    // If default was switched, attempt restoring previous default
+    if (needsRevert) {
       try {
         if (previousDefaultMenuId) {
           await setRemoteDefaultRichMenu(token, previousDefaultMenuId, customFetch);
         } else {
           await deleteRemoteDefaultRichMenu(token, customFetch);
         }
+
+        // Verify restoration actually succeeded
+        const restoredCheck = await getCurrentRemoteDefault(token, customFetch).catch(() => null);
+        const expectedTarget = previousDefaultMenuId || null;
+        if (restoredCheck === expectedTarget) {
+          defaultRestored = true;
+        } else {
+          restorationError = `Restoration mismatch: expected ${expectedTarget}, got ${restoredCheck}`;
+        }
       } catch (restoreErr) {
+        restorationError = restoreErr.message;
         console.error('[Publisher Recovery] Failed to restore previous default:', restoreErr.message);
       }
+    } else {
+      defaultRestored = true; // Default was never changed
     }
 
-    // Attempt cleanup of failed orphaned menu
-    try {
-      await deleteRemoteRichMenu(token, newRichMenuId, customFetch);
-    } catch {
-      // Ignore cleanup error
+    // Attempt cleanup of failed orphaned menu ONLY if it is confirmed NOT to be the active default
+    if (defaultRestored) {
+      try {
+        await deleteRemoteRichMenu(token, newRichMenuId, customFetch);
+      } catch {
+        // Ignore cleanup error
+      }
+    } else {
+      console.error(`[Publisher Recovery] Refusing to delete ${newRichMenuId} because previous default could not be confirmed restored.`);
     }
 
     // Record failure in managed state
@@ -253,7 +312,8 @@ export async function runPublisher(options = {}) {
         status: 'failed',
         failedMenuId: newRichMenuId,
         previousMenuId: previousDefaultMenuId,
-        defaultRestored: defaultSwitched,
+        defaultRestored,
+        restorationError,
         error: err.message,
         failedAt: new Date().toISOString()
       };

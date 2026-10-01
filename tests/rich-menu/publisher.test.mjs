@@ -108,6 +108,9 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
       if (endpoint === '/richmenu' && options.method === 'POST') {
         return { ok: true, status: 200, json: async () => ({ richMenuId: 'richmenu-new-123' }) };
       }
+      if (endpoint.startsWith('/richmenu/') && options.method === 'GET') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'richmenu-new-123' }) };
+      }
       if (endpoint.includes('/content') && options.method === 'POST') {
         return { ok: true, status: 200 };
       }
@@ -145,8 +148,8 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
       apiCalls.push({ endpoint, method: options.method || 'GET' });
       if (endpoint === '/richmenu/validate') return { ok: true, status: 200 };
       if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
-        const isVerify = apiCalls.filter(c => c.endpoint === '/user/all/richmenu' && c.method === 'GET').length > 1;
-        if (isVerify) {
+        const getCount = apiCalls.filter(c => c.endpoint === '/user/all/richmenu' && c.method === 'GET').length;
+        if (getCount === 2) {
           throw new Error('NETWORK_TIMEOUT_DURING_VERIFICATION');
         }
         return { ok: true, status: 200, json: async () => ({ richMenuId: 'old-default-111' }) };
@@ -154,6 +157,7 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
       if (endpoint === '/richmenu' && options.method === 'POST') {
         return { ok: true, status: 200, json: async () => ({ richMenuId: 'new-menu-222' }) };
       }
+      if (endpoint.startsWith('/richmenu/') && options.method === 'GET') return { ok: true, status: 200, json: async () => ({}) };
       if (endpoint.includes('/content') && options.method === 'POST') return { ok: true, status: 200 };
       if (endpoint === '/user/all/richmenu/new-menu-222' && options.method === 'POST') return { ok: true, status: 200 };
       if (endpoint === '/user/all/richmenu/old-default-111' && options.method === 'POST') return { ok: true, status: 200 };
@@ -184,6 +188,85 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
     const managed = JSON.parse(fs.readFileSync(managedPath, 'utf8'));
     assert.equal(managed.status, 'failed');
     assert.equal(managed.defaultRestored, true);
+  });
+
+  await t.test('5. should recover previous default if timeout occurs DURING default switch request', async () => {
+    const apiCalls = [];
+    const mockFetch = async (endpoint, token, options = {}) => {
+      apiCalls.push({ endpoint, method: options.method || 'GET' });
+      if (endpoint === '/richmenu/validate') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
+        const isProbeOrVerify = apiCalls.filter(c => c.endpoint === '/user/all/richmenu' && c.method === 'GET').length > 1;
+        // Probe check returns the new menu (meaning LINE server applied it despite client timeout!)
+        return { ok: true, status: 200, json: async () => ({ richMenuId: isProbeOrVerify ? 'new-menu-333' : 'old-default-333' }) };
+      }
+      if (endpoint === '/richmenu' && options.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'new-menu-333' }) };
+      }
+      if (endpoint.startsWith('/richmenu/') && options.method === 'GET') return { ok: true, status: 200, json: async () => ({}) };
+      if (endpoint.includes('/content') && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu/new-menu-333' && options.method === 'POST') {
+        throw new Error('TIMEOUT_DURING_SWITCH');
+      }
+      if (endpoint === '/user/all/richmenu/old-default-333' && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/richmenu/new-menu-333' && options.method === 'DELETE') return { ok: true, status: 200 };
+      throw new Error(`Unhandled mock endpoint: ${endpoint} ${options.method}`);
+    };
+
+    await assert.rejects(
+      async () => {
+        await runPublisher({
+          dryRun: false,
+          token: 'test-token',
+          specPath,
+          previewPath,
+          approvalPath,
+          managedPath,
+          customFetch: mockFetch
+        });
+      },
+      /TIMEOUT_DURING_SWITCH/
+    );
+
+    // Verify recovery was triggered and old default restored
+    assert.ok(apiCalls.some(c => c.endpoint === '/user/all/richmenu/old-default-333' && c.method === 'POST'));
+  });
+
+  await t.test('6. should fail-closed and clean up menu if staging state cannot be persisted', async () => {
+    const apiCalls = [];
+    const mockFetch = async (endpoint, token, options = {}) => {
+      apiCalls.push({ endpoint, method: options.method || 'GET' });
+      if (endpoint === '/richmenu/validate') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: null }) };
+      }
+      if (endpoint === '/richmenu' && options.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'new-menu-fail-stage' }) };
+      }
+      if (endpoint === '/richmenu/new-menu-fail-stage' && options.method === 'DELETE') return { ok: true, status: 200 };
+      throw new Error(`Unhandled mock endpoint: ${endpoint} ${options.method}`);
+    };
+
+    // Provide invalid path to trigger writeFileSync error
+    const invalidManagedPath = path.join(fixtureDir, 'non-existent-subfolder/managed.json');
+
+    await assert.rejects(
+      async () => {
+        await runPublisher({
+          dryRun: false,
+          token: 'test-token',
+          specPath,
+          previewPath,
+          approvalPath,
+          managedPath: invalidManagedPath,
+          customFetch: mockFetch
+        });
+      },
+      /STAGING_PERSIST_FAILED/
+    );
+
+    // Verify newly created menu was cleaned up
+    assert.ok(apiCalls.some(c => c.endpoint === '/richmenu/new-menu-fail-stage' && c.method === 'DELETE'));
   });
 
   t.after(() => {
