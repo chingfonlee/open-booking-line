@@ -8,9 +8,9 @@
 
 ## Current Status (當前狀態)
 
-* **Current Task**: `Ep02-4 — Safe Publisher`
+* **Current Task**: `Ep02-5 — Acceptance / Freeze`
 * **Episode Status**: `In Progress`
-* **Next Task**: `Ep02-4 — Safe Publisher`
+* **Next Task**: `Ep02-5 — Acceptance / Freeze`
 
 ---
 
@@ -22,8 +22,8 @@
 | **Ep02-1** | Spec + Builder | **Complete** | 實作 menu-spec Schema、幾何計算與 LINE API 轉換器，測試 100% PASS |
 | **Ep02-2** | Deterministic Renderer | **Complete** | 本地確定性 SVG + Sharp 渲染引擎（2500×1686, 157KB $\le$ 1MB），測試 100% PASS |
 | **Ep02-3** | Preview + Approval | **Complete** | 預覽產生、人類明確授權，防偽 SHA-256 門禁鎖鎖定，測試 100% PASS |
-| **Ep02-4** | Safe Publisher | **Ready** | 可立即接續執行具備 Rollback 之安全發布器 |
-| **Ep02-5** | Acceptance / Freeze | **Pending** | 等待 Ep02-4 結案 |
+| **Ep02-4** | Safe Publisher | **Complete** | 實作 Dry-run 模擬預檢、原子發布管線與三情境 Rollback 還原器，測試 100% PASS |
+| **Ep02-5** | Acceptance / Freeze | **Ready** | 可立即接續執行全鏈路驗證、實機核對與版本凍結 |
 
 ---
 
@@ -71,6 +71,20 @@
     * `imageHash`: `sha256:b0f4751e903792e129e3ddc3091ba20115ae97e24d9d0705a7dafd88cdb1725a`
   * **Fail-Closed 門禁阻斷防護**：缺少授權檔或任一 Hash 遭改動 1 個 byte 立即阻斷發布。
 * **測試套件**：`tests/rich-menu/approval.test.mjs`（5 項測試 100% PASS）
+
+### Ep02-4:
+* **產物路徑**：
+  * `scripts/rich-menu/publisher.mjs`（安全發布器，支援 `--dry-run` 乾跑預檢）
+  * `scripts/rich-menu/rollback.mjs`（三情境 Rollback 還原腳本）
+* **驗證成果**：
+  * **Dry-run 預檢隔離**：乾跑模式完整驗算 Hash、呼叫 LINE 規格驗簽並查詢原選單，確保零外部資源建立與零修改。
+  * **原子發布管線**：建立選單 ➔ 上傳圖檔 ➔ 設為預設 ➔ 遠端驗收 ID ➔ 寫入 `.booking/rich-menu/managed.json`。
+  * **三情境 Rollback**：
+    * 情境 A：原先為 API 預設選單 ➔ 回滾綁定原先舊選單 ID。
+    * 情境 B / C：原先為 OA Manager 手動選單或無選單 ➔ 解除 API 預設綁定並刪除新建孤兒選單。
+* **測試套件**：
+  * `tests/rich-menu/publisher.test.mjs`（3 項測試 100% PASS）
+  * `tests/rich-menu/rollback.test.mjs`（2 項測試 100% PASS）
 
 ---
 
