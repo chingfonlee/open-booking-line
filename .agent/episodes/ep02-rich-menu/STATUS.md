@@ -8,9 +8,9 @@
 
 ## Current Status (當前狀態)
 
-* **Current Task**: `Ep02-3 — Preview + Approval`
+* **Current Task**: `Ep02-4 — Safe Publisher`
 * **Episode Status**: `In Progress`
-* **Next Task**: `Ep02-3 — Preview + Approval`
+* **Next Task**: `Ep02-4 — Safe Publisher`
 
 ---
 
@@ -21,8 +21,8 @@
 | **Ep02-0** | Discovery / Preflight | **Complete** | 通過目標解析與前置檢測，產出 targets.json，測試 100% PASS |
 | **Ep02-1** | Spec + Builder | **Complete** | 實作 menu-spec Schema、幾何計算與 LINE API 轉換器，測試 100% PASS |
 | **Ep02-2** | Deterministic Renderer | **Complete** | 本地確定性 SVG + Sharp 渲染引擎（2500×1686, 157KB $\le$ 1MB），測試 100% PASS |
-| **Ep02-3** | Preview + Approval | **Ready** | 可立即接續執行預覽展示與人類授權門禁鎖 |
-| **Ep02-4** | Safe Publisher | **Pending** | 等待 Ep02-3 結案 |
+| **Ep02-3** | Preview + Approval | **Complete** | 預覽產生、人類明確授權，防偽 SHA-256 門禁鎖鎖定，測試 100% PASS |
+| **Ep02-4** | Safe Publisher | **Ready** | 可立即接續執行具備 Rollback 之安全發布器 |
 | **Ep02-5** | Acceptance / Freeze | **Pending** | 等待 Ep02-4 結案 |
 
 ---
@@ -59,6 +59,18 @@
   * **二進位雜湊確定性**：相同輸入重複渲染之 SHA-256 二進位完全一致。
 * **架構決策**：`DECISIONS.md` 之 `ADR-EP02-006`。
 * **測試套件**：`tests/rich-menu/renderer.test.mjs`（4 項測試 100% PASS）
+
+### Ep02-3:
+* **產物路徑**：
+  * `scripts/rich-menu/approval.mjs`（預覽生成、授權校驗與門禁鎖模組）
+  * `.booking/rich-menu/approval.json`（門禁授權標記檔，受 `.gitignore` 保護）
+* **驗證成果**：
+  * **人類授權確認**：使用者已明確檢視預覽並回覆確認核准。
+  * **防偽雜湊鎖定**：
+    * `specHash`: `sha256:411530f96d355196ff3d66bbed2170a3fe1cf180f9a93955367cc203145245b1`
+    * `imageHash`: `sha256:b0f4751e903792e129e3ddc3091ba20115ae97e24d9d0705a7dafd88cdb1725a`
+  * **Fail-Closed 門禁阻斷防護**：缺少授權檔或任一 Hash 遭改動 1 個 byte 立即阻斷發布。
+* **測試套件**：`tests/rich-menu/approval.test.mjs`（5 項測試 100% PASS）
 
 ---
 
