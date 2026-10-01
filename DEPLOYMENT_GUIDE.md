@@ -112,7 +112,7 @@ flowchart TD
    - **Endpoint URL**：先暫填 `https://example.com`（待部署完成後再更新為真實 Pages 網址）
    - **Scopes**：勾選 `profile` 與 `openid`
    - **Bot prompt**：選擇 `Normal`
-5. 點擊 **Add** 送出，在清單中複製 **LIFF ID**（格式如 `2011709076-xxxxxxxx`）➡️ **`VITE_LIFF_ID`**。
+5. 點擊 **Add** 送出，在清單中複製 **LIFF ID**（格式如 `2000000000-XXXXXXXX`）➡️ **`VITE_LIFF_ID`**。
 
 ---
 

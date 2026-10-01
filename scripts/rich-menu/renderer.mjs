@@ -31,9 +31,33 @@ export function generateMenuSvg(menuSpec) {
   const leftBtn = menuSpec.buttons.find(b => b.id === 'booking') || menuSpec.buttons[0];
   const rightBtn = menuSpec.buttons.find(b => b.id === 'query') || menuSpec.buttons[1];
 
+  // Derive geometry dynamically from spec button bounds (shared geometry)
+  const b1 = leftBtn?.bounds || { x: 0, y: 0, width: 1250, height: CANVAS_HEIGHT };
+  const b2 = rightBtn?.bounds || { x: 1250, y: 0, width: 1250, height: CANVAS_HEIGHT };
+
   const primaryColor = menuSpec.theme?.primaryColor || '#14532d';
   const secondaryColor = menuSpec.theme?.secondaryColor || '#0f172a';
   const stationName = menuSpec.name?.replace('預設選單 - ', '') || '服務站';
+
+  const card1MarginX = Math.round(b1.width * 0.08);
+  const card1X = b1.x + card1MarginX;
+  const card1Width = b1.width - (card1MarginX * 2);
+  const card1Y = b1.y + 240;
+  const card1Height = b1.height - 406;
+  const center1X = b1.x + Math.round(b1.width / 2);
+
+  const card2MarginX = Math.round(b2.width * 0.08);
+  const card2X = b2.x + card2MarginX;
+  const card2Width = b2.width - (card2MarginX * 2);
+  const card2Y = b2.y + 240;
+  const card2Height = b2.height - 406;
+  const center2X = b2.x + Math.round(b2.width / 2);
+
+  const badge1X = b1.x + 120;
+  const badge1TextX = b1.x + 360;
+  const badge2X = b2.x + 120;
+  const badge2TextX = b2.x + 360;
+  const dividerX = b2.x;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}" width="${CANVAS_WIDTH}" height="${CANVAS_HEIGHT}">
   <defs>
@@ -85,29 +109,29 @@ export function generateMenuSvg(menuSpec) {
   </style>
 
   <!-- Left Half: Online Booking Background -->
-  <rect x="0" y="0" width="1250" height="${CANVAS_HEIGHT}" fill="url(#leftGrad)" />
+  <rect x="${b1.x}" y="${b1.y}" width="${b1.width}" height="${b1.height}" fill="url(#leftGrad)" />
 
   <!-- Right Half: Query Progress Background -->
-  <rect x="1250" y="0" width="1250" height="${CANVAS_HEIGHT}" fill="url(#rightGrad)" />
+  <rect x="${b2.x}" y="${b2.y}" width="${b2.width}" height="${b2.height}" fill="url(#rightGrad)" />
 
   <!-- Subtle grid & border details -->
-  <line x1="1250" y1="0" x2="1250" y2="${CANVAS_HEIGHT}" stroke="#ffffff" stroke-opacity="0.2" stroke-width="4" stroke-dasharray="16,8" />
+  <line x1="${dividerX}" y1="0" x2="${dividerX}" y2="${CANVAS_HEIGHT}" stroke="#ffffff" stroke-opacity="0.2" stroke-width="4" stroke-dasharray="16,8" />
 
   <!-- Top Station Brand Badges -->
   <g transform="translate(0, 80)">
-    <rect x="120" y="0" width="480" height="70" rx="35" fill="#000000" fill-opacity="0.25" />
-    <text x="360" y="48" class="font-base station-text" text-anchor="middle">🌱 ${escapeXml(stationName)}</text>
+    <rect x="${badge1X}" y="0" width="480" height="70" rx="35" fill="#000000" fill-opacity="0.25" />
+    <text x="${badge1TextX}" y="48" class="font-base station-text" text-anchor="middle">🌱 ${escapeXml(stationName)}</text>
 
-    <rect x="1370" y="0" width="480" height="70" rx="35" fill="#000000" fill-opacity="0.25" />
-    <text x="1610" y="48" class="font-base station-text" text-anchor="middle">🔍 預約管理與查詢</text>
+    <rect x="${badge2X}" y="0" width="480" height="70" rx="35" fill="#000000" fill-opacity="0.25" />
+    <text x="${badge2TextX}" y="48" class="font-base station-text" text-anchor="middle">🔍 預約管理與查詢</text>
   </g>
 
   <!-- ================= LEFT BUTTON (BOOKING) ================= -->
   <!-- Card Container -->
-  <rect x="100" y="240" width="1050" height="1280" rx="48" fill="url(#cardGrad)" stroke="#ffffff" stroke-opacity="0.25" stroke-width="3" filter="url(#shadow)" />
+  <rect x="${card1X}" y="${card1Y}" width="${card1Width}" height="${card1Height}" rx="48" fill="url(#cardGrad)" stroke="#ffffff" stroke-opacity="0.25" stroke-width="3" filter="url(#shadow)" />
 
   <!-- Calendar Icon Circle -->
-  <g transform="translate(625, 540)">
+  <g transform="translate(${center1X}, 540)">
     <circle cx="0" cy="0" r="160" fill="#22c55e" fill-opacity="0.25" />
     <circle cx="0" cy="0" r="130" fill="#22c55e" />
     <!-- White Calendar Vector Graphic -->
@@ -117,21 +141,21 @@ export function generateMenuSvg(menuSpec) {
   </g>
 
   <!-- Title & Subtitle -->
-  <text x="625" y="870" class="font-base title" text-anchor="middle">${escapeXml(leftBtn.title)}</text>
-  <text x="625" y="970" class="font-base subtitle" text-anchor="middle">${escapeXml(leftBtn.subtitle)}</text>
+  <text x="${center1X}" y="870" class="font-base title" text-anchor="middle">${escapeXml(leftBtn.title)}</text>
+  <text x="${center1X}" y="970" class="font-base subtitle" text-anchor="middle">${escapeXml(leftBtn.subtitle)}</text>
 
   <!-- Action Pill Button -->
-  <g transform="translate(625, 1260)">
+  <g transform="translate(${center1X}, 1260)">
     <rect x="-360" y="-60" width="720" height="120" rx="60" fill="#22c55e" filter="url(#shadow)" />
     <text x="0" y="16" class="font-base btn-badge-text" text-anchor="middle" fill="#ffffff">立即前往填單 ➔</text>
   </g>
 
   <!-- ================= RIGHT BUTTON (QUERY) ================= -->
   <!-- Card Container -->
-  <rect x="1350" y="240" width="1050" height="1280" rx="48" fill="url(#cardGrad)" stroke="#ffffff" stroke-opacity="0.25" stroke-width="3" filter="url(#shadow)" />
+  <rect x="${card2X}" y="${card2Y}" width="${card2Width}" height="${card2Height}" rx="48" fill="url(#cardGrad)" stroke="#ffffff" stroke-opacity="0.25" stroke-width="3" filter="url(#shadow)" />
 
   <!-- Search/Document Icon Circle -->
-  <g transform="translate(1875, 540)">
+  <g transform="translate(${center2X}, 540)">
     <circle cx="0" cy="0" r="160" fill="#3b82f6" fill-opacity="0.25" />
     <circle cx="0" cy="0" r="130" fill="#3b82f6" />
     <!-- White Document/Search Vector Graphic -->
@@ -141,11 +165,11 @@ export function generateMenuSvg(menuSpec) {
   </g>
 
   <!-- Title & Subtitle -->
-  <text x="1875" y="870" class="font-base title" text-anchor="middle">${escapeXml(rightBtn.title)}</text>
-  <text x="1875" y="970" class="font-base subtitle" text-anchor="middle">${escapeXml(rightBtn.subtitle)}</text>
+  <text x="${center2X}" y="870" class="font-base title" text-anchor="middle">${escapeXml(rightBtn.title)}</text>
+  <text x="${center2X}" y="970" class="font-base subtitle" text-anchor="middle">${escapeXml(rightBtn.subtitle)}</text>
 
   <!-- Action Pill Button -->
-  <g transform="translate(1875, 1260)">
+  <g transform="translate(${center2X}, 1260)">
     <rect x="-360" y="-60" width="720" height="120" rx="60" fill="#3b82f6" filter="url(#shadow)" />
     <text x="0" y="16" class="font-base btn-badge-text" text-anchor="middle" fill="#ffffff">查看預約進度 ➔</text>
   </g>

@@ -22,7 +22,7 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
   // Generate valid test approval
   fs.writeFileSync(targetsPath, JSON.stringify({
     station: { name: '測試發布站' },
-    booking: { type: 'uri', target: 'https://liff.line.me/2011709076-09FdfkjH' },
+    booking: { type: 'uri', target: 'https://liff.line.me/2000000000-XXXXXXXX' },
     query: { type: 'message', text: '查詢預約' }
   }, null, 2));
 
@@ -137,6 +137,53 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
     assert.equal(managed.currentMenuId, 'richmenu-new-123');
     assert.equal(managed.previousMenuId, 'richmenu-old-000');
     assert.equal(managed.status, 'active');
+  });
+
+  await t.test('4. should recover previous default if error occurs after default was switched', async () => {
+    const apiCalls = [];
+    const mockFetch = async (endpoint, token, options = {}) => {
+      apiCalls.push({ endpoint, method: options.method || 'GET' });
+      if (endpoint === '/richmenu/validate') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
+        const isVerify = apiCalls.filter(c => c.endpoint === '/user/all/richmenu' && c.method === 'GET').length > 1;
+        if (isVerify) {
+          throw new Error('NETWORK_TIMEOUT_DURING_VERIFICATION');
+        }
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'old-default-111' }) };
+      }
+      if (endpoint === '/richmenu' && options.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'new-menu-222' }) };
+      }
+      if (endpoint.includes('/content') && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu/new-menu-222' && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu/old-default-111' && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/richmenu/new-menu-222' && options.method === 'DELETE') return { ok: true, status: 200 };
+      throw new Error(`Unhandled mock endpoint: ${endpoint} ${options.method}`);
+    };
+
+    await assert.rejects(
+      async () => {
+        await runPublisher({
+          dryRun: false,
+          token: 'test-token',
+          specPath,
+          previewPath,
+          approvalPath,
+          managedPath,
+          customFetch: mockFetch
+        });
+      },
+      /NETWORK_TIMEOUT_DURING_VERIFICATION/
+    );
+
+    // Verify recovery calls: restored old default and deleted failed new menu
+    assert.ok(apiCalls.some(c => c.endpoint === '/user/all/richmenu/old-default-111' && c.method === 'POST'));
+    assert.ok(apiCalls.some(c => c.endpoint === '/richmenu/new-menu-222' && c.method === 'DELETE'));
+
+    // Check managed state recorded failure
+    const managed = JSON.parse(fs.readFileSync(managedPath, 'utf8'));
+    assert.equal(managed.status, 'failed');
+    assert.equal(managed.defaultRestored, true);
   });
 
   t.after(() => {

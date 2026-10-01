@@ -33,7 +33,7 @@
 * **產物路徑**：`.booking/rich-menu/targets.json`（受 `.gitignore` 保護）
 * **解析成果**：
   * **店家名稱**：`高雄服務站`（來源：`packages/frontend/.env` line 4）
-  * **預約網址**：`https://liff.line.me/2011709076-09FdfkjH`（來源：`packages/frontend/.env` line 2）
+  * **預約網址**：`https://liff.line.me/2000000000-XXXXXXXX`（來源：`packages/frontend/.env` line 2，已遮蔽實例 ID）
   * **進度查詢詞**：`查詢預約`（來源：`packages/backend/src/index.ts` lines 603-611）
   * **遠端預檢**：記錄為 `requires-operation-token`（未洩漏任何金鑰）
 * **測試套件**：`tests/rich-menu/discovery.test.mjs`（5 項測試 100% PASS）

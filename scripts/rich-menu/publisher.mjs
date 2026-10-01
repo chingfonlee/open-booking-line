@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyApproval, SPEC_PATH, PREVIEW_PATH, APPROVAL_PATH, RICH_MENU_DIR } from './approval.mjs';
-import { toLineRichMenuObject } from './builder.mjs';
+import { toLineRichMenuObject, validateLineRichMenuObject } from './builder.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,6 +150,9 @@ export async function runPublisher(options = {}) {
   const imageBuffer = fs.readFileSync(options.previewPath || PREVIEW_PATH);
   const lineObj = toLineRichMenuObject(spec);
 
+  // Step 1.5: Local Schema & LINE Object Validation
+  validateLineRichMenuObject(lineObj);
+
   // Step 2: Remote Pre-validation
   await validateRemoteRichMenu(token, lineObj, customFetch);
 
@@ -167,8 +170,26 @@ export async function runPublisher(options = {}) {
     };
   }
 
+  const managedPath = options.managedPath || MANAGED_PATH;
+
   // Step 4: Atomic Creation
   const newRichMenuId = await createRemoteRichMenu(token, lineObj, customFetch);
+
+  // Pre-persist staging state to ensure interrupted runs can be tracked and rolled back
+  try {
+    const stagingData = {
+      status: 'deploying',
+      pendingMenuId: newRichMenuId,
+      previousMenuId: previousDefaultMenuId,
+      menuName: spec.name,
+      specHash: approval.specHash,
+      imageHash: approval.imageHash,
+      startedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(managedPath, JSON.stringify(stagingData, null, 2), 'utf8');
+  } catch {}
+
+  let defaultSwitched = false;
 
   try {
     // Step 5: Upload Image
@@ -176,6 +197,7 @@ export async function runPublisher(options = {}) {
 
     // Step 6: Set New Default
     await setRemoteDefaultRichMenu(token, newRichMenuId, customFetch);
+    defaultSwitched = true;
 
     // Step 7: Verify Default
     const verifiedDefault = await getCurrentRemoteDefault(token, customFetch);
@@ -195,7 +217,6 @@ export async function runPublisher(options = {}) {
       deployedAt: new Date().toISOString()
     };
 
-    const managedPath = options.managedPath || MANAGED_PATH;
     fs.writeFileSync(managedPath, JSON.stringify(managedData, null, 2), 'utf8');
 
     return {
@@ -206,12 +227,39 @@ export async function runPublisher(options = {}) {
       managedData
     };
   } catch (err) {
+    // If default was switched before failure, restore previous default before deleting menu
+    if (defaultSwitched) {
+      try {
+        if (previousDefaultMenuId) {
+          await setRemoteDefaultRichMenu(token, previousDefaultMenuId, customFetch);
+        } else {
+          await deleteRemoteDefaultRichMenu(token, customFetch);
+        }
+      } catch (restoreErr) {
+        console.error('[Publisher Recovery] Failed to restore previous default:', restoreErr.message);
+      }
+    }
+
     // Attempt cleanup of failed orphaned menu
     try {
       await deleteRemoteRichMenu(token, newRichMenuId, customFetch);
     } catch {
       // Ignore cleanup error
     }
+
+    // Record failure in managed state
+    try {
+      const failedData = {
+        status: 'failed',
+        failedMenuId: newRichMenuId,
+        previousMenuId: previousDefaultMenuId,
+        defaultRestored: defaultSwitched,
+        error: err.message,
+        failedAt: new Date().toISOString()
+      };
+      fs.writeFileSync(managedPath, JSON.stringify(failedData, null, 2), 'utf8');
+    } catch {}
+
     throw err;
   }
 }

@@ -11,7 +11,7 @@ const mockTargets = {
   station: { name: '高雄服務站' },
   booking: {
     type: 'uri',
-    target: 'https://liff.line.me/2011709076-09FdfkjH'
+    target: 'https://liff.line.me/2000000000-XXXXXXXX'
   },
   query: {
     type: 'message',
@@ -62,5 +62,19 @@ test('Ep02-2 Deterministic Renderer Test Suite', async (t) => {
     // PNG with vector curves typically achieves ~100KB to 300KB
     assert.ok(sizeBytes < 500000, `Expected < 500KB, got ${sizeBytes}`);
     assert.ok(sizeBytes < MAX_FILE_SIZE);
+  });
+
+  await t.test('5. should dynamically adapt SVG geometry when button bounds are changed (shared geometry with spec)', () => {
+    const customSpec = {
+      ...spec,
+      buttons: [
+        { ...spec.buttons[0], bounds: { x: 0, y: 0, width: 1000, height: CANVAS_HEIGHT } },
+        { ...spec.buttons[1], bounds: { x: 1000, y: 0, width: 1500, height: CANVAS_HEIGHT } }
+      ]
+    };
+    const customSvg = generateMenuSvg(customSpec);
+    assert.ok(customSvg.includes('width="1000"'));
+    assert.ok(customSvg.includes('x="1000"'));
+    assert.ok(customSvg.includes('x1="1000" y1="0" x2="1000"'));
   });
 });

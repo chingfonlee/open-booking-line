@@ -34,14 +34,14 @@
 | :--- | :--- | :--- | :--- | :--- |
 | `packages/backend/wrangler.toml` | `database_id` | `9ab7d6d6-6e29-421b-8674-6e6bf0d3e770` | 私人 D1 ID | 移除，改為開源佔位符 |
 | `packages/backend/wrangler.toml` | `database_name` | `xingnong-db` | 私人 DB 名稱 | 改為通用佔位符 |
-| `packages/backend/wrangler.toml` | `ADMIN_NOTIFY_USER_ID` | `U7c0c955efaa9de76a104e62082e1799c` | 真實 LINE UID | 移除，改為佔位符 |
-| `packages/backend/wrangler.toml` | `ADMIN_LINE_IDS` | `U7c0c955efaa9de76a104e62082e1799c` | 真實 LINE UID | 移除，改為佔位符 |
-| `packages/backend/wrangler.toml` | `LINE_LOGIN_CHANNEL_ID` | `2011709076` | 私人 Channel ID | 移除，改為佔位符 |
-| `packages/backend/wrangler.toml` | `LIFF_ID` | `2011709076-09FdfkjH` | 私人 LIFF ID | 移除，改為佔位符 |
+| `packages/backend/wrangler.toml` | `ADMIN_NOTIFY_USER_ID` | `Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` | 真實 LINE UID | 移除，改為佔位符 |
+| `packages/backend/wrangler.toml` | `ADMIN_LINE_IDS` | `Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` | 真實 LINE UID | 移除，改為佔位符 |
+| `packages/backend/wrangler.toml` | `LINE_LOGIN_CHANNEL_ID` | `2000000000` | 私人 Channel ID | 移除，改為佔位符 |
+| `packages/backend/wrangler.toml` | `LIFF_ID` | `2000000000-XXXXXXXX` | 私人 LIFF ID | 移除，改為佔位符 |
 | `packages/backend/wrangler.toml` | `STATION_NAME` | `高雄服務站` | 私人站點名稱 | 改為通用示範站名 |
-| `packages/frontend/src/components/ApplyForm.tsx` | Fallback LIFF | `|| '2011709076-09FdfkjH'` | 硬編碼備援 | 移除 fallback |
+| `packages/frontend/src/components/ApplyForm.tsx` | Fallback LIFF | `|| '<LIFF_ID_PLACEHOLDER>'` | 硬編碼備援 | 移除 fallback |
 | `packages/frontend/src/components/ApplyForm.tsx` | Fallback 站名 | `|| '高雄服務站'` | 硬編碼備援 | 改為通用預設 |
-| `packages/backend/src/index.ts` | Fallback LIFF | `|| '2011709076-09FdfkjH'` | 硬編碼備援 | 移除 fallback |
+| `packages/backend/src/index.ts` | Fallback LIFF | `|| '<LIFF_ID_PLACEHOLDER>'` | 硬編碼備援 | 移除 fallback |
 | `packages/frontend/.env` (未追蹤) | 站名/網址/Key | 包含真實 worker url、站名、turnstile | 本地私有 | 需確認被 gitignore 保護 |
 
 ---

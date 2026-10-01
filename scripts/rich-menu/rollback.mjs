@@ -28,7 +28,16 @@ export async function runRollback(options = {}) {
   }
 
   const managed = JSON.parse(fs.readFileSync(managedPath, 'utf8'));
-  const { currentMenuId, previousMenuId } = managed;
+  const { currentMenuId, previousMenuId, pendingMenuId, failedMenuId } = managed;
+
+  if (managed.status === 'rolled-back') {
+    throw new Error('ALREADY_ROLLED_BACK: Managed state indicates rich menu has already been rolled back. Refusing to repeat rollback to prevent deleting active menu.');
+  }
+
+  const menuToDelete = currentMenuId || pendingMenuId || failedMenuId;
+  if (!menuToDelete && !previousMenuId) {
+    throw new Error('NOTHING_TO_ROLLBACK: No active or pending menu ID found in managed state.');
+  }
 
   let rollbackAction = '';
 
@@ -42,19 +51,24 @@ export async function runRollback(options = {}) {
     await deleteRemoteDefaultRichMenu(token, customFetch);
   }
 
-  // Delete current deployed rich menu to prevent orphaned resources
-  if (currentMenuId) {
-    await deleteRemoteRichMenu(token, currentMenuId, customFetch);
+  // Delete current/pending deployed rich menu to prevent orphaned resources
+  if (menuToDelete) {
+    await deleteRemoteRichMenu(token, menuToDelete, customFetch);
   }
 
-  // Verify remote state after rollback
+  // Verify remote state after rollback (Fail-Closed)
   const remoteDefaultAfter = await getCurrentRemoteDefault(token, customFetch);
+  const expectedDefault = previousMenuId || null;
+  if (remoteDefaultAfter !== expectedDefault) {
+    throw new Error(`ROLLBACK_VERIFY_FAILED: Remote default does not match expected state. Expected: ${expectedDefault}, got: ${remoteDefaultAfter}`);
+  }
 
-  // Update managed status
+  // Update managed status safely
   managed.status = 'rolled-back';
   managed.rolledBackAt = new Date().toISOString();
   managed.rollbackAction = rollbackAction;
-  managed.currentMenuId = previousMenuId; // Now previous is current (or null)
+  managed.rolledBackMenuId = menuToDelete;
+  managed.currentMenuId = null; // Clear so subsequent runs cannot delete the restored menu
   fs.writeFileSync(managedPath, JSON.stringify(managed, null, 2), 'utf8');
 
   return {
@@ -62,7 +76,7 @@ export async function runRollback(options = {}) {
     rollbackAction,
     revertedDefault: previousMenuId,
     verifiedRemoteDefault: remoteDefaultAfter,
-    deletedMenuId: currentMenuId
+    deletedMenuId: menuToDelete
   };
 }
 

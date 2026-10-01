@@ -12,6 +12,11 @@
     "login": "npm --prefix packages/backend exec wrangler login",
     "deploy:backend": "npm --prefix packages/backend run deploy",
     "setup:turnstile": "node scripts/setup-turnstile.js",
-    "export:opensource": "node scripts/export-opensource.js"
+    "export:opensource": "node scripts/export-opensource.js",
+    "test": "node --test tests/rich-menu/*.test.mjs",
+    "test:rich-menu": "node --test tests/rich-menu/*.test.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.4"
   }
 }

@@ -77,6 +77,43 @@ test('Ep02-4 Safe Rollback Test Suite', async (t) => {
     assert.equal(updatedManaged.status, 'rolled-back');
   });
 
+  await t.test('3. should strictly fail-closed if remote default verification mismatches', async () => {
+    fs.writeFileSync(managedPath, JSON.stringify({
+      status: 'active',
+      currentMenuId: 'richmenu-new-456',
+      previousMenuId: 'richmenu-old-123'
+    }, null, 2));
+
+    const mockFetch = async (endpoint, token, options = {}) => {
+      if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'wrong-menu-id' }) };
+      }
+      return { ok: true, status: 200, json: async () => ({}) };
+    };
+
+    await assert.rejects(
+      async () => {
+        await runRollback({ token: 'test-token', managedPath, customFetch: mockFetch });
+      },
+      /ROLLBACK_VERIFY_FAILED/
+    );
+  });
+
+  await t.test('4. should reject repeated rollback to prevent deleting restored active menu', async () => {
+    fs.writeFileSync(managedPath, JSON.stringify({
+      status: 'rolled-back',
+      currentMenuId: null,
+      previousMenuId: 'richmenu-old-123'
+    }, null, 2));
+
+    await assert.rejects(
+      async () => {
+        await runRollback({ token: 'test-token', managedPath });
+      },
+      /ALREADY_ROLLED_BACK/
+    );
+  });
+
   t.after(() => {
     if (fs.existsSync(fixtureDir)) {
       fs.rmSync(fixtureDir, { recursive: true, force: true });

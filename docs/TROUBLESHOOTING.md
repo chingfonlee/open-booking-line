@@ -15,7 +15,7 @@
   1. 您的 LINE User ID 未加入管理員白名單。
   2. 後端環境變數 `ADMIN_LINE_IDS` 未正確設定或部署。
 * **解決方式**：
-  1. 在後端環境變數中設定您的 LINE UID（格式如 `U7c0c955...`）。
+  1. 在後端環境變數中設定您的 LINE UID（格式如 `Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`）。
   2. 重新執行後端部署（`npx wrangler deploy`）。
 
 ### Q3: 聊天室輸入「查詢預約」沒有收到卡片

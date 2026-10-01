@@ -19,7 +19,7 @@ const mockTargets = {
   station: { name: '高雄服務站' },
   booking: {
     type: 'uri',
-    target: 'https://liff.line.me/2011709076-09FdfkjH'
+    target: 'https://liff.line.me/2000000000-XXXXXXXX'
   },
   query: {
     type: 'message',

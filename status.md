@@ -74,7 +74,7 @@
 
 ### 8. LINE Bot 與 LIFF 應用程式對接 (已上線驗證)
 - [x] **官方帳號與 Messaging API**：建立「**行農服務示範帳號**」，設定推播權限。
-- [x] **LIFF 內嵌網頁應用**：建立「**行農服務示範-LIFF**」，LIFF ID：`2011709076-09FdfkjH`。
+- [x] **LIFF 內嵌網頁應用**：建立「**行農服務示範-LIFF**」，LIFF ID：`2000000000-XXXXXXXX`。
 - [x] **自動身分識別 (LINE Profile)**：在 LINE 內開啟表單自動辨識顧客 LINE 暱稱與大頭貼，預填姓名並綁定 `line_user_id`。
 - [x] **即時推播通知 (Flex Message)**：農友送出申請後，後端自動透過 Worker 觸發 LINE Messaging API 推播通知給站所幹部，附帶綠色「**撥打電話**」一鍵外撥按鈕。
 - [x] **原生體驗優化**：送單成功畫面提供「**關閉視窗 (返回 LINE)**」按鈕，提升使用流暢度。
@@ -115,7 +115,7 @@
 ### 🌐 雲端正式線上環境 (手機 / 任何網路皆可直接開啟)
 | 服務項目 | 正式網址 / 連結 | 說明 |
 | :--- | :--- | :--- |
-| **LINE 官方專用入口 (LIFF)** | [https://liff.line.me/2011709076-09FdfkjH](https://liff.line.me/2011709076-09FdfkjH) | **LINE 內直接全螢幕開啟，自動抓取暱稱** |
+| **LINE 官方專用入口 (LIFF)** | [https://liff.line.me/2000000000-XXXXXXXX](https://liff.line.me/2000000000-XXXXXXXX) | **LINE 內直接全螢幕開啟，自動抓取暱稱** |
 | **農友預約填單 (一般網頁)** | [https://xingnong-farm.pages.dev](https://xingnong-farm.pages.dev) | 一般手機/電腦瀏覽器直接開啟 |
 | **服務申請管理 (幹部端)** | [https://xingnong-farm.pages.dev/?view=admin](https://xingnong-farm.pages.dev/?view=admin) | **站所幹部管理 (LINE 幹部白名單原生登入)** |
 | **後端 API 服務** | `https://line-bot-farm-api.chingfon-lee.workers.dev` | Cloudflare Workers API |

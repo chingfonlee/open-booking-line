@@ -42,7 +42,7 @@
    ```json
    {
      "stationName": "高雄服務站",
-     "bookingUri": "https://liff.line.me/2011709076-09FdfkjH",
+     "bookingUri": "https://liff.line.me/2000000000-XXXXXXXX",
      "queryKeyword": "查詢預約",
      "remotePreflight": {
        "hasExistingDefault": false,
