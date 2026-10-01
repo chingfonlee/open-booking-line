@@ -12,6 +12,7 @@
 以下為目前主幹分支（`main`）經實機端對端驗收通過之穩定功能：
 
 * ✓ **LINE 原生流暢預約 (LIFF)**：支援在 LINE 官方帳號內開啟前端預約表單，自動帶入顧客 LINE 暱稱。
+* ✓ **LINE Rich Menu 圖文選單**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 品牌選單，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
 * ✓ **極低成本 Serverless 後端**：基於 Cloudflare Workers + Hono 框架，提供低延遲、高並發之預約處理與時段排程 API。
 * ✓ **無伺服器關聯資料庫 (Cloudflare D1)**：以 SQLite 儲存預約單與時段封鎖紀錄，免除資料庫維護負擔。
 * ✓ **LINE Flex Message 即時推播**：新預約送出時，即時推播通知站所幹部，支援一鍵撥號與後台跳轉。
@@ -31,7 +32,7 @@
 | Episode | Capability | Status | Episode Guide | Snapshot Tag |
 | :--- | :--- | :--- | :--- | :--- |
 | **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
-| **Ep02** | LINE Rich Menu (圖文選單) | **In Development** (開發中) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | *(驗證通過後建立)* |
+| **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-rich-menu) |
 | **Ep03** | Service Catalog (多服務項目) | **Planned** (規劃中) | — | — |
 | **Ep04** | Admin Scheduling (排程與封鎖) | **Planned** (規劃中) | — | — |
 | **Ep05** | Notification & Broadcast (推播加固) | **Planned** (規劃中) | — | — |

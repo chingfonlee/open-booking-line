@@ -6,8 +6,30 @@
 
 ## [Unreleased]
 
-### 進行中 (In Development)
-- **Episode 02 — LINE Rich Menu**：規劃與開發 LINE 官方帳號圖文選單能力（包含圖片產生、LINE Messaging API 發布與被動預約查詢按鈕）。
+### 規劃中 (Planned)
+- **Episode 03 — Service Catalog**：多服務項目與動態服務類別管理。
+- **Episode 04 — Admin Scheduling**：管理端時段排程與封鎖日控管。
+- **Episode 05 — Notification & Broadcast**：多渠道通知與分眾推播加固。
+
+---
+
+## [1.1.0] - Episode 02 — LINE Rich Menu (2026-10-01)
+
+快照標籤：[`ep02-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-rich-menu)  
+能力登錄：`rich-menu` (Verified)
+
+### Added (新增能力)
+- **LINE 官方圖文選單能力 (`rich-menu`)**：
+  - **自動化探索預檢 (Discovery Preflight)**：自動解析專案實例變數（站所名稱、LIFF URL、查詢關鍵字），零硬編碼，保護隱私金鑰。
+  - **規格生成器與 LINE 物件校驗 (Spec Builder)**：精確計算 2500x1686 像素坐標，產生符合 LINE 官方規範之 menu-spec 與 Action 綁定。
+  - **本地確定性渲染器 (Deterministic Renderer)**：採用 SVG 模板與 Sharp 函式庫，零外部雲端繪圖依賴，生成高質感視覺圖檔（<200KB）。
+  - **預覽與雙向雜湊審批門禁 (Preview & Approval Gate)**：以 SHA-256 鎖定圖檔與規格，嚴格遵守「人類核准前零寫入」之 Fail-Closed 原則。
+  - **安全發布與回滾模組 (Safe Publisher & Rollback)**：支援 dry-run 預檢、原子化建立/上傳/設為預設選單，以及自動記錄狀態與一鍵安全回滾。
+  - **被動進度查詢與管理入口 (LINE Chatbot Webhook)**：點擊選單按鈕於聊天室免推播費回覆預約進度 Flex Message。
+
+### Fixed & Hardened (修復與加固)
+- 優化 Publisher 處理 LINE OA Manager 既有預設選單之 HTTP 403 容錯邏輯。
+- Webhook 驗簽加入金鑰與簽章之去空白與換行處理（`trim()`），提升各作業系統環境相容性。
 
 ---
 

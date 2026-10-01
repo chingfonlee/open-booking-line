@@ -75,8 +75,8 @@ Agent 會自動：
 ## Version (版本資訊)
 
 - **能力識別碼**：`rich-menu`
-- **狀態**：`In Development`（開發準備中，尚未完成實機驗收）
-- **歷史快照 Tag**：`created after Episode 02 verification`（將於實機驗證通過後正式建立）
+- **狀態**：`Stable`（已通過端對端與實機驗收）
+- **歷史快照 Tag**：[`ep02-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-rich-menu)
 
 ---
 

@@ -8,9 +8,9 @@
 
 ## Current Status (當前狀態)
 
-* **Current Task**: `Ep02-5 — Acceptance / Freeze`
-* **Episode Status**: `In Progress`
-* **Next Task**: `Ep02-5 — Acceptance / Freeze`
+* **Current Task**: `None (Episode Complete)`
+* **Episode Status**: `Complete`
+* **Next Task**: `None (Ready for Ep03)`
 
 ---
 
@@ -23,7 +23,7 @@
 | **Ep02-2** | Deterministic Renderer | **Complete** | 本地確定性 SVG + Sharp 渲染引擎（2500×1686, 157KB $\le$ 1MB），測試 100% PASS |
 | **Ep02-3** | Preview + Approval | **Complete** | 預覽產生、人類明確授權，防偽 SHA-256 門禁鎖鎖定，測試 100% PASS |
 | **Ep02-4** | Safe Publisher | **Complete** | 實作 Dry-run 模擬預檢、原子發布管線與三情境 Rollback 還原器，測試 100% PASS |
-| **Ep02-5** | Acceptance / Freeze | **Ready** | 可立即接續執行全鏈路驗證、實機核對與版本凍結 |
+| **Ep02-5** | Acceptance / Freeze | **Complete** | 人類實機 3 項查核全數 PASS、版本狀態登錄、手冊更新與 Tag 封裝完成 |
 
 ---
 
