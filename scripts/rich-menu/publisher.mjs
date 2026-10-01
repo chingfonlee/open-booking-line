@@ -210,8 +210,12 @@ export async function runPublisher(options = {}) {
   let defaultSwitched = false;
 
   try {
-    // Step 5: Upload Image
-    await uploadRemoteRichMenuImage(token, newRichMenuId, imageBuffer, 'image/png', customFetch);
+    // Step 5: Upload Image with dynamically detected MIME type (PNG or JPEG)
+    const isJpeg = imageBuffer.length >= 3 && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF;
+    const isPng = imageBuffer.length >= 8 && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47;
+    const mimeType = isJpeg ? 'image/jpeg' : isPng ? 'image/png' : 'image/png';
+
+    await uploadRemoteRichMenuImage(token, newRichMenuId, imageBuffer, mimeType, customFetch);
 
     // Step 5.5: Pre-switch Remote Verification (Ensure menu exists remotely before activating)
     await getRemoteRichMenu(token, newRichMenuId, customFetch);

@@ -91,7 +91,7 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
     const apiCalls = [];
 
     const mockFetch = async (endpoint, token, options = {}) => {
-      apiCalls.push({ endpoint, method: options.method || 'GET' });
+      apiCalls.push({ endpoint, method: options.method || 'GET', headers: options.headers || {} });
 
       if (endpoint === '/richmenu/validate') {
         return { ok: true, status: 200 };
@@ -140,6 +140,11 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
     assert.equal(managed.currentMenuId, 'richmenu-new-123');
     assert.equal(managed.previousMenuId, 'richmenu-old-000');
     assert.equal(managed.status, 'active');
+
+    // Verify upload content call received correct MIME type
+    const uploadCall = apiCalls.find(c => c.endpoint.includes('/content'));
+    assert.ok(uploadCall);
+    assert.equal(uploadCall.headers['Content-Type'], 'image/png');
   });
 
   await t.test('4. should recover previous default if error occurs after default was switched', async () => {

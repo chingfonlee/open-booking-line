@@ -83,8 +83,17 @@
     * 情境 A：原先為 API 預設選單 ➔ 回滾綁定原先舊選單 ID。
     * 情境 B / C：原先為 OA Manager 手動選單或無選單 ➔ 解除 API 預設綁定並刪除新建孤兒選單。
 * **測試套件**：
-  * `tests/rich-menu/publisher.test.mjs`（3 項測試 100% PASS）
-  * `tests/rich-menu/rollback.test.mjs`（2 項測試 100% PASS）
+  * `tests/rich-menu/publisher.test.mjs`（8 項測試 100% PASS，含 probe 異常與 unknown-state fail-closed）
+  * `tests/rich-menu/rollback.test.mjs`（4 項測試 100% PASS，含遠端反核對與防重複回滾）
+
+### Ep02-5:
+* **交付產物**：
+  * `scripts/rich-menu/verify-remote.mjs`（唯讀遠端 LINE 狀態查核工具）
+  * 人類實機手機三項驗收確認（選單顯示、預約送單、查詢進度卡片 100% PASS）
+* **驗證成果**：
+  * 遠端 Default ID: `richmenu-7d52dc53f9b3718971c9ca0585001021`（雙分區、LIFF 預約與查詢觸發詞吻合）
+  * 遠端圖檔 Hash: `sha256:b0f4751e903792e129e3ddc3091ba20115ae97e24d9d0705a7dafd88cdb1725a`（100% 與 approval 相符）
+* **測試套件**：全模組共 37 項測試（`node --test tests/rich-menu/*.test.mjs`）100% PASS
 
 ---
 
