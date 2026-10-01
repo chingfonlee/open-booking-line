@@ -222,9 +222,14 @@ export async function runPublisher(options = {}) {
       defaultSwitched = true;
     } catch (switchErr) {
       // If switch call threw (e.g. timeout / connection dropped), probe if LINE applied it anyway
-      const probeDefault = await getCurrentRemoteDefault(token, customFetch).catch(() => null);
-      if (probeDefault === newRichMenuId) {
-        defaultSwitched = true;
+      try {
+        const probeDefault = await getCurrentRemoteDefault(token, customFetch);
+        if (probeDefault === newRichMenuId) {
+          defaultSwitched = true;
+        }
+      } catch (probeErr) {
+        // Probe also failed; remote default status is completely unknown
+        switchErr.probeError = probeErr.message;
       }
       throw switchErr;
     }
@@ -263,14 +268,22 @@ export async function runPublisher(options = {}) {
 
     // Check if default was switched or if it is currently pointing to newRichMenuId
     let needsRevert = defaultSwitched;
+    let switchStateUnknown = false;
+
     if (!needsRevert) {
-      const probeCurrent = await getCurrentRemoteDefault(token, customFetch).catch(() => null);
-      if (probeCurrent === newRichMenuId) {
-        needsRevert = true;
+      try {
+        const probeCurrent = await getCurrentRemoteDefault(token, customFetch);
+        if (probeCurrent === newRichMenuId) {
+          needsRevert = true;
+        }
+      } catch (probeErr) {
+        // Query failed; remote state is unknown!
+        switchStateUnknown = true;
+        restorationError = `Unknown remote default state (probe failed: ${probeErr.message})`;
       }
     }
 
-    // If default was switched, attempt restoring previous default
+    // If default was switched (or needs reversion), attempt restoring previous default
     if (needsRevert) {
       try {
         if (previousDefaultMenuId) {
@@ -279,20 +292,28 @@ export async function runPublisher(options = {}) {
           await deleteRemoteDefaultRichMenu(token, customFetch);
         }
 
-        // Verify restoration actually succeeded
-        const restoredCheck = await getCurrentRemoteDefault(token, customFetch).catch(() => null);
-        const expectedTarget = previousDefaultMenuId || null;
-        if (restoredCheck === expectedTarget) {
-          defaultRestored = true;
-        } else {
-          restorationError = `Restoration mismatch: expected ${expectedTarget}, got ${restoredCheck}`;
+        // Verify restoration actually succeeded (do NOT swallow verification errors!)
+        try {
+          const restoredCheck = await getCurrentRemoteDefault(token, customFetch);
+          const expectedTarget = previousDefaultMenuId || null;
+          if (restoredCheck === expectedTarget) {
+            defaultRestored = true;
+          } else {
+            restorationError = `Restoration mismatch: expected ${expectedTarget}, got ${restoredCheck}`;
+          }
+        } catch (verifyProbeErr) {
+          restorationError = `Restoration verification failed (probe error: ${verifyProbeErr.message})`;
         }
       } catch (restoreErr) {
         restorationError = restoreErr.message;
         console.error('[Publisher Recovery] Failed to restore previous default:', restoreErr.message);
       }
+    } else if (switchStateUnknown) {
+      // Switch state is unknown, so we CANNOT assume default was never changed!
+      defaultRestored = false;
+      console.error('[Publisher Recovery] Cannot determine if default was switched due to remote probe error.');
     } else {
-      defaultRestored = true; // Default was never changed
+      defaultRestored = true; // Confirmed default was never changed
     }
 
     // Attempt cleanup of failed orphaned menu ONLY if it is confirmed NOT to be the active default
@@ -303,7 +324,7 @@ export async function runPublisher(options = {}) {
         // Ignore cleanup error
       }
     } else {
-      console.error(`[Publisher Recovery] Refusing to delete ${newRichMenuId} because previous default could not be confirmed restored.`);
+      console.error(`[Publisher Recovery] Refusing to delete ${newRichMenuId} because previous default could not be confirmed restored or state is unknown.`);
     }
 
     // Record failure in managed state

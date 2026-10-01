@@ -269,6 +269,111 @@ test('Ep02-4 Safe Publisher Test Suite', async (t) => {
     assert.ok(apiCalls.some(c => c.endpoint === '/richmenu/new-menu-fail-stage' && c.method === 'DELETE'));
   });
 
+  await t.test('7. should fail-closed and REFUSE to delete new menu if switch timeout occurs and probe ALSO times out (state unknown)', async () => {
+    const apiCalls = [];
+    const mockFetch = async (endpoint, token, options = {}) => {
+      apiCalls.push({ endpoint, method: options.method || 'GET' });
+      if (endpoint === '/richmenu/validate') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
+        const getCount = apiCalls.filter(c => c.endpoint === '/user/all/richmenu' && c.method === 'GET').length;
+        if (getCount === 1) {
+          // Initial reading of default menu before switch
+          return { ok: true, status: 200, json: async () => ({ richMenuId: 'old-default-777' }) };
+        }
+        // All subsequent probes timeout
+        throw new Error('TIMEOUT_DURING_PROBE');
+      }
+      if (endpoint === '/richmenu' && options.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'new-menu-777' }) };
+      }
+      if (endpoint.startsWith('/richmenu/') && options.method === 'GET') return { ok: true, status: 200, json: async () => ({}) };
+      if (endpoint.includes('/content') && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu/new-menu-777' && options.method === 'POST') {
+        throw new Error('TIMEOUT_DURING_SWITCH');
+      }
+      if (endpoint === '/user/all/richmenu/old-default-777' && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/richmenu/new-menu-777' && options.method === 'DELETE') return { ok: true, status: 200 };
+      throw new Error(`Unhandled mock endpoint: ${endpoint} ${options.method}`);
+    };
+
+    await assert.rejects(
+      async () => {
+        await runPublisher({
+          dryRun: false,
+          token: 'test-token',
+          specPath,
+          previewPath,
+          approvalPath,
+          managedPath,
+          customFetch: mockFetch
+        });
+      },
+      /TIMEOUT_DURING_SWITCH/
+    );
+
+    // CRITICAL: Because probe failed, remote state is unknown. It MUST NOT delete new-menu-777!
+    assert.equal(apiCalls.some(c => c.endpoint === '/richmenu/new-menu-777' && c.method === 'DELETE'), false);
+
+    const managed = JSON.parse(fs.readFileSync(managedPath, 'utf8'));
+    assert.equal(managed.status, 'failed');
+    assert.equal(managed.defaultRestored, false);
+    assert.ok(managed.restorationError && managed.restorationError.length > 0);
+  });
+
+  await t.test('8. should fail-closed and REFUSE to delete new menu if previous had no default and restoration probe fails', async () => {
+    const apiCalls = [];
+    const mockFetch = async (endpoint, token, options = {}) => {
+      apiCalls.push({ endpoint, method: options.method || 'GET' });
+      if (endpoint === '/richmenu/validate') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu' && options.method === 'GET') {
+        const getCount = apiCalls.filter(c => c.endpoint === '/user/all/richmenu' && c.method === 'GET').length;
+        if (getCount === 1) {
+          // Initially no default (HTTP 404)
+          return { ok: false, status: 404, text: async () => 'Not found' };
+        }
+        if (getCount === 2) {
+          // Verification check after switch: throws verification failure
+          throw new Error('VERIFICATION_TIMEOUT');
+        }
+        // Probe check after deleteRemoteDefaultRichMenu also fails (e.g. timeout / network drop)
+        throw new Error('RESTORATION_PROBE_FAILED');
+      }
+      if (endpoint === '/richmenu' && options.method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ richMenuId: 'new-menu-888' }) };
+      }
+      if (endpoint.startsWith('/richmenu/') && options.method === 'GET') return { ok: true, status: 200, json: async () => ({}) };
+      if (endpoint.includes('/content') && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu/new-menu-888' && options.method === 'POST') return { ok: true, status: 200 };
+      if (endpoint === '/user/all/richmenu' && options.method === 'DELETE') return { ok: true, status: 200 };
+      if (endpoint === '/richmenu/new-menu-888' && options.method === 'DELETE') return { ok: true, status: 200 };
+      throw new Error(`Unhandled mock endpoint: ${endpoint} ${options.method}`);
+    };
+
+    await assert.rejects(
+      async () => {
+        await runPublisher({
+          dryRun: false,
+          token: 'test-token',
+          specPath,
+          previewPath,
+          approvalPath,
+          managedPath,
+          customFetch: mockFetch
+        });
+      },
+      /VERIFICATION_TIMEOUT/
+    );
+
+    // CRITICAL: Previous was null (no default). Even though delete default was sent, the verification probe threw.
+    // It MUST NOT assume success and MUST NOT delete new-menu-888!
+    assert.equal(apiCalls.some(c => c.endpoint === '/richmenu/new-menu-888' && c.method === 'DELETE'), false);
+
+    const managed = JSON.parse(fs.readFileSync(managedPath, 'utf8'));
+    assert.equal(managed.status, 'failed');
+    assert.equal(managed.defaultRestored, false);
+    assert.ok(managed.restorationError.includes('Restoration verification failed'));
+  });
+
   t.after(() => {
     if (fs.existsSync(fixtureDir)) {
       fs.rmSync(fixtureDir, { recursive: true, force: true });
