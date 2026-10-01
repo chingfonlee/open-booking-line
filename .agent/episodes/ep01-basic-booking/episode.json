@@ -1,0 +1,14 @@
+{
+  "id": "ep01-basic-booking",
+  "title": "Basic LINE Booking System",
+  "requires": [],
+  "provides": [
+    "booking-core"
+  ],
+  "verification": [
+    "frontend-loads",
+    "booking-submit-success",
+    "database-record-created"
+  ],
+  "stateSchemaMinVersion": 1
+}

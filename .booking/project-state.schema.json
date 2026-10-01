@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProjectState",
+  "type": "object",
+  "required": [
+    "stateSchemaVersion",
+    "project",
+    "capabilities",
+    "updatedAt"
+  ],
+  "properties": {
+    "stateSchemaVersion": {
+      "type": "integer",
+      "description": "Version of the project-state JSON structure itself (independent from D1 database schema version)",
+      "minimum": 1
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Store or service display name"
+        },
+        "type": {
+          "type": "string",
+          "description": "Store industry type identifier (e.g. agriculture, beauty_salon, repair, consulting, venue_rental)"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "Verified Capability Registry - single source of truth for verified features",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "sourceEpisode", "verifiedAt"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["verified", "degraded", "unverified"]
+          },
+          "sourceEpisode": {
+            "type": "string",
+            "description": "The episode ID where this capability originated"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO timestamp of the most recent successful end-to-end verification"
+          }
+        }
+      }
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

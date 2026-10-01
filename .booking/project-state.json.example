@@ -1,0 +1,15 @@
+{
+  "stateSchemaVersion": 1,
+  "project": {
+    "name": "示範預約服務站",
+    "type": "agriculture"
+  },
+  "capabilities": {
+    "booking-core": {
+      "status": "verified",
+      "sourceEpisode": "ep01-basic-booking",
+      "verifiedAt": "2026-10-01T08:00:00.000Z"
+    }
+  },
+  "updatedAt": "2026-10-01T08:00:00.000Z"
+}

@@ -1,17 +1,17 @@
-name = "line-bot-farm-api"
+name = "open-booking-line-api"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = [ "nodejs_compat" ]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "xingnong-db"
-database_id = "9ab7d6d6-6e29-421b-8674-6e6bf0d3e770"
+database_name = "your-d1-database-name"
+database_id = "your-d1-database-id"
 
 [vars]
-STATION_NAME = "高雄服務站"
-ADMIN_NOTIFY_USER_ID = "U7c0c955efaa9de76a104e62082e1799c"
-ADMIN_LINE_IDS = "U7c0c955efaa9de76a104e62082e1799c"
-LINE_LOGIN_CHANNEL_ID = "2011709076"
-LIFF_ID = "2011709076-09FdfkjH"
+STATION_NAME = "示範預約服務站"
+ADMIN_NOTIFY_USER_ID = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+ADMIN_LINE_IDS = "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+LINE_LOGIN_CHANNEL_ID = "2000000000"
+LIFF_ID = "2000000000-XXXXXXXX"
 ALLOWED_ORIGINS = "https://*.pages.dev"

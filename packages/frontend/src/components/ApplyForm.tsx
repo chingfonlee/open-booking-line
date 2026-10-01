@@ -14,8 +14,8 @@ import {
 import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock } from 'lucide-react';
 import { API_BASE } from '../config';
 
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
-const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '高雄服務站';
+const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
+const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '預約服務站';
 
 export const ApplyForm: React.FC = () => {
   const isInLineClient = () => {

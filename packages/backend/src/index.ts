@@ -698,7 +698,7 @@ app.post('/api/line/webhook', async (c) => {
                   action: {
                     type: 'uri',
                     label: '🌱 開啟預約申請表',
-                    uri: 'https://liff.line.me/' + (c.env.LIFF_ID || '2011709076-09FdfkjH')
+                    uri: 'https://liff.line.me/' + (c.env.LIFF_ID || '')
                   },
                   style: 'primary',
                   color: '#173820'

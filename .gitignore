@@ -11,12 +11,27 @@ build/
 # Cloudflare Wrangler local state & SQLite DB
 .wrangler/
 */.wrangler/
+.dev.vars
+.dev.vars.*
+wrangler.local.toml
+*.local.toml
 
-# Environment variables & secrets
+# Environment variables & local secrets
 .env
 .env.local
+.env.*.local
 .env.*
 !.env.example
+
+# Local Project State (Instance Runtime)
+.booking/project-state.json
+!.booking/project-state.json.example
+!.booking/project-state.schema.json
+
+# Operation Secrets (Temporary Agent files)
+operation-secrets/
+*.secret
+*.key
 
 # Logs
 *.log

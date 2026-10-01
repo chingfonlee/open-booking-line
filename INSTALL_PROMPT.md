@@ -18,7 +18,10 @@
 ### ✂️ 請複製以下提示詞，填寫後直接發送給 AI Agent：
 
 ```text
-你好！請幫我全自動安裝 open-booking-line（農業與在地資源預約管理系統）。
+你好！請幫我全自動安裝 open-booking-line（LINE 開源預約管理系統）。
+
+【優先讀取規範】：
+在修改任何檔案以前，請先讀取專案根目錄的 AGENTS.md 與 .agent/AGENT-RULES.md，嚴格遵守四層架構與安全規範。
 
 【目錄安全檢查】：
 請先確認當前目錄是否為 open-booking-line 專案根目錄。
@@ -31,7 +34,7 @@ ADMIN_NOTIFY_USER_ID=（填入以 U 開頭的服務人員個人 LINE User ID）
 LINE_LOGIN_CHANNEL_ID=（填入 LINE Login Channel ID 數字）
 VITE_LIFF_ID=（填入 LIFF ID，格式如 2000000000-XXXXXXXX）
 
-服務站名稱（選填，預設為「高雄示範站」）：
+服務站名稱（選填，預設為「示範預約服務站」）：
 STATION_NAME=
 
 🔒 【Zero-Disk 零磁碟落地資安守則】：

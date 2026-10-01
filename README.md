@@ -1,6 +1,6 @@
-# 🌱 行農合作社 · 農業資源預約管理系統 (Open Source Starter)
+# 🌱 open-booking-line — LINE 開源預約管理系統模板 (Open Source Starter)
 
-全純文字輕量化、高效能且安全嚴謹的農業與在地資源預約管理系統。基於 **Cloudflare Serverless（Workers + D1 + Pages）** 與 **LINE LIFF** 架構打造，無需負擔高昂伺服器與資料庫月租費，全案皆可在 Cloudflare 與 LINE 免費額度內極速運行。
+全純文字輕量化、高效能且安全嚴謹的 LINE 預約與在地服務管理系統。基於 **Cloudflare Serverless（Workers + D1 + Pages）** 與 **LINE LIFF** 架構打造，無需負擔高昂伺服器與資料庫月租費，全案皆可在 Cloudflare 與 LINE 免費額度內極速運行。
 
 > 🤖 **AI Agent 協同入口規範**：請參閱 **[AGENTS.md](AGENTS.md)**，所有 AI 工具進入專案之首要讀取約束與核心守則。  
 > 🌾 **完全新手 5 分鐘架站懶人包**：請直接參閱 **[新手白話圖文部署指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)**，跟著圖解複製代碼交給 AI 全自動完成架設。  
