@@ -52,8 +52,8 @@ export async function getCurrentRemoteDefault(token, customFetch = lineFetch) {
     const data = await res.json();
     return data.richMenuId || null;
   }
-  if (res.status === 404) {
-    return null; // No default set via API
+  if (res.status === 404 || res.status === 403) {
+    return null; // No default set via API (or set via OA Manager)
   }
   const errorText = await res.text();
   throw new Error(`LINE_GET_DEFAULT_FAILED: HTTP ${res.status} - ${errorText}`);
