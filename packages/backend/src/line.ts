@@ -1,6 +1,6 @@
 export function generateFlexNotification(request: any, liffId?: string, stationName?: string) {
-  const activeLiffId = liffId || '2011709076-09FdfkjH';
-  const station = stationName || '高雄服務站';
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
   const slotMap: Record<string, string> = {
     morning: '上午',
     afternoon: '下午',
@@ -132,8 +132,8 @@ export function generateFlexNotification(request: any, liffId?: string, stationN
 }
 
 export function generateCustomerConfirmationFlex(request: any, liffId?: string, stationName?: string) {
-  const activeLiffId = liffId || '2011709076-09FdfkjH';
-  const station = stationName || '高雄服務站';
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
   const slotMap: Record<string, string> = {
     morning: '上午',
     afternoon: '下午',
@@ -328,8 +328,8 @@ export async function replyLineMessage(token: string, replyToken: string, messag
 }
 
 export function generateWelcomeGuideFlex(liffId?: string, stationName?: string) {
-  const activeLiffId = liffId || '2011709076-09FdfkjH';
-  const station = stationName || '高雄服務站';
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
   return {
     type: 'flex',
     altText: '【服務選單】' + station + '服務選單',
@@ -387,8 +387,8 @@ export function generateWelcomeGuideFlex(liffId?: string, stationName?: string) 
 }
 
 export function generateProgressQueryFlex(requests: any[], liffId?: string, stationName?: string) {
-  const activeLiffId = liffId || '2011709076-09FdfkjH';
-  const station = stationName || '高雄服務站';
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
   if (!requests || requests.length === 0) {
     return {
       type: 'flex',
@@ -664,8 +664,8 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 export function generateAdminPortalFlex(liffId?: string, stationName?: string) {
-  const activeLiffId = liffId || '2011709076-09FdfkjH';
-  const station = stationName || '高雄服務站';
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
   return {
     type: 'flex',
     altText: '【服務站管理】專屬管理後台通道',

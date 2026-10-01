@@ -4,9 +4,9 @@ import { ServiceRequest, RequestStatus } from '../../../shared/types';
 import { Phone, CheckCircle2, RefreshCw, X, MapPin, LogOut, Loader2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { API_BASE } from '../config';
 
-const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '2011709076-09FdfkjH';
-const ADMIN_TOKEN_KEY = 'xingnong_admin_token';
-const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '高雄服務站';
+const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
+const ADMIN_TOKEN_KEY = 'open_booking_admin_token';
+const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '預約服務站';
 
 interface AdminUserProfile {
   userId: string;
@@ -27,6 +27,38 @@ export const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
 
+  const authenticateWithIdToken = async (idToken: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/auth/line`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: idToken })
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
+        sessionStorage.setItem(ADMIN_TOKEN_KEY, idToken);
+        setAdminUser(data.user);
+        setIsAuthenticated(true);
+        setAuthError(null);
+        return true;
+      } else if (res.status === 403 && data) {
+        setAuthError({
+          message: data.message || '您非授權管理人員',
+          userId: data.userId,
+          displayName: data.displayName
+        });
+        return false;
+      } else {
+        const errorMsg = data?.message || `驗證失敗 (HTTP ${res.status})`;
+        console.warn('Admin auth failed:', errorMsg);
+        return false;
+      }
+    } catch (err: any) {
+      console.error('LINE admin auth error:', err);
+      return false;
+    }
+  };
+
   // 1. 初始化 LIFF 與 LINE 幹部白名單自動驗證
   useEffect(() => {
     if (!LIFF_ID) {
@@ -40,34 +72,9 @@ export const AdminDashboard: React.FC = () => {
         if (liff.isLoggedIn()) {
           const idToken = liff.getIDToken();
           if (idToken) {
-            try {
-              const res = await fetch(`${API_BASE}/api/admin/auth/line`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id_token: idToken })
-              });
-              const data = await res.json();
-              if (res.ok && data.success) {
-                sessionStorage.setItem(ADMIN_TOKEN_KEY, idToken);
-                setAdminUser(data.user);
-                setIsAuthenticated(true);
-                setIsCheckingAuth(false);
-                return;
-              } else if (res.status === 403) {
-                setAuthError({
-                  message: data.message || '您非授權幹部',
-                  userId: data.userId,
-                  displayName: data.displayName
-                });
-                setIsCheckingAuth(false);
-                return;
-              }
-            } catch (err) {
-              console.error('LINE admin auth error:', err);
-            }
+            await authenticateWithIdToken(idToken);
           }
         }
-
         setIsCheckingAuth(false);
       })
       .catch((err) => {
@@ -170,13 +177,34 @@ export const AdminDashboard: React.FC = () => {
     return '皆可';
   };
 
-  const handleLineLogin = () => {
+  const handleLineLogin = async () => {
     if (!LIFF_ID) {
-      alert('尚未設定 VITE_LIFF_ID，請先於環境變數中設定。');
+      alert('系統尚未設定 VITE_LIFF_ID，請先於環境變數中設定。');
       return;
     }
-    if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: window.location.href });
+
+    setIsCheckingAuth(true);
+    try {
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+
+      // 已在 LINE 內或已登入狀態：主動提取 ID Token 進行身分驗證
+      const idToken = liff.getIDToken();
+      if (!idToken) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
+
+      const success = await authenticateWithIdToken(idToken);
+      if (!success && !authError) {
+        alert('身分驗證未通過：無法確認服務人員權限，請確認您的 LINE 帳號已加入 ADMIN_LINE_IDS 白名單。');
+      }
+    } catch (err: any) {
+      alert('登入驗證異常：' + (err?.message || err));
+    } finally {
+      setIsCheckingAuth(false);
     }
   };
 
