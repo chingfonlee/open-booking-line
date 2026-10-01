@@ -8,9 +8,9 @@
 
 ## Current Status (當前狀態)
 
-* **Current Task**: `Ep02-0 — Discovery / Preflight`
+* **Current Task**: `Ep02-1 — Spec + Builder`
 * **Episode Status**: `In Progress`
-* **Next Task**: `Ep02-0 — Discovery / Preflight`
+* **Next Task**: `Ep02-1 — Spec + Builder`
 
 ---
 
@@ -18,8 +18,8 @@
 
 | Task ID | 名稱 | 狀態 | 負責 Agent / 交付紀錄 |
 | :--- | :--- | :--- | :--- |
-| **Ep02-0** | Discovery / Preflight | **Ready** | 待派工執行 |
-| **Ep02-1** | Spec + Builder | **Pending** | 等待 Ep02-0 結案 |
+| **Ep02-0** | Discovery / Preflight | **Complete** | 通過目標解析與前置檢測，產出 targets.json，測試 100% PASS |
+| **Ep02-1** | Spec + Builder | **Ready** | 可立即接續執行規格定義與幾何產生器 |
 | **Ep02-2** | Deterministic Renderer | **Pending** | 等待 Ep02-1 結案 |
 | **Ep02-3** | Preview + Approval | **Pending** | 等待 Ep02-2 結案 |
 | **Ep02-4** | Safe Publisher | **Pending** | 等待 Ep02-3 結案 |
@@ -29,7 +29,14 @@
 
 ## Current Verified Outputs (已驗證產物登錄)
 
-*(尚無，將於各 Task 通過測試後由執行的 Agent 依序登錄)*
+### Ep02-0:
+* **產物路徑**：`.booking/rich-menu/targets.json`（受 `.gitignore` 保護）
+* **解析成果**：
+  * **店家名稱**：`高雄服務站`（來源：`packages/frontend/.env` line 4）
+  * **預約網址**：`https://liff.line.me/2011709076-09FdfkjH`（來源：`packages/frontend/.env` line 2）
+  * **進度查詢詞**：`查詢預約`（來源：`packages/backend/src/index.ts` lines 603-611）
+  * **遠端預檢**：記錄為 `requires-operation-token`（未洩漏任何金鑰）
+* **測試套件**：`tests/rich-menu/discovery.test.mjs`（5 項測試 100% PASS）
 
 ---
 
