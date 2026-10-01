@@ -29,6 +29,7 @@
 * 嚴格遵守 `Execute ➔ Verify ➔ Pass? ➔ Update State`。
 * **不得**因為「代碼已產生」、「指令已執行」或「Agent 認為應該成功」就將能力標記為 `verified`。
 * 只有實際測試通過（網頁打開、真實送單成功、D1 寫入確認）後，方可登錄。
+* 本地狀態格式嚴格遵守 `.booking/project-state.schema.json`，以 `capabilities.<id>.status = "verified"` 作為唯一真理，不得自創 `installedEpisodes` 或布林值。
 
 ## 7. 執行前檢查前置依賴 (Check Prerequisites First)
 * 在執行任何 Episode 任務前，必須先檢查 `episode.json` 中的 `requires`。
@@ -51,3 +52,62 @@
 ## 12. 禁止重寫不相關核心模組 (No Unnecessary Framework Rewrites)
 * 保持 Cloudflare 原生 Serverless (Pages + Workers + Hono + D1) 架構。
 * 禁止為了實現單一集數的特定功能，擅自將專案重構為 Express、NestJS、傳統 VPS、PostgreSQL 或引入不必要之複雜設計模式。
+
+---
+
+## 13. 文件責任劃分守則 (Documentation Ownership Rule)
+所有文件皆有固定之單一責任，Agent 修改文件前必須先判斷所屬層級，**嚴禁將同一份資訊大量複製至多個位置**：
+* **Root `README.md` (產品首頁)**：
+  * 責任：描述**目前穩定產品樣貌 (Current Stable State)**、**已驗證功能 (Current Verified Capabilities)**、人類導覽、Episode 簡表。
+  * 嚴禁：當成歷史紀錄堆疊每集詳細演進；標記未驗證之功能為已支援；複製詳細 Agent 執行步驟。
+* **`docs/episodes/<episode-id>/README.md` (人類集數手冊)**：
+  * 責任：向一般使用者與 YouTube 觀眾說明該集新增內容、前置條件、安全取得更新方式、如何開始、預期成果與 Tag/影片連結。保持約一個畫面的簡短篇幅。
+  * 嚴禁：複製完整 Agent TASK、內部 API 流程或驗簽邏輯。
+* **`.agent/episodes/<episode-id>/` (Agent 執行合約)**：
+  * 責任：存放機器可讀之 `episode.json`（依賴與產出宣告）與 `TASK.md`（Agent 執行 SOP、驗證條件與狀態寫入規則）。
+* **`CHANGELOG.md` (產品歷史變更)**：
+  * 責任：按版本/集數紀錄產品演進歷史（What changed across time），不作為新手教學或操作手冊。
+* **Git Tags**：
+  * 責任：保存歷史程式碼快照，供 YouTube 影片回溯或 Debug，不作為使用者本地進度管理。
+
+---
+
+## 14. 文件更新的正式時間序 (Documentation Update Sequence)
+在執行任何 Episode 任務時，固定遵循以下不可顛倒的時間序：
+```text
+Implementation (實作)
+      ↓
+Verification (實機驗證)
+      ↓
+PASS (全數通過)
+      ↓
+Update project state (.booking/project-state.json 登錄 verified)
+      ↓
+Update Root README current capabilities (標記為 ✓)
+      ↓
+Finalize Episode README (更新集數文件狀態)
+      ↓
+Update CHANGELOG (新增該集正式變更)
+      ↓
+Commit stable state (提交乾淨代碼至 Git)
+      ↓
+Create Episode Tag (建立版本快照標籤)
+```
+> ⚠️ **重要原則**：若 Verification 失敗，**README 不得標記支援、CHANGELOG 不得宣告完成、State 不得標記 verified、Git Tag 絕不得建立**。
+
+---
+
+## 15. 下一集安全取得流程 (Safe Episode Update Protocol)
+當使用者要求升級或進入下一個 Episode 時，Agent 必須先檢查 Git 狀態：
+1. **執行 `git status` 檢查工作目錄**。
+2. **情境 A（乾淨工作目錄）**：可安全執行 `git pull origin main`，完成後檢查目標 Episode 目錄是否就緒。
+3. **情境 B（存在本地修改）**：
+   * **嚴禁**使用 `git reset --hard`、`git checkout .` 或任何破壞性指令來抹除使用者環境！
+   * 識別修改項目：若是私有設定（`.env`、`wrangler.local.toml`、`.booking/project-state.json`），確保其受 `.gitignore` 保護；若是已追蹤檔案，主動向使用者說明並使用 `git stash` 或專屬分支安全保護修改。
+
+---
+
+## 16. 共通問題集中收斂 (Centralized Troubleshooting)
+* 嚴禁為每一集單獨建立重複的 `epXX-troubleshooting.md`。
+* **集數專屬提示**：直接在該集 `docs/episodes/<episode-id>/README.md` 保留 1~2 點簡短說明。
+* **跨集數共通問題**：統一收斂至 `docs/TROUBLESHOOTING.md`（例如 LINE 權限、Cloudflare 帳號過期、CORS 設定等），各集手冊僅以連結引導。

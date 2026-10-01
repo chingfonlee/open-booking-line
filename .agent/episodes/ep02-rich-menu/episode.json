@@ -1,0 +1,11 @@
+{
+  "id": "ep02-rich-menu",
+  "title": "LINE Rich Menu",
+  "requires": [
+    "booking-core"
+  ],
+  "provides": [
+    "rich-menu"
+  ],
+  "status": "development"
+}

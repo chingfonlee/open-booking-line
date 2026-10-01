@@ -1,328 +1,176 @@
-# 🌱 open-booking-line — LINE 開源預約管理系統模板 (Open Source Starter)
+# 🌱 open-booking-line — LINE 開源預約管理系統
 
 全純文字輕量化、高效能且安全嚴謹的 LINE 預約與在地服務管理系統。基於 **Cloudflare Serverless（Workers + D1 + Pages）** 與 **LINE LIFF** 架構打造，無需負擔高昂伺服器與資料庫月租費，全案皆可在 Cloudflare 與 LINE 免費額度內極速運行。
 
 > 🤖 **AI Agent 協同入口規範**：請參閱 **[AGENTS.md](AGENTS.md)**，所有 AI 工具進入專案之首要讀取約束與核心守則。  
-> 🌾 **完全新手 5 分鐘架站懶人包**：請直接參閱 **[新手白話圖文部署指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)**，跟著圖解複製代碼交給 AI 全自動完成架設。  
-> 📖 **完整技術文件體系**：
-> - 🏗️ **[系統架構設計書 (ARCHITECTURE.md)](ARCHITECTURE.md)**：系統拓撲、模組職責與 D1 Schema。
-> - 🛡️ **[通用系統安全基線 (SECURITY_BASELINE.md)](SECURITY_BASELINE.md)**：跨平臺、語言無關之 10 大不可妥協原則與雙模型框架。
-> - 🔐 **[專案安全實作設定 (SECURITY_PROFILE.md)](SECURITY_PROFILE.md)**：本專案（Cloudflare + LINE + Hono）具體安全落地規格。
-> - 🚀 **[AI 協同開發生命週期 (DEVELOPMENT_SOP.md)](DEVELOPMENT_SOP.md)**：8 階段標準開發流程與垂直切片先行心法。
-> - ✅ **[驗收測試與情境清單 (ACCEPTANCE_TESTS.md)](ACCEPTANCE_TESTS.md)**：業務功能、邊界防護與 5 大 E2E 失效復原測試。
-> - 🛠️ **[Agent 自動化部署手冊 (DEPLOYMENT_GUIDE.md)](DEPLOYMENT_GUIDE.md)**：環境檢測、D1 初始化、金鑰配置與雲端發布 SOP。
+> 📖 **本集更新與歷史變更**：請參閱 **[CHANGELOG.md](CHANGELOG.md)**。
 
 ---
 
-## 🌟 核心特色
+## 🌟 Current Capabilities (目前已驗證功能)
 
-1. **極致輕量與低營運成本**
-   - 捨棄笨重高耗能的照片上傳與物件儲存（R2 / S3），聚焦於農民最核心的田區資訊、作物面積、枝條體積與希望施工時程。
-   - 全無伺服器（Serverless）架構，零冷啟動延遲，單次預約送出僅需數十毫秒。
-2. **LINE 原生流暢體驗**
-   - 農民開啟 LINE LIFF 即可自動帶入暱稱，一鍵完成預約。
-   - 預約送出後，站所服務人員即刻收到美觀的 **LINE Flex Message** 推播通知，並可直接點擊卡片撥號聯絡農民或一鍵進入後台。
-3. **開源級企業安全防護體系**
-   - 🛡️ **純 LINE 服務人員白名單原生鑑權（Zero-Password 零密碼架構）**：管理後台全面採用 LINE 官方 ID Token 驗證，僅允許設定在 `ADMIN_LINE_IDS` 白名單內的服務人員存取。手機端自動授權進入，電腦桌機端支援 QR Code 掃描登入；**徹底拔除靜態密碼，徹底根除密碼洩漏、爆破與忘記密碼之風險**。
-   - 🛡️ **LINE Webhook 密碼學防偽驗簽**：採用原生 Web Crypto API 針對 `x-line-signature` 進行 HMAC-SHA256 恆定時間驗證，杜絕偽造 Webhook 事件盜刷 DB 或耗損推播配額。
-   - 🛡️ **Cloudflare Turnstile 強制無感真人驗證**：農民填表無須辨識歪斜文字，背景強制驗核 Token，防禦惡意機器人繞過刷單、保護每月免費 LINE 推播額度與 D1 寫入資源。
-   - 🛡️ **全資料欄位長度防爆破與 PII 日誌脫敏**：全面限制姓名、電話、地址與備註之最大字數，日誌自動遮蔽敏感個人電話，落實隱私合規。
-   - 🛡️ **開箱即測與正式上線加固指引**：預設配備零門檻本機測試容錯，正式投入營運時請參閱 [部署手冊 5.1 節 (DEPLOYMENT_GUIDE.md)](DEPLOYMENT_GUIDE.md#--51--正式營運安全加固-check-list3-步驟無痛升級生產環境) 完成 2 分鐘快速加固。
+以下為目前主幹分支（`main`）經實機端對端驗收通過之穩定功能：
 
----
-
-## 📁 專案架構 (Monorepo)
-
-```text
-line-bot-farm/
-├── packages/
-│   ├── shared/            # 雙端共用 TypeScript 型別與常數定義
-│   │   └── types.ts
-│   ├── backend/           # Cloudflare Workers 後端 API (採用 Hono 框架)
-│   │   ├── src/
-│   │   │   ├── index.ts   # 路由控制、頻率限制、安全驗證中間件
-│   │   │   ├── line.ts    # LINE Flex Message 產生器、Push API、ID Token 驗證
-│   │   │   └── turnstile.ts # Cloudflare Turnstile 站點真人校驗模組
-│   │   └── wrangler.toml  # Cloudflare Worker 佈署與環境變數綁定檔
-│   └── frontend/          # Cloudflare Pages 前端 (React + Vite + Tailwind CSS)
-│       ├── functions/     # Cloudflare Pages Functions (API 代理轉發)
-│       └── src/
-│           ├── components/
-│           │   ├── ApplyForm.tsx      # 農友預約表單 (含 Turnstile 與 LINE 身分綁定)
-│           │   └── AdminDashboard.tsx  # 幹部管理後台 (支援 LINE 登入與電話一鍵撥號)
-│           └── App.tsx
-├── scripts/
-│   └── verify-no-photo.js # 輕量版純文字架構相依性自動校驗腳本
-├── .env.example           # 環境變數範本檔
-└── README.md
-```
+* ✓ **LINE 原生流暢預約 (LIFF)**：支援在 LINE 官方帳號內開啟前端預約表單，自動帶入顧客 LINE 暱稱。
+* ✓ **極低成本 Serverless 後端**：基於 Cloudflare Workers + Hono 框架，提供低延遲、高並發之預約處理與時段排程 API。
+* ✓ **無伺服器關聯資料庫 (Cloudflare D1)**：以 SQLite 儲存預約單與時段封鎖紀錄，免除資料庫維護負擔。
+* ✓ **LINE Flex Message 即時推播**：新預約送出時，即時推播通知站所幹部，支援一鍵撥號與後台跳轉。
+* ✓ **Zero-Password 零密碼管理後台**：管理端 100% 透過 LINE 官方 ID Token 驗證服務人員白名單，手機端自動免密碼登入、桌機端掃碼授權，徹底拔除靜態密碼洩漏風險。
+* ✓ **企業級安全防禦**：
+  * Cloudflare Turnstile 無感真人防刷單驗證。
+  * 原生 Web Crypto HMAC-SHA256 恆定時間 Webhook 驗簽。
+  * 電信級 Client IP + Phone 複合滑動窗口頻率限制。
+  * 資料庫全欄位長度防爆破與日誌敏感個資（PII）脫敏。
 
 ---
 
-## 📋 系統前置要求與準備 (System Prerequisites)
+## 📺 YouTube Episode Guide (教學影片索引)
 
-在開始架設前，您只需要準備好以下 **4 項免費資源**（不需要高階電腦，一般文書筆電甚至輕量環境皆可）：
+本專案採**「能力演進式（Evolution Capability）」**架構，每一集 YouTube 教學為專案增添一項經驗證的新能力。
 
-| 必備項目 | 作用與用途（白話解說） | 相關入口網站 / 說明 |
-| :--- | :--- | :--- |
-| **1. LINE 官方帳號 (LINE OA)** | 您的**「預約推播小秘書」**。用來發送預約成功的推播通知給幹部，並可在官方帳號聊天室放置圖文選單讓農友點擊秒開預約。 | 🔗 **[LINE Official Account Manager 後台](https://manager.line.biz/)**<br/>（可用個人 LINE 免費線上申請，每月享有免費 200 則推播額度） |
-| **2. LINE 開發者帳號 (LINE Developers)** | 取得串接代碼的**「金鑰控制台」**。用來建立機器人頻道、啟用 Webhook、以及取得 5 個必要值與 LIFF 預約門牌號碼。 | 🔗 **[LINE Developers Console](https://developers.line.biz/console/)**<br/>（用平常用的個人 LINE 帳號直接登入即可，免額外審核） |
-| **3. Google 帳號 (註冊 Cloudflare)** | 免費開通全球最大的**「24 小時雲端大腦」**。託管預約資料庫 (D1) 與前端網頁 (Pages)，每個月享有海量免費額度，完全不需要綁定信用卡！ | 🔗 **[Cloudflare 免費註冊](https://dash.cloudflare.com/sign-up)**<br/>（支援使用 Google 帳號一鍵登入） |
-| **4. 一個能執行的 AI Coding Agent** | 您的**「專屬雲端工程師」**。負責替您執行所有指令、建立資料庫、打包網頁與發布上線，完全不需要手動寫代碼！ | 推薦任選其一（皆可完成）：<br/>🎁 **完全免費 0 元首選**：<br/>• **OpenCode**（搭配 **Zen 免費帳號 + Muse spark free 1.3** 免費模型，完全免花錢！）<br/>• **Google Antigravity**（內建智慧助理）<br/>⚡ **其他常見 AI 工具**：<br/>• **Claude Code** / **Cursor** / **Windsurf**<br/>*(電腦需安裝 Node.js >= 22 LTS 與 Git，AI 通常會自動偵測)* |
+| Episode | Capability | Status | Episode Guide | Snapshot Tag |
+| :--- | :--- | :--- | :--- | :--- |
+| **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
+| **Ep02** | LINE Rich Menu (圖文選單) | **In Development** (開發中) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | *(驗證通過後建立)* |
+| **Ep03** | Service Catalog (多服務項目) | **Planned** (規劃中) | — | — |
+| **Ep04** | Admin Scheduling (排程與封鎖) | **Planned** (規劃中) | — | — |
+| **Ep05** | Notification & Broadcast (推播加固) | **Planned** (規劃中) | — | — |
 
----
-
-## 🚀 部署路徑選擇 (Choose Your Installation Path)
-
-| 🎯 您的身分 | 推薦路徑 | 說明 |
-| :--- | :--- | :--- |
-| 👶 **完全不懂程式 / 一般使用者** | **[一鍵 AI 提示詞 (INSTALL_PROMPT.md)](INSTALL_PROMPT.md)**<br/>搭配 **[新手白話指南 (BEGINNER_GUIDE.md)](BEGINNER_GUIDE.md)** | **只需準備 5 個必要值**：直接整段貼進 AI 對話視窗，AI 全自動完成資料庫、金鑰注入與網頁發布，**完全免碰終端機！** |
-| 👨‍💻 **專業軟體工程師 / 開發者** | **下方「開發者手動部署」**<br/>或參閱 **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | 自行透過終端機逐步執行 git clone、wrangler d1、build、deploy 等完整命令列工具鏈。 |
-
-> ⚠️ **新手提醒**：如果您不是要手動修改程式碼，**請直接走「新手 AI 自動部署」路徑**，切勿往下看繁瑣的工程師指令！
-
-### 👶 新手 5 分鐘零門檻安裝全景流程 (Beginner Journey)
-
-```mermaid
-flowchart TD
-    subgraph S1["1. 前置準備 (約 3 分鐘)"]
-        A["📁 建立專屬空資料夾 (如 my-booking) 保持桌面乾淨"]
-        B["🔑 依照 BEGINNER_GUIDE.md 取得 5 個必要值<br/>(直接複製貼在記事本備用)"]
-        A --> B
-    end
-
-    subgraph S2["2. 呼叫 AI 全自動部署 (約 2 分鐘)"]
-        C["📋 複製 INSTALL_PROMPT.md 提示詞<br/>填入 5 個必要值貼進 AI 對話視窗"]
-        D["🌐 瀏覽器彈窗點擊 Cloudflare Allow 允許授權"]
-        E["🤖 AI 背景全自動注入金鑰、建立 D1 並發布 API<br/>(完全免碰終端機！回傳網址: https://xxx.pages.dev)"]
-        C --> D --> E
-    end
-
-    subgraph S3["3. LINE 綁定與正式公開 (約 1 分鐘)"]
-        G["🔗 回 LINE Developers ➔ 將網址填入 LIFF Endpoint URL"]
-        H["🚀 將 LINE Login 狀態由 Developing 切換為 Published"]
-        I["🎉 大功告成！正式開放農民與大眾在 LINE 預約"]
-        G --> H --> I
-    end
-
-    S1 --> S2 --> S3
-```
+> 📌 **說明**：
+> 1. 新使用者預設直接 Clone 最新 `main` 分支即可。
+> 2. 詳細執行 SOP 請參閱 `.agent/episodes/<episode-id>/TASK.md`。
 
 ---
 
-## 👨‍💻 開發者手動部署 (Technical Manual Installation)
+## 🚀 How to Use (如何開始使用)
 
-### 1. 取得專案並安裝相依套件
+現階段專案正式支援 **Episode-by-Episode 循序建置路線**：
 
+### 1. 取得最新程式碼
 ```bash
 git clone https://github.com/chingfonlee/open-booking-line.git
 cd open-booking-line
 npm install
 ```
 
-### 2. 初始化 Cloudflare D1 資料庫
+### 2. 準備前置資源
+* **LINE 官方帳號 (LINE OA)** 及 **LINE Developers** 頻道（取得 Channel Access Token、Channel Secret、Channel ID、LIFF ID）。
+* **Cloudflare 帳號**（免信用卡，具備 Workers 與 D1 權限）。
+* 推薦使用 **AI Coding Agent**（例如 Antigravity、Claude Code、Cursor、OpenCode）協同部署。
 
-登入 Cloudflare CLI 並建立 D1 資料庫：
-```bash
-npx wrangler login
-npx wrangler d1 create xingnong-db
-```
-將終端機輸出的 `database_id` 填寫至 `packages/backend/wrangler.toml` 中的 `[[d1_databases]]` 區塊。
+### 3. 交由 AI Agent 執行部署
+在專案根目錄直接對 AI 輸入：
+> 「我想在目前專案安裝 Episode 01 basic-booking 能力，請引導我完成設定與部署。」
 
-執行資料表建立：
-```bash
-npx wrangler d1 execute xingnong-db --command "
-CREATE TABLE IF NOT EXISTS service_requests (
-  id TEXT PRIMARY KEY,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  contact_name TEXT NOT NULL,
-  phone TEXT NOT NULL,
-  service_type TEXT NOT NULL,
-  crop_type TEXT NOT NULL,
-  area_size TEXT NOT NULL,
-  area_value TEXT,
-  area_unit TEXT,
-  branch_volume TEXT,
-  location_area TEXT NOT NULL,
-  location_address TEXT NOT NULL,
-  preferred_date TEXT NOT NULL,
-  preferred_time_slot TEXT NOT NULL,
-  date_flexibility TEXT,
-  notes TEXT,
-  status TEXT NOT NULL DEFAULT 'to_contact',
-  admin_memo TEXT,
-  line_user_id TEXT
-);
-CREATE TABLE IF NOT EXISTS blocked_dates (
-  date TEXT PRIMARY KEY,
-  reason TEXT,
-  created_at TEXT NOT NULL
-);
-"
-```
-
-### 3. 設定環境變數與金鑰
-
-參考 `.env.example` 與 `packages/backend/wrangler.toml.example`，在 `packages/backend/wrangler.toml` 填寫以下設定：
-
-| 變數名稱 | 說明 | 範例值 / 建議設定 |
-| :--- | :--- | :--- |
-| `STATION_NAME` | 服務站所名稱 | `高雄服務站`（開源範例：`示範農場服務站`） |
-| `ADMIN_NOTIFY_USER_ID` | 接收預約推播通知的服務人員 LINE User ID | `U7c0c955...` |
-| `ADMIN_LINE_IDS` | 授權管理服務人員的 LINE User ID 白名單（逗號分隔） | `U7c0c955...,U123456...` |
-| `LINE_LOGIN_CHANNEL_ID` | LIFF 所屬的 LINE Login Channel ID | `2011709076` |
-| `ALLOWED_ORIGINS` | 前端允許之 CORS 來源（逗號分隔） | `https://your-app.pages.dev,https://*.pages.dev` |
-
-將關鍵密鑰設為 Worker Secret（絕不寫入檔案，避免納入版本控制）：
-```bash
-cd packages/backend
-# 1. LINE Messaging API Channel Access Token (必填，用於發送通知與查詢進度)
-npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-
-# 2. LINE Messaging API Channel Secret (強烈推薦，用於 Webhook HMAC-SHA256 驗簽)
-npx wrangler secret put LINE_CHANNEL_SECRET
-
-# 3. Cloudflare Turnstile 密鑰 (非必填，預設走測試金鑰；正式環境推薦執行 npm run setup:turnstile 自動配置，或手動安全寫入)
-npx wrangler secret put TURNSTILE_SECRET_KEY
-```
-
-### 4. 部署至 Cloudflare
-
-#### 部署後端 API (Cloudflare Worker)
-```bash
-cd packages/backend
-npx wrangler deploy
-```
-
-#### 部署前端介面 (Cloudflare Pages)
-```bash
-cd ../frontend
-npm run build
-npx wrangler pages deploy dist --project-name xingnong-farm
-```
+AI 會依據 `.agent/episodes/ep01-basic-booking/TASK.md` 檢查前置條件、引導設定，並在完成實機驗收後於本地 `.booking/project-state.json` 登錄已驗證能力。
 
 ---
 
-## 🔒 企業級安全性架構與已修復項目說明 (Security Hardening)
+## 📁 Architecture (系統架構)
 
-本專案經過嚴謹的安全審計與重構，全面解決了常見的 Serverless 與 LINE Bot 部署資安漏洞，具備以下 9 重資安防護與自動化防禦機制：
-
+### 系統拓撲
 ```mermaid
 flowchart TD
-    subgraph Client["農民端與服務人員端 (Client)"]
-        Farmer["🧑‍🌾 農友表單 (LIFF)"]
-        Admin["🛠️ 服務人員後台 (Zero-Password)"]
-        LineApp["📱 LINE 官方聊天室"]
+    subgraph Client["客戶端與管理端"]
+        User["🧑‍🌾 農友 / 顧客 (LINE LIFF)"]
+        Admin["🛠️ 幹部管理端 (LINE Auth)"]
+        LineChat["📱 LINE 官方帳號聊天室"]
     end
 
-    subgraph SecurityLayer["安全性防禦層 (Workers Edge Security)"]
-        CORS["🌐 CORS 動態網域檢驗<br>(ALLOWED_ORIGINS)"]
-        Headers["🛡️ 安全標頭注入<br>(X-Frame-Options, nosniff, HSTS)"]
-        RateLimit["⏳ 複合式滑動窗口頻率限制<br>(Client IP + Phone)"]
-        Turnstile["🤖 Cloudflare Turnstile<br>強制真人 Token 驗證"]
-        HMAC["🔑 LINE Webhook HMAC-SHA256<br>恆定時間防時序驗簽"]
-        LineAuth["🆔 LINE ID Token 密碼學簽名校驗<br>(純白名單零密碼存取)"]
-        LengthCheck["📏 欄位長度嚴格校驗<br>(防止灌爆 D1 資料庫)"]
-    end
-
-    subgraph Core["核心資料與服務 (Zero-Cost Core)"]
+    subgraph Edge["Cloudflare Edge Network"]
+        Pages["🌐 Cloudflare Pages (React + Vite)"]
+        Worker["⚡ Cloudflare Workers API (Hono)"]
+        Turnstile["🤖 Cloudflare Turnstile (真人核驗)"]
         D1[("🗄️ Cloudflare D1 (SQLite)")]
-        LINE_API["📨 LINE Messaging API"]
     end
 
-    Farmer --> CORS --> Headers --> RateLimit --> Turnstile --> LengthCheck --> D1
-    Farmer -. 預約成立 .-> LINE_API
-    LineApp --> HMAC --> D1
-    Admin --> LineAuth --> D1
+    subgraph LinePlatform["LINE Platform"]
+        MessagingAPI["📨 LINE Messaging API"]
+        LineLogin["🆔 LINE Login / Verify API"]
+    end
+
+    User --> Pages
+    Pages --> Turnstile
+    Pages --> Worker
+    Worker --> D1
+    Worker --> MessagingAPI
+    LineChat --> Worker
+    Admin --> Pages
+    Worker --> LineLogin
 ```
 
-### 1. 🛡️ LINE Webhook 原生 HMAC-SHA256 恆定時間防偽驗簽
-* **修復漏洞**：傳統 Webhook 缺乏簽名校驗，且字串 `===` 比對存在時序微秒差異（Timing Attack）。
-* **防護機制**：實作 [`verifyLineSignature`](packages/backend/src/line.ts)，透過原生 Web Crypto API 計算 `x-line-signature` 之 HMAC-SHA256 雜湊，並採用 `constantTimeEqual` 恆定時間比對，阻斷偽造請求與時序攻擊。
-
-### 2. 🔐 純 LINE 身分白名單鑑權（Zero-Password 零密碼架構）
-* **修復漏洞**：靜態管理密碼（PIN）容易被暴力破解、洩漏於 Git，或儲存於 `localStorage` 遭 XSS 竊取。
-* **防護機制**：**徹底拔除所有 PIN 碼相關機制**。管理端 100% 透過 LINE 官方 ID Token 驗證服務人員身分（`ADMIN_LINE_IDS`），手機端免密碼自動鑑權、電腦端手機掃碼登入，無密碼可供洩漏或爆破。
-
-### 3. 🤖 Cloudflare Turnstile 強制真人檢核（防範繞過漏洞）
-* **修復漏洞**：舊版本若客戶端未帶 `turnstile_token` 欄位即直接放行，容易被腳本繞過。
-* **防護機制**：後端強制要求 `body.turnstile_token` 必填，否則直接回傳 HTTP 400，徹底封死無 Token 繞過途徑。
-
-### 4. 📏 資料庫全欄位長度上限防禦 (Anti-Blowup)
-* **修復漏洞**：SQLite/D1 的 `TEXT` 預設不限長度，惡意攻擊者若塞入大量垃圾字串（數十萬字）可能癱瘓資料庫。
-* **防護機制**：嚴格限制所有字串長度：姓名 $\le 50$ 字、電話 $\le 25$ 字、地點 $\le 200$ 字、作物與面積 $\le 50$ 字、備註 $\le 1000$ 字，超長即拒絕。
-
-### 5. 🌐 動態 CORS 白名單隔離 (`ALLOWED_ORIGINS`)
-* **修復漏洞**：硬編碼特定網域會導致開源採用者無法在自訂網域運作；而使用 `cors('*')` 又會遭受任意惡意網站跨站刷單。
-* **防護機制**：後端採用動態來源校驗，支援環境變數 `ALLOWED_ORIGINS`（支援多組網域與萬用字元如 `*.pages.dev`），預設僅信任本機開發環境與 LINE 官方 LIFF。
-
-### 6. 🙈 日誌敏感個資遮蔽 (PII Masking)
-* **修復漏洞**：後端若印出 `rawBody` 或使用者文字，伺服器 Log（Cloudflare Dashboard / wrangler tail）會曝露農民電話與姓名。
-* **防護機制**：全面移除全文 dump，日誌僅記錄事件類型與數量，電話號碼自動遮蔽為 `0912***678`。
-
-### 7. 📱 電信級複合頻率限制 (Composite Rate Limiting)
-* **修復漏洞**：純以 IP 限流在台灣行動網路環境下，常因基地台 CGNAT（數千台手機共用同一個電信公網 IP）導致無辜農民互相被鎖定阻擋。
-* **防護機制**：採用 `Client IP + Phone Number` 複合鍵作為滑動視窗限流依據（10 分鐘內最多 5 筆預約），兼顧防惡意刷單與電信網路相容性。
-
-### 8. 🛡️ 瀏覽器標準安全防護標頭 (Security Headers & HSTS)
-* 前端 Pages（`_headers`）與後端 Workers 全域自動注入：
-  - `X-Content-Type-Options: nosniff`（防範 MIME 嗅探攻擊）
-  - `X-Frame-Options: SAMEORIGIN`（防止管理介面遭受 Clickjacking 點擊劫持）
-  - `Referrer-Policy: strict-origin-when-cross-origin`（防止敏感路徑洩漏至外部參照）
-  - `Strict-Transport-Security: max-age=31536000; includeSubDomains`（強制 HTTPS 傳輸）
-
-### 9. 🤖 Zero-Disk 憑證託管與 Agent-Safe 自動化部署
-* **修復漏洞**：傳統部署將 API 金鑰/密鑰寫入 `.env` 或 `wrangler.toml` 容易失誤提交至公開 Git；或透過 shell 腳本拼接參數時面臨指令注入（Command Injection）風險；且部署腳本重跑時容易在雲端產生無效孤兒資源。
-* **防護機制**：
-  - **Zero-Disk 密鑰零落地**：Secret 僅在記憶體流轉，由 `stdin` 管道直接寫入 Cloudflare Worker Secret，杜絕寫入磁碟與 Git 倉庫。
-  - **Zero-Shell Node 原生直調**：全面移除 `shell: true`，由 `node.exe` 直接執行 JavaScript 入口點，徹底消除 Windows/Unix 上的 Shell 注入攻擊面。
-  - **三層冪等復用 (Idempotency)**：自動識別本地既有 Key 或遠端清單，執行 `Reuse/Update` 同步網域與模式，絕不產生重複 Widget；支援 `--recreate` 明確重置。
-  - **全流程 Fail-Closed & 自我修復 (Self-Healing)**：任一 API 失敗立即安全中止，絕不降級盲目新建；復用時自動從雲端重新取得配對 Secret 灌回 Worker，確保環境自我修復。
-
-> 📖 **深入閱讀**：通用安全基線與雙模型請參閱 **[SECURITY_BASELINE.md](SECURITY_BASELINE.md)**；本專案具體實作規格請參閱 **[SECURITY_PROFILE.md](SECURITY_PROFILE.md)**；完整 8 階段開發生命週期請參閱 **[DEVELOPMENT_SOP.md](DEVELOPMENT_SOP.md)**；驗收測試清單請參閱 **[ACCEPTANCE_TESTS.md](ACCEPTANCE_TESTS.md)**。
+### Monorepo 目錄劃分
+```text
+open-booking-line/
+├── packages/
+│   ├── shared/            # 前後端共用 TypeScript 型別與介面
+│   ├── backend/           # Cloudflare Workers 後端 API (Hono 框架)
+│   │   ├── src/           # 路由、LINE 訊息、Turnstile 校驗
+│   │   └── wrangler.toml  # Cloudflare Worker 範本檔 (不含敏感金鑰)
+│   └── frontend/          # Cloudflare Pages 前端 (React + Vite + Tailwind)
+│       └── src/           # 表單元件 (ApplyForm)、管理後台 (AdminDashboard)
+├── docs/                  # 人類閱讀之技術手冊與 Episode 導覽
+│   ├── episodes/          # 每集白話導覽 (docs/episodes/epXX/README.md)
+│   ├── SECURITY-AND-SECRETS.md # 金鑰管理與隱私界線
+│   └── TROUBLESHOOTING.md # 跨集數集中除錯指南
+├── .agent/                # AI Agent 規範與執行合約
+│   ├── AGENT-RULES.md     # Agent 核心作業守則
+│   └── episodes/          # 各集機器可讀合約 (episode.json + TASK.md)
+├── .booking/              # 本地實例狀態登錄
+│   ├── project-state.schema.json  # 狀態結構定義
+│   └── project-state.json.example # 範例檔 (實際狀態受 .gitignore 保護)
+├── CHANGELOG.md           # 產品演進日誌
+├── AGENTS.md              # AI Agent 入口指引
+└── README.md              # 產品首頁
+```
 
 ---
 
-## 📱 LINE 設定與開放一般農友預約指引
+## ⚙️ Configuration (設定與金鑰入口)
 
-部署完成後，請務必確認以下 LINE 後台設定，確保外部農民能正常開啟表單並接收推播：
+為確保開源安全性，本專案嚴格區分**公開設定**與**私有憑證**：
 
-### 1. 將 LINE Login 頻道切換為「Published（已發布）」
-> ⚠️ **關鍵開關**：LINE Developers Console 中新建的頻道預設為 **`Developing`（開發中）**。此時只有管理員與開發者帳號能開啟，**一般非測試人員點開會出現「此服務目前正在開發中」的錯誤**。
-> - **發布步驟**：開啟 [LINE Developers Console](https://developers.line.biz/console/) ➡️ 點入您的 **LINE Login Channel** ➡️ 在頁面頂部將 **`Developing`** 點擊切換為 **`Published`** 即可對全網開放。
-
-### 2. LIFF 應用必要設定
-- **Scopes**：勾選 `profile` 與 `openid`（以支援自動帶入農民 LINE 暱稱與身分防偽校驗）。
-- **Endpoint URL**：填入您的 Cloudflare Pages 正式網址（例如 `https://xingnong-farm.pages.dev`）。
-- **Bot prompt**：選擇 `Normal`（在農民首次開啟表單授權時，主動引導將官方帳號加入好友）。
-
-### 3. 如何分享給農民使用與圖文選單雙功能配置
-- **取得專屬 LIFF 連結**：在 LIFF 設定頁複製 `https://liff.line.me/<YOUR_LIFF_ID>`。
-- **圖文選單 (Rich Menu) 推薦配置**：
-  - **預約按鈕**：動作類型設為「連結 (URL)」，網址填入 `https://liff.line.me/<YOUR_LIFF_ID>`。
-  - **查詢進度按鈕**：動作類型設為「文字 (Text)」，文字填入 `查詢預約`。
-- **免費用量優勢**：
-  - 農友點擊「查詢預約」時，系統採用 LINE 原生 **Reply API** 被動回覆最新排程卡片，**完全免費且 100% 不計入每月 200 則推播額度**！
-  - 只有新預約成立時的主動推播會扣除額度（每月 200 則免費 Push）。
-
-### 4. 🚨 LINE 聊天室查詢進度 Webhook 必備雙開關（未開啟將無反應）
-若要讓農友在 LINE 聊天室輸入「查詢預約」或點擊圖文選單時能收到進度卡片，務必確認以下兩處開關：
-1. **[LINE OA 後台 (manager.line.biz)](https://manager.line.biz/)**：右上角「設定」➡️「回應設定」➡️ **「Webhook」務必切換為「開啟」**（預設為關閉！）。
-2. **[LINE Developers 後台](https://developers.line.biz/)**：Messaging API 分頁 ➡️ **Webhook settings** 填入 `https://<YOUR_WORKER_DOMAIN>/api/line/webhook`，點擊 Verify，並將 **「Use webhook」切換為「開啟（綠色 Enabled）」**。
-
-### 5. Cloudflare Turnstile 真人防護設定（防機器人刷單）
-- **預設狀態**：本專案預設採用 Cloudflare 官方 **Managed 智慧模式**（測試 Site Key 為 `1x00000000000000000000AA`），搭配前端 `appearance: 'interaction-only'`，正常情況下完全隱形無感，僅在異常流量時進行輕量互動校驗。
-- **正式營運推薦設定**：
-  1. **全自動配置（推薦）**：直接在專案根目錄執行 `npm run setup:turnstile`，腳本會自動透過 Cloudflare 原生 CLI 建立 Managed Widget、將 Secret Key 安全寫入 Worker Secret（Zero-Disk），並自動更新前端配置重新發布。
-  2. **手動建立**：
-     - 登入 [Cloudflare Dashboard](https://dash.cloudflare.com/) ➡️ 點選 **Turnstile** ➡️ **Add site**。
-     - 填入網站名稱與網域（例如 `xingnong-farm.pages.dev`），Widget Mode 選擇 **Managed**。
-     - 取得 Site Key（填入前端 `packages/frontend/.env` 的 `VITE_TURNSTILE_SITE_KEY`）。
-     - 取得 Secret Key，於後端執行 `npx wrangler secret put TURNSTILE_SECRET_KEY` 安全託管。
+1. **公開環境範本**：
+   * `packages/backend/wrangler.toml`：存放通用架構與環境變數佔位符，**禁止寫入真實 Database ID 或個人 LINE UID**。
+2. **本地私有配置 (受 `.gitignore` 保護)**：
+   * `packages/backend/wrangler.local.toml`：本地開發或部署時指定特定店家的 `database_id`、`ADMIN_LINE_IDS`、`STATION_NAME` 等。
+   * `packages/frontend/.env`：指定前端 `VITE_LIFF_ID` 與 `VITE_STATION_NAME`。
+3. **雲端敏感密鑰 (Zero-Disk 零落地託管)**：
+   * 透過 Wrangler 直接注入 Worker Secret，絕不儲存於本機檔案或 Git：
+     ```bash
+     cd packages/backend
+     npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+     npx wrangler secret put LINE_CHANNEL_SECRET
+     npx wrangler secret put TURNSTILE_SECRET_KEY
+     ```
 
 ---
 
-## 📄 開源授權
+## 🔒 Security (安全基線與隱私守則)
 
-本專案採用 [MIT License](LICENSE) 開源授權，歡迎在地合作社、農會與各類產銷組織自由使用、修改與二次開發。
+本專案實施最高規格之開源安全標準：
+- **Zero-Password 零密碼架構**：管理端僅依賴 LINE 官方 ID Token 驗簽，無靜態密碼洩漏與撞庫風險。
+- **Zero-Disk 憑證保護**：所有 Access Token 與 Secret 僅在記憶體流轉，嚴禁寫入磁碟與 Git 倉庫。
+- **Fail-Closed 嚴密防禦**：未通過真人驗證或缺少簽章之請求直接阻斷，保障免費資源額度。
+- **詳細隱私與金鑰指南**：請參閱 **[docs/SECURITY-AND-SECRETS.md](docs/SECURITY-AND-SECRETS.md)**。
+
+---
+
+## 📚 Documentation (文件導覽)
+
+* **給 AI Agent**：
+  * [AGENTS.md](AGENTS.md) — AI Agent 作業入口指引。
+  * [.agent/AGENT-RULES.md](.agent/AGENT-RULES.md) — Agent 核心作業守則與文件更新規則。
+* **給人類開發者與使用者**：
+  * [docs/episodes/](docs/episodes/) — 各集 YouTube 教學導覽手冊。
+  * [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — 共通問題集中故障排除指南。
+  * [docs/SECURITY-AND-SECRETS.md](docs/SECURITY-AND-SECRETS.md) — 敏感金鑰管理與隱私安全規範。
+  * [BEGINNER_GUIDE.md](BEGINNER_GUIDE.md) — 初學者白話圖文部署指南。
+  * [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) — 手動開發者部署手冊。
+  * [CHANGELOG.md](CHANGELOG.md) — 產品版本歷史紀錄。
+
+---
+
+## 📄 License (授權條款)
+
+本專案採用 [MIT License](LICENSE) 開源授權。
