@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { buildMenuSpec } from './builder.mjs';
+import { buildMenuSpec, buildAdminMenuSpec } from './builder.mjs';
 import { renderMenuImage } from './renderer.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,6 +14,10 @@ export const TARGETS_PATH = path.join(RICH_MENU_DIR, 'targets.json');
 export const SPEC_PATH = path.join(RICH_MENU_DIR, 'menu-spec.json');
 export const PREVIEW_PATH = path.join(RICH_MENU_DIR, 'preview.png');
 export const APPROVAL_PATH = path.join(RICH_MENU_DIR, 'approval.json');
+
+export const ADMIN_SPEC_PATH = path.join(RICH_MENU_DIR, 'admin-menu-spec.json');
+export const ADMIN_PREVIEW_PATH = path.join(RICH_MENU_DIR, 'admin-preview.png');
+export const ADMIN_APPROVAL_PATH = path.join(RICH_MENU_DIR, 'admin-approval.json');
 
 /**
  * Computes sha256 hash formatted as sha256:<hex>
@@ -142,21 +146,83 @@ export function createApproval(options = {}) {
   return approvalData;
 }
 
+/**
+ * Generates Admin Menu Spec and Preview Image
+ */
+export async function generateAdminPreview(options = {}) {
+  const targetsPath = options.targetsPath || TARGETS_PATH;
+  if (!fs.existsSync(targetsPath)) {
+    throw new Error(`TARGETS_NOT_FOUND: ${targetsPath} does not exist. Please run Ep02-0 discovery first.`);
+  }
+
+  const targets = JSON.parse(fs.readFileSync(targetsPath, 'utf8'));
+  const spec = buildAdminMenuSpec(targets, options);
+
+  if (!fs.existsSync(RICH_MENU_DIR)) {
+    fs.mkdirSync(RICH_MENU_DIR, { recursive: true });
+  }
+
+  const specPath = options.specPath || ADMIN_SPEC_PATH;
+  const previewPath = options.previewPath || ADMIN_PREVIEW_PATH;
+
+  const specContent = JSON.stringify(spec, null, 2);
+  fs.writeFileSync(specPath, specContent, 'utf8');
+
+  const { buffer, sizeBytes } = await renderMenuImage(spec, { outputPath: previewPath });
+
+  const specHash = computeSha256(specContent);
+  const imageHash = computeSha256(buffer);
+
+  return {
+    spec,
+    specPath,
+    previewPath,
+    specHash,
+    imageHash,
+    sizeBytes
+  };
+}
+
+/**
+ * Verifies if admin-approval.json exists and hashes match current spec & image
+ */
+export function verifyAdminApproval(options = {}) {
+  return verifyApproval({
+    approvalPath: options.approvalPath || ADMIN_APPROVAL_PATH,
+    specPath: options.specPath || ADMIN_SPEC_PATH,
+    previewPath: options.previewPath || ADMIN_PREVIEW_PATH
+  });
+}
+
+/**
+ * Creates and writes admin-approval.json
+ */
+export function createAdminApproval(options = {}) {
+  return createApproval({
+    approvalPath: options.approvalPath || ADMIN_APPROVAL_PATH,
+    specPath: options.specPath || ADMIN_SPEC_PATH,
+    previewPath: options.previewPath || ADMIN_PREVIEW_PATH
+  });
+}
+
 // Allow CLI execution directly
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const cmd = process.argv[2] || 'preview';
+  const isAdmin = process.argv.includes('--admin');
 
   if (cmd === 'preview') {
-    generatePreview()
+    const previewFn = isAdmin ? generateAdminPreview : generatePreview;
+    previewFn()
       .then(({ spec, specPath, previewPath, specHash, imageHash, sizeBytes }) => {
-        console.log('--- Preview Generation Completed ---');
+        console.log(`--- ${isAdmin ? 'Admin' : 'Default'} Preview Generation Completed ---`);
         console.log(`Spec file: ${specPath}`);
         console.log(`Preview image: ${previewPath} (${(sizeBytes / 1024).toFixed(1)} KB)`);
         console.log(`Spec Hash: ${specHash}`);
         console.log(`Image Hash: ${imageHash}`);
         console.log('\nMenu Name:', spec.name);
         console.log('Chat Bar Text:', spec.chatBarText);
-        console.log('\nReady for human inspection! To approve, run: node scripts/rich-menu/approval.mjs approve');
+        const approveCmd = isAdmin ? 'node scripts/rich-menu/approval.mjs approve --admin' : 'node scripts/rich-menu/approval.mjs approve';
+        console.log(`\nReady for human inspection! To approve, run: ${approveCmd}`);
       })
       .catch((err) => {
         console.error('Preview error:', err.message);
@@ -164,9 +230,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       });
   } else if (cmd === 'approve') {
     try {
-      const result = createApproval();
-      console.log('--- Approval Granted & Locked ---');
-      console.log(`Approval file: ${APPROVAL_PATH}`);
+      const result = isAdmin ? createAdminApproval() : createApproval();
+      const appPath = isAdmin ? ADMIN_APPROVAL_PATH : APPROVAL_PATH;
+      console.log(`--- ${isAdmin ? 'Admin' : 'Default'} Approval Granted & Locked ---`);
+      console.log(`Approval file: ${appPath}`);
       console.log(JSON.stringify(result, null, 2));
     } catch (err) {
       console.error('Approval error:', err.message);
@@ -174,15 +241,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
   } else if (cmd === 'verify') {
     try {
-      const result = verifyApproval();
-      console.log('--- Approval Gate Verified (PASS) ---');
+      const result = isAdmin ? verifyAdminApproval() : verifyApproval();
+      console.log(`--- ${isAdmin ? 'Admin' : 'Default'} Approval Gate Verified (PASS) ---`);
       console.log(JSON.stringify(result, null, 2));
     } catch (err) {
       console.error('Verification error:', err.message);
       process.exit(1);
     }
   } else {
-    console.error(`Unknown command: ${cmd}. Available: preview | approve | verify`);
+    console.error(`Unknown command: ${cmd}. Available: preview | approve | verify [--admin]`);
     process.exit(1);
   }
 }
