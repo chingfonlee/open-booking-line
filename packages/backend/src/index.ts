@@ -498,7 +498,14 @@ app.get('/api/admin/requests', async (c) => {
       params.push(status);
     }
 
-    query += ' ORDER BY r.created_at DESC';
+    // 排序策略：
+    // 已確認 (confirmed) 或 施工中 (processing) 案件以正式排程日期 (scheduled_date) 由近到遠排序 (ASC)，同日期依開工時間排序
+    // 待聯絡 (to_contact)、已結案 (closed) 或其他狀態則依建立時間由新到舊排序 (created_at DESC)
+    if (status === 'confirmed' || status === 'processing') {
+      query += ' ORDER BY CASE WHEN s.booking_date IS NULL THEN 1 ELSE 0 END, s.booking_date ASC, s.scheduled_start_time ASC, r.created_at DESC';
+    } else {
+      query += ' ORDER BY r.created_at DESC';
+    }
 
     const result = await c.env.DB.prepare(query).bind(...params).all();
 
