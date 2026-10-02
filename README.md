@@ -12,7 +12,7 @@
 以下為目前主幹分支（`main`）經實機端對端驗收通過之穩定功能：
 
 * ✓ **LINE 原生流暢預約 (LIFF)**：支援在 LINE 官方帳號內開啟前端預約表單，自動帶入顧客 LINE 暱稱。
-* ✓ **LINE Rich Menu 圖文選單**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 品牌選單，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
+* ✓ **LINE Rich Menu 圖文選單體系**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 溫潤大地選單；支援**全體顧客 2 宮格選單**與**商家幹部專屬雙卡片 6 快捷操作選單（Per-User 權限隔離派發與動態綁定）**，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
 * ✓ **時段可用性與確認排程 (Availability & Confirmation)**：
   * **Request ≠ Reservation 領域分離**：農友端僅能選擇寬鬆偏好時段（上午/下午/都可以），Pending 絕不占用時段。
   * **Availability 計算引擎**：支援 `Weekly Rules - Exceptions - Active Reservations - Past Dates`，具備 Legacy/Managed 漸進模式轉換。
@@ -39,7 +39,7 @@
 | Episode | Capability | Status | Episode Guide | Snapshot Tag |
 | :--- | :--- | :--- | :--- | :--- |
 | **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
-| **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-rich-menu) |
+| **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-admin-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-rich-menu) |
 | **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/README.md) | [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
 | **Ep04** | Service Catalog (服務項目目錄與客製欄位) | **Planned** (規劃中) | — | — |
 | **Ep05** | Notification & Broadcast (推播加固與排程提醒) | **Planned** (規劃中) | — | — |
