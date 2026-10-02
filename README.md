@@ -16,7 +16,7 @@
 以下為目前主幹分支（`main`）經實機端對端驗收通過之穩定功能：
 
 * ✓ **LINE 原生流暢預約 (LIFF 4 步驟導覽精靈)**：全面採用 4 步驟分段導覽（需求項目 ➔ 地點時段 ➔ 聯絡資料 ➔ 核對送出），依農友思考順序直覺引導；支援農家共用手機隱私草稿保護（自最後修改保留 7 天、開啟時詢問還原）、WCAG 無障礙雙指縮放、全按鈕觸控大熱區（$\ge 48\text{px}$）、返回鍵與防跳步保護，並自動帶入 LINE 暱稱。
-* ✓ **LINE Rich Menu 圖文選單體系**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 溫潤大地選單；支援**全體顧客 2 宮格選單**與**商家幹部專屬「4 大宮格調度工作台」（待審確認、施工排程、休假預定、代客排單，支援 LIFF 深層直達參數與 Per-User 權限隔離動態綁定）**，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
+* ✓ **LINE Rich Menu 圖文選單體系**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 溫潤大地選單；支援**全體農友 2 宮格選單**與**合作社幹部專屬「4 大宮格調度工作台」（待審確認、施工排程、休假預定、代客排單，支援 LIFF 深層直達參數與 Per-User 權限隔離動態綁定）**，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
 * ✓ **時段可用性與確認排程 (Availability & Confirmation)**：
   * **Request ≠ Reservation 領域分離**：農友端僅能選擇寬鬆偏好時段（上午/下午/都可以），Pending 絕不占用時段。
   * **Availability 計算引擎**：支援 `Weekly Rules - Exceptions - Active Reservations - Past Dates`，具備 Legacy/Managed 漸進模式轉換。
@@ -83,8 +83,8 @@ AI 會依據 `.agent/episodes/ep01-basic-booking/TASK.md` 檢查前置條件、�
 ### 系統拓撲
 ```mermaid
 flowchart TD
-    subgraph Client["客戶端與管理端"]
-        User["🧑‍🌾 農友 / 顧客 (LINE LIFF)"]
+    subgraph Client["農友端與管理端"]
+        User["🧑‍🌾 農友 (LINE LIFF)"]
         Admin["🛠️ 幹部管理端 (LINE Auth)"]
         LineChat["📱 LINE 官方帳號聊天室"]
     end

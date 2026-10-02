@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS blocked_dates (
 
 ```
 Level 1 — Configuration Only（環境變數設定）
-    → 商家名稱、品牌色、服務地區
+    → 合作社名稱、品牌色、服務地區
     → 不需要改程式碼
 
 Level 2 — Form Customization（表單客製化）

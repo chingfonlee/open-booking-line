@@ -124,7 +124,7 @@ console.log('✓ Cards list rendered with 撥打電話 & 查看資料 CTAs');
 const detailModalBody = domElements.get('detail-modal-body');
 vm.runInContext("openDetailModal(adminBookings[0]);", mockContext);
 const modalContent = detailModalBody.innerHTML;
-if (!modalContent.includes('顧客聯絡資料') || !modalContent.includes('0912-345-678')) {
+if (!modalContent.includes('農友聯絡資料') || !modalContent.includes('0912-345-678')) {
   throw new Error('Detail modal missing customer phone info!');
 }
 if (!modalContent.includes('希望施工日期')) {

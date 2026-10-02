@@ -19,7 +19,7 @@ Level 3 — Schema / Business Logic（資料庫與業務邏輯）
   ↓ 需要修改 D1 Schema + Migration（進階）
 ```
 
-大部分小型商家**只需要 Level 1**，最多到 Level 2。
+大部分合作社與小型站點**只需要 Level 1**，最多到 Level 2。
 
 ---
 
@@ -135,12 +135,12 @@ ALTER TABLE service_requests ADD COLUMN vehicle_plate TEXT;
 
 | 使用場景 | 需要修改 | Level |
 | :--- | :--- | :--- |
-| 改商家名稱 | 環境變數 | Level 1 |
+| 改合作社名稱 | 環境變數 | Level 1 |
 | 改服務地區（高雄 → 台北） | `types.ts` + 環境變數 | Level 1-2 |
 | 農業 → 美容預約 | 服務項目 + 前端文字 | Level 1-2 |
 | 農業 → 維修預約 | 服務項目 + 欄位調整 | Level 2 |
 | 新增「附圖」功能 | 需要 R2 + 大改 | Level 3 |
-| 多租戶（多個商家） | 架構重新設計 | 超出本專案範圍 |
+| 多租戶（多個合作社） | 架構重新設計 | 超出本專案範圍 |
 
 ---
 

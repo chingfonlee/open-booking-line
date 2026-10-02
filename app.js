@@ -78,7 +78,7 @@ function triggerPhoneCall(name, phone) {
 }
 
 // ==========================================
-// 2. 顧客端 LINE 官方帳號流程
+// 2. 農友端 LINE 官方帳號流程
 // ==========================================
 const screen = document.querySelector('#app-screen');
 const backBtn = document.querySelector('#back-btn');
@@ -605,9 +605,9 @@ function openDetailModal(b) {
       </div>
     </div>
 
-    <!-- 顧客聯絡資料 -->
+    <!-- 農友聯絡資料 -->
     <div class="detail-section" style="background:#f5faf2;border:1px solid #c2e2c5">
-      <div class="section-heading" style="color:var(--green-700)">顧客聯絡資料</div>
+      <div class="section-heading" style="color:var(--green-700)">農友聯絡資料</div>
       <div class="detail-row">
         <span class="row-label">聯絡人</span>
         <span class="row-value" style="font-size:16px">${b.name}</span>
@@ -762,7 +762,7 @@ if (noticeBtn) {
   });
 }
 
-// 3.8 頂部視角切換器 (顧客手機 / 合作社端)
+// 3.8 頂部視角切換器 (農友手機 / 合作社端)
 function switchView(targetView) {
   document.querySelectorAll('.view-switch').forEach(b => {
     b.classList.toggle('active', b.dataset.view === targetView);

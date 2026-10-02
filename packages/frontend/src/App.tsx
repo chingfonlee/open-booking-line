@@ -38,7 +38,7 @@ export const App: React.FC = () => {
                   : 'border border-white/30 text-white/90 hover:bg-white/10'
               )}
             >
-              顧客手機（LINE）
+              農友手機（LINE）
             </button>
             <button
               onClick={() => setView('admin')}
