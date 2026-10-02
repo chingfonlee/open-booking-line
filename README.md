@@ -5,13 +5,17 @@
 > 🤖 **AI Agent 協同入口規範**：請參閱 **[AGENTS.md](AGENTS.md)**，所有 AI 工具進入專案之首要讀取約束與核心守則。  
 > 📖 **本集更新與歷史變更**：請參閱 **[CHANGELOG.md](CHANGELOG.md)**。
 
+> [!IMPORTANT]
+> **教學影片與專案最新狀態同步聲明**：  
+> 隨著開源社群與在地農友實際使用回饋，本專案之各項能力（包含 EP01 全面升級為「4 步驟精緻導覽精靈」、隱私草稿防護、WCAG 雙指無障礙縮放等）已持續迭代升級。**若教學影片中的展示畫面或流程與當前專案程式碼有所出入，請一律以 GitHub 專案最新原始碼與文件說明為準。**
+
 ---
 
 ## 🌟 Current Capabilities (目前已驗證功能)
 
 以下為目前主幹分支（`main`）經實機端對端驗收通過之穩定功能：
 
-* ✓ **LINE 原生流暢預約 (LIFF)**：支援在 LINE 官方帳號內開啟前端預約表單，自動帶入顧客 LINE 暱稱。
+* ✓ **LINE 原生流暢預約 (LIFF 4 步驟導覽精靈)**：全面採用 4 步驟分段導覽（需求項目 ➔ 地點時段 ➔ 聯絡資料 ➔ 核對送出），依農友思考順序直覺引導；支援農家共用手機隱私草稿保護（自最後修改保留 7 天、開啟時詢問還原）、WCAG 無障礙雙指縮放、全按鈕觸控大熱區（$\ge 48\text{px}$）、返回鍵與防跳步保護，並自動帶入 LINE 暱稱。
 * ✓ **LINE Rich Menu 圖文選單體系**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 溫潤大地選單；支援**全體顧客 2 宮格選單**與**商家幹部專屬雙卡片 6 快捷操作選單（Per-User 權限隔離派發與動態綁定）**，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
 * ✓ **時段可用性與確認排程 (Availability & Confirmation)**：
   * **Request ≠ Reservation 領域分離**：農友端僅能選擇寬鬆偏好時段（上午/下午/都可以），Pending 絕不占用時段。
@@ -38,7 +42,7 @@
 
 | Episode | Capability | Status | Episode Guide | Snapshot Tag |
 | :--- | :--- | :--- | :--- | :--- |
-| **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
+| **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-wizard-form`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-wizard-form) / [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
 | **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-admin-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-rich-menu) |
 | **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/README.md) | [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
 | **Ep04** | Service Catalog (服務項目目錄與客製欄位) | **Planned** (規劃中) | — | — |

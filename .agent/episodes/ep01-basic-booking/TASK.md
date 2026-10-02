@@ -2,20 +2,28 @@
 
 > 本文件為 Agent 執行 Episode 01 基礎預約能力建置的標準作業程序 (SOP)。
 
+> [!IMPORTANT]
+> **教學影片與專案最新狀態同步聲明**：  
+> 專案在持續演進過程中，已將前端預約表單全面升級為 **「4 步驟分段導覽精靈（Wizard Form）」**，並加入了共用手機隱私草稿防護、WCAG 無障礙縮放與防跳步保護機制。  
+> **若教學影片內容或舊版展示與當前實作有所出入，Agent 一律以 GitHub 專案最新程式碼與本文件 SOP 為唯一執行準則。**
+
 ---
 
 ## 1. Goal（任務目標）
 在現有或全新店家實例中建立並部署 `booking-core` 能力，包含：
-- React + Vite + LINE LIFF 前端預約表單 (Cloudflare Pages)
-- Hono + Cloudflare Workers 後端 API
-- Cloudflare D1 資料庫結構 (`service_requests`, `blocked_dates`)
-- 基礎身分驗證與管理後台通道
+- **React + Vite + LINE LIFF 前端 4 步驟分段導覽預約精靈 (Cloudflare Pages)**：
+  - `formSteps.ts`：步驟狀態機、返回鍵與網址 Hash 路由、防跳步阻斷（Bypass Protection）。
+  - `formValidation.ts`：步驟 1～4 欄位驗證、手機（09 開頭 10 碼）/ 市話（02~08 開頭 9 碼）格式檢查、可用性時段約束。
+  - `formDraft.ts`：LocalStorage 草稿安全讀寫（版本控管、7 天過期、開啟時個資隱私詢問彈窗、送單成功清除）。
+- **Hono + Cloudflare Workers 後端 API**：全欄位伺服端二次校驗、時段即時可用性檢查、Cloudflare Turnstile 密鑰單次驗證。
+- **Cloudflare D1 資料庫結構** (`service_requests`, `blocked_dates`)。
+- **基礎身分驗證與管理後台通道**（LINE ID Token 簽名驗證）。
 
 ---
 
 ## 2. Prerequisites（前置條件）
 - `requires`: `[]`（本集為基礎第一步，無前置能力依賴）。
-- 本地環境安裝有 Node.js 20+ 與 npm。
+- 本地環境安裝有 Node.js 22+ 與 npm。
 - 使用者已準備好 Cloudflare 帳號與 LINE 官方帳號設定值。
 
 ---
@@ -47,7 +55,7 @@ Agent 在執行部署前，必須引導使用者提供或自本地讀取以下�
 1. 建立或更新 `packages/frontend/.env`（受 `.gitignore` 保護）：
    - `VITE_LIFF_ID=<LIFF_ID>`
    - `VITE_STATION_NAME=<STATION_NAME>`
-   - `VITE_API_BASE_URL=` (由 Pages Functions 反向代理)
+   - `VITE_API_BASE_URL=` (由 Pages Functions 反向代理或 Workers 網址)
 2. 建立或更新本地 Worker 設定（`wrangler.local.toml` 或透過環境變數傳入）。
 
 ### Step 4.3: 初始化 Cloudflare D1 資料庫
@@ -62,27 +70,37 @@ npx wrangler secret put LINE_CHANNEL_SECRET
 npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
-### Step 4.5: 部署 Workers 與 Pages
+### Step 4.5: 執行自動化測試
+執行全套單元測試，確保 4 步驟表單驗證、草稿防護與後端可用性計算 100% 通過：
+```bash
+npm test
+```
+
+### Step 4.6: 部署 Workers 與 Pages
 1. 後端部署：`cd packages/backend && npx wrangler deploy`
-2. 前端構建與發布：`cd packages/frontend && npm run build && npx wrangler pages deploy dist`
+2. 前端構建與發布：`cd packages/frontend && npm run build && npx wrangler pages deploy dist --project-name <pages-project-name>`
 
 ---
 
 ## 5. Verification（驗證程序 - 必須全部通過）
 
-Agent 必須執行以下 3 項真實系統檢驗，不得跳過：
+Agent 必須執行以下 4 項真實系統檢驗，不得跳過：
 
 ### V1: 前端加載驗證 (frontend-loads)
 - 存取前端 Pages 網址，HTTP 狀態碼為 200。
-- HTML 正常渲染，無 JavaScript 執行未捕獲異常或全白畫面。
+- 4 步驟分段導覽進度條與表單正常渲染，無 JavaScript 執行未捕獲異常或全白畫面。
+- HTML `<meta name="viewport">` 支援雙指無障礙縮放（不得包含 `user-scalable=no`）。
 
 ### V2: 表單送出與 API 通訊驗證 (booking-submit-success)
-- 發送真實預約表單測試請求（可透過 LIFF 或測試腳本向 `/api/requests` 發送符合格式之預約資料）。
+- 發送真實預約表單測試請求（可透過 LIFF 操作至第 4 步送出，或向 `/api/requests` 發送符合格式之預約資料）。
 - 後端回應 HTTP 200，回傳格式包含 `success: true` 與申請單號 `id`。
 
 ### V3: 資料庫持久化驗證 (database-record-created)
 - 查詢 D1 資料庫 `service_requests` 表，確認該筆申請單已確實寫入。
 - 欄位包含正確之 `contact_name`、`phone`、`service_type` 與初始狀態 `to_contact`。
+
+### V4: 4 步驟表單與草稿測試驗證 (apply-form-tests-pass)
+- 執行 `npm run test:apply-form`，19 項單元測試（包含分步欄位驗證、草稿 7 天過期自動清理、防跳步保護）全數綠燈。
 
 ---
 
@@ -96,20 +114,16 @@ Agent 必須執行以下 3 項真實系統檢驗，不得跳過：
 ---
 
 ## 7. State Update（狀態登錄）
-**只有在 V1、V2、V3 全部 PASS 後**，執行狀態原子寫入：
+**只有在 V1、V2、V3、V4 全部 PASS 後**，執行狀態原子寫入：
 
 ```json
-"booking-core": {
-  "status": "verified",
-  "sourceEpisode": "ep01-basic-booking",
-  "verifiedAt": "<當前 ISO 8601 時間戳>"
+{
+  "capabilities": {
+    "booking-core": {
+      "status": "verified",
+      "verifiedAt": "<ISO-8601-TIMESTAMP>",
+      "version": "1.0.0"
+    }
+  }
 }
 ```
-
----
-
-## 8. Completion Output（完成回報）
-輸出結構化回報給使用者：
-- 系統網址（Pages URL、LIFF URL）
-- 已驗證能力清單：`[✓ booking-core]`
-- 提醒：請至 LINE 官方帳號進行一次實機點擊測試。

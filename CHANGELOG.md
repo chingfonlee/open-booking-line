@@ -12,6 +12,30 @@
 
 ---
 
+## [1.2.1] - Episode 01 — Wizard Form & Accessibility Upgrade (2026-10-02)
+
+快照標籤：[`ep01-wizard-form`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-wizard-form)  
+能力演進：`booking-core` 人體工學、隱私草稿與 WCAG 無障礙強化
+
+### Added (新增與優化)
+- **4 步驟分段預約導覽精靈 (Wizard Form, 樣式 C)**：
+  - 步驟重構：將原本一頁式表單拆分為「1. 需求項目 ➔ 2. 地點時段 ➔ 3. 聯絡資料 ➔ 4. 核對送出」。
+  - 確認頁跳轉修改（`returnToReview`）：第 4 步總覽卡片可一鍵跳轉修改任一分區，完成後直接返回核對頁。
+  - 路由防跳步保護（`formSteps.ts`）：結合 URL Hash（`#step-1` ~ `#step-4`）與 History API，手機/LINE 返回鍵精準退回上一步，防止跳步繞過必填。
+- **農家共用手機隱私草稿保護 (`formDraft.ts`)**：
+  - 版本控管（`version: 1`）與自最後修改起算 7 天過期自動清理。
+  - 開啟頁面時主動詢問「繼續填寫」或「重新開始」，防止家庭成員意外查看他人個資。
+  - 底部防誤觸清空草稿按鈕與送單成功自動清除。
+- **WCAG 無障礙與長者友善規範**：
+  - 解鎖雙指無障礙縮放（移除 `user-scalable=no` 與 `maximum-scale=1.0`）。
+  - 按鈕觸控熱區 $\ge 48\text{px}$、輸入框字級 $\ge 16\text{px}$（防 iOS 聚焦自動放大破版）。
+  - 換步焦點自動移至標題，驗證失敗自動聚焦首個錯誤欄位。
+  - 完整標註 `role="progressbar"`、`aria-valuenow`、`aria-valuetext` 與 `aria-live` 狀態朗讀。
+- **單元測試體系擴充**：
+  - 新增 `tests/apply-form/apply-form.test.mjs`（19 項單元測試），全專案測試增至 **142/142 PASS**。
+
+---
+
 ## [1.2.0] - Episode 03 — Availability & Confirmation Scheduling (2026-10-02)
 
 快照標籤：[`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability)  
