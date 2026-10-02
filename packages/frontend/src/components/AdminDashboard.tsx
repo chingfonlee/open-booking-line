@@ -1406,7 +1406,7 @@ export const AdminDashboard: React.FC = () => {
                         onClick={() => setShowRescheduleModal(true)}
                         className="py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white text-xs font-bold rounded-lg shadow transition"
                       >
-                        📅 原子改期
+                        📅 變更排程
                       </button>
                     </div>
 
@@ -1486,7 +1486,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between border-b pb-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-[#0f172a]">
                 <Calendar className="w-4 h-4 text-[#f59e0b]" />
-                <span>原子改期排程</span>
+                <span>變更服務排程</span>
               </div>
               <button
                 onClick={() => setShowRescheduleModal(false)}
@@ -1571,7 +1571,7 @@ export const AdminDashboard: React.FC = () => {
                 onClick={() => handleReschedule(selectedReq.id)}
                 className="flex-1 py-2 text-xs font-bold rounded-lg bg-[#f59e0b] hover:bg-[#d97706] text-white shadow"
               >
-                確認改期
+                確認變更排程
               </button>
             </div>
           </div>
