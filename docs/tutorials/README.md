@@ -8,9 +8,9 @@
 
 | 集數 | 標題 | 狀態 | 文件 |
 | :--- | :--- | :--- | :--- |
-| Episode 01 | 基礎 LINE 預約系統 | 🟢 完成 | [`docs/episodes/ep01-basic-booking/README.md`](../episodes/ep01-basic-booking/README.md)（另見 [`BEGINNER_GUIDE.md`](../../BEGINNER_GUIDE.md)） |
-| Episode 02 | LINE Rich Menu 整合 | 🟢 完成 | [`docs/episodes/ep02-rich-menu/README.md`](../episodes/ep02-rich-menu/README.md) |
-| Episode 03 | Availability & Confirmation | 🟢 完成 | [`docs/episodes/ep03-availability/README.md`](../episodes/ep03-availability/README.md) |
+| Episode 01 | 基礎 LINE 預約系統 | 🟢 完成 | [`docs/episodes/ep01-basic-booking/`](../episodes/ep01-basic-booking/)（另見 [`BEGINNER_GUIDE.md`](../../BEGINNER_GUIDE.md)） |
+| Episode 02 | LINE Rich Menu 整合 | 🟢 完成 | [`docs/episodes/ep02-rich-menu/`](../episodes/ep02-rich-menu/) |
+| Episode 03 | Availability & Confirmation | 🟢 完成 | [`docs/episodes/ep03-availability/`](../episodes/ep03-availability/) |
 | Episode 04 | Service Catalog | 🔵 Planned | 待建立 |
 | Episode 05 | Notification & Broadcast | 🔵 Planned | 待建立 |
 

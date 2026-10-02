@@ -1,7 +1,7 @@
 # Episode 02 — Agent Execution Workspace
 
 > 本目錄為 **Episode 02 (LINE Rich Menu)** 的 AI Agent 協同執行工作區。  
-> 若您是一般人類使用者或 YouTube 觀眾，請閱讀公開手冊：[`docs/episodes/ep02-rich-menu/README.md`](../../../docs/episodes/ep02-rich-menu/README.md)。
+> 若您是一般人類使用者或 YouTube 觀眾，請閱讀公開手冊：[`docs/episodes/ep02-rich-menu/`](../../../docs/episodes/ep02-rich-menu/)。
 
 ---
 

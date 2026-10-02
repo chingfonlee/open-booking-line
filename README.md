@@ -42,9 +42,9 @@
 
 | Episode | Capability | Status | Episode Guide | Snapshot Tag |
 | :--- | :--- | :--- | :--- | :--- |
-| **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-wizard-form`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-wizard-form) / [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
-| **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-admin-4grid`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-4grid) / [`ep02-admin-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-rich-menu) |
-| **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/README.md) | [`ep03-admin-settings-top`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-admin-settings-top) / [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
+| **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/) | [`ep01-wizard-form`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-wizard-form) / [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
+| **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/) | [`ep02-admin-4grid`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-4grid) / [`ep02-admin-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-rich-menu) |
+| **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/) | [`ep03-admin-settings-top`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-admin-settings-top) / [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
 | **Ep04** | Service Catalog (服務項目目錄與客製欄位) | **Planned** (規劃中) | — | — |
 | **Ep05** | Notification & Broadcast (推播加固與排程提醒) | **Planned** (規劃中) | — | — |
 
