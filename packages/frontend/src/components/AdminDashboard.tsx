@@ -996,76 +996,134 @@ export const AdminDashboard: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* 卡片 1：系統排程模式與全域參數 */}
+              {/* 卡片 1：特定日期公休例外維護 (移至最上方，日常高頻操作，含衝突檢查，Case L) */}
               <div className="bg-white rounded-2xl border border-[#e0d9cb] p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-[#f0eae0] pb-3">
-                  <div>
-                    <h2 className="text-base font-bold text-[#173820] flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-[#2a5937]" />
-                      <span>排程引擎模式與預約窗口</span>
-                    </h2>
-                    <p className="text-xs text-[#657061] mt-0.5">控制前台農友預約時段開放機制與天數計算</p>
-                  </div>
-                  <div>
-                    {config.mode === 'managed' ? (
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#dcfce7] text-[#15803d] border border-[#86efac]">
-                        ● 管制模式 (Managed)
-                      </span>
-                    ) : (
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#fef3c7] text-[#856200] border border-[#fde68a]">
-                        ● 相容模式 (Legacy)
-                      </span>
-                    )}
-                  </div>
+                <div className="border-b border-[#f0eae0] pb-3">
+                  <h2 className="text-base font-bold text-[#992b23] flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-[#992b23]" />
+                    <span>特定日期公休例外封鎖 (Exceptions)</span>
+                  </h2>
+                  <p className="text-xs text-[#657061] mt-0.5">常用功能：天候豪雨、機具保養維修、站所盤點等臨時公休；若該日期已有排程，系統將發出提醒且不損壞既有預約</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="bg-[#faf8f3] p-3 rounded-xl border border-[#e0d9cb]">
-                    <div className="font-bold text-[#20271f] mb-1">最少提前預約天數 (Lead Time)</div>
-                    <div className="text-[#657061] mb-2 leading-relaxed">
-                      農友最快可預約 <span className="font-bold text-[#173820]">T+{config.lead_time_days}</span>（例如：今天下單，最快明天開始施作）。
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max="7"
-                        value={config.lead_time_days}
-                        onChange={(e) => setConfig({ ...config, lead_time_days: parseInt(e.target.value, 10) || 0 })}
-                        className="w-20 p-1.5 border border-[#bfb8aa] rounded-lg text-xs"
-                      />
-                      <span className="text-[#657061]">天</span>
-                    </div>
+                {/* 新增公休表單 */}
+                <form onSubmit={handleAddException} className="bg-[#faf8f3] p-4 rounded-xl border border-[#e0d9cb] space-y-3">
+                  <div className="text-xs font-bold text-[#20271f] flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-[#992b23]" />
+                    <span>新增公休封鎖日期</span>
                   </div>
 
-                  <div className="bg-[#faf8f3] p-3 rounded-xl border border-[#e0d9cb]">
-                    <div className="font-bold text-[#20271f] mb-1">最遠開放預約天數 (Horizon)</div>
-                    <div className="text-[#657061] mb-2 leading-relaxed">
-                      農友最遠可預約 <span className="font-bold text-[#173820]">T+{config.booking_horizon_days}</span>（預設為 30 天內）。
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="7"
-                        max="90"
-                        value={config.booking_horizon_days}
-                        onChange={(e) => setConfig({ ...config, booking_horizon_days: parseInt(e.target.value, 10) || 30 })}
-                        className="w-20 p-1.5 border border-[#bfb8aa] rounded-lg text-xs"
-                      />
-                      <span className="text-[#657061]">天</span>
-                    </div>
-                  </div>
-                </div>
-
-                {config.mode === 'legacy' && (
-                  <div className="bg-[#fefce8] p-3 rounded-xl border border-[#fef08a] flex items-start gap-2 text-xs text-[#854d0e]">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-[#ca8a04] mt-0.5" />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div>
-                      <span className="font-bold">目前系統處於相容模式 (Legacy)：</span>
-                      <span> 只要日期非公休，預設週一至週日全時段皆開放。儲存下方的每週規則後，系統將自動平滑切換至「管制模式 (Managed)」，嚴格遵循您自訂的每週營業矩陣。</span>
+                      <label className="font-semibold text-[#374151] block mb-1">公休日期</label>
+                      <input
+                        type="date"
+                        value={exDate}
+                        onChange={(e) => handleExDateChange(e.target.value)}
+                        className="w-full p-2 border border-[#bfb8aa] rounded-lg bg-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-[#374151] block mb-1">封鎖時段</label>
+                      <select
+                        value={exSlot}
+                        onChange={(e) => handleExSlotChange(e.target.value as any)}
+                        className="w-full p-2 border border-[#bfb8aa] rounded-lg bg-white"
+                      >
+                        <option value="all">全天封鎖 (All Day)</option>
+                        <option value="morning">僅上午 (Morning)</option>
+                        <option value="afternoon">僅下午 (Afternoon)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-[#374151] block mb-1">原因說明 (選填)</label>
+                      <input
+                        type="text"
+                        placeholder="例：站所年度盤點、天候豪雨維修"
+                        value={exReason}
+                        onChange={(e) => setExReason(e.target.value)}
+                        className="w-full p-2 border border-[#bfb8aa] rounded-lg bg-white"
+                      />
                     </div>
                   </div>
-                )}
+
+                  {/* 即時衝突檢查反饋 (Case L) */}
+                  {checkingConflict && (
+                    <div className="text-xs text-[#657061] flex items-center gap-1.5 py-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#992b23]" />
+                      <span>正在檢查目標日期排程衝突狀況...</span>
+                    </div>
+                  )}
+
+                  {conflictWarning && (
+                    <div className="bg-[#fffbeb] border border-[#fde68a] p-3 rounded-xl text-xs space-y-2">
+                      <div className="flex items-start gap-2 text-[#b45309]">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-bold">⚠️ 時段衝突警示 (Case L 保護機制)</div>
+                          <div className="leading-relaxed mt-0.5">{conflictWarning.warning}</div>
+                        </div>
+                      </div>
+                      <div className="bg-white/80 rounded-lg p-2 border border-[#fef3c7] space-y-1">
+                        <div className="font-bold text-[#92400e] text-[11px]">受影響既有預約清單 ({conflictWarning.count} 筆)：</div>
+                        {conflictWarning.conflicts.map((c: any) => (
+                          <div key={c.reservation_id} className="text-[11px] text-[#4b5563] flex justify-between">
+                            <span>• {c.contact_name} ({c.phone}) - {c.service_type}</span>
+                            <span className="font-mono text-[#065f46] font-bold">{c.scheduled_start_time} ({getTimeSlotText(c.slot_code)})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={settingsSaving || !exDate}
+                      className="px-4 py-2 bg-[#992b23] hover:bg-[#78221b] text-white text-xs font-bold rounded-xl shadow transition disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {settingsSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                      <span>確認新增封鎖</span>
+                    </button>
+                  </div>
+                </form>
+
+                {/* 現有公休例外清單 */}
+                <div className="space-y-2">
+                  <div className="text-xs font-bold text-[#20271f]">現有公休封鎖清單 ({exceptions.length} 筆)</div>
+                  {exceptions.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-[#9ca3af] bg-[#faf8f3] rounded-xl border border-dashed border-[#e0d9cb]">
+                      目前無任何特定公休例外
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-[#eee9dc] border border-[#e0d9cb] rounded-xl overflow-hidden bg-white">
+                      {exceptions.map((ex) => (
+                        <div key={ex.id} className="p-3 flex items-center justify-between text-xs hover:bg-[#faf8f3] transition">
+                          <div>
+                            <div className="font-bold text-[#20271f] flex items-center gap-2">
+                              <span>{ex.exception_date}</span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]">
+                                {ex.slot_code === 'all' ? '全天封鎖' : ex.slot_code === 'morning' ? '上午封鎖' : '下午封鎖'}
+                              </span>
+                            </div>
+                            <div className="text-[#657061] mt-0.5 text-[11px]">
+                              原因：{ex.reason || '服務站暫停服務'}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteException(ex.id, ex.exception_date)}
+                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg border border-red-200 transition"
+                            title="解除封鎖"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 卡片 2：每週固定營業時段矩陣 (週一至週日 上午/下午) */}
@@ -1149,134 +1207,76 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* 卡片 3：特定日期公休例外維護 (含衝突檢查，Case L) */}
+              {/* 卡片 3：系統排程模式與全域參數 */}
               <div className="bg-white rounded-2xl border border-[#e0d9cb] p-5 shadow-sm space-y-4">
-                <div className="border-b border-[#f0eae0] pb-3">
-                  <h2 className="text-base font-bold text-[#173820] flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-[#2a5937]" />
-                    <span>特定日期公休例外封鎖 (Exceptions)</span>
-                  </h2>
-                  <p className="text-xs text-[#657061] mt-0.5">設定農忙國定假日或站所盤點；若該日期已有排程，系統將發出提醒且不損壞既有預約</p>
+                <div className="flex items-center justify-between border-b border-[#f0eae0] pb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-[#173820] flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-[#2a5937]" />
+                      <span>排程引擎模式與預約窗口</span>
+                    </h2>
+                    <p className="text-xs text-[#657061] mt-0.5">控制前台農友預約時段開放機制與天數計算</p>
+                  </div>
+                  <div>
+                    {config.mode === 'managed' ? (
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#dcfce7] text-[#15803d] border border-[#86efac]">
+                        ● 管制模式 (Managed)
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#fef3c7] text-[#856200] border border-[#fde68a]">
+                        ● 相容模式 (Legacy)
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* 新增公休表單 */}
-                <form onSubmit={handleAddException} className="bg-[#faf8f3] p-4 rounded-xl border border-[#e0d9cb] space-y-3">
-                  <div className="text-xs font-bold text-[#20271f] flex items-center gap-1.5">
-                    <Plus className="w-4 h-4 text-[#2a5937]" />
-                    <span>新增公休封鎖日期</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <label className="font-semibold text-[#374151] block mb-1">公休日期</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="bg-[#faf8f3] p-3 rounded-xl border border-[#e0d9cb]">
+                    <div className="font-bold text-[#20271f] mb-1">最少提前預約天數 (Lead Time)</div>
+                    <div className="text-[#657061] mb-2 leading-relaxed">
+                      農友最快可預約 <span className="font-bold text-[#173820]">T+{config.lead_time_days}</span>（例如：今天下單，最快明天開始施作）。
+                    </div>
+                    <div className="flex items-center gap-2">
                       <input
-                        type="date"
-                        value={exDate}
-                        onChange={(e) => handleExDateChange(e.target.value)}
-                        className="w-full p-2 border border-[#bfb8aa] rounded-lg bg-white"
-                        required
+                        type="number"
+                        min="0"
+                        max="7"
+                        value={config.lead_time_days}
+                        onChange={(e) => setConfig({ ...config, lead_time_days: parseInt(e.target.value, 10) || 0 })}
+                        className="w-20 p-1.5 border border-[#bfb8aa] rounded-lg text-xs"
                       />
+                      <span className="text-[#657061]">天</span>
                     </div>
-                    <div>
-                      <label className="font-semibold text-[#374151] block mb-1">封鎖時段</label>
-                      <select
-                        value={exSlot}
-                        onChange={(e) => handleExSlotChange(e.target.value as any)}
-                        className="w-full p-2 border border-[#bfb8aa] rounded-lg bg-white"
-                      >
-                        <option value="all">全天封鎖 (All Day)</option>
-                        <option value="morning">僅上午 (Morning)</option>
-                        <option value="afternoon">僅下午 (Afternoon)</option>
-                      </select>
+                  </div>
+
+                  <div className="bg-[#faf8f3] p-3 rounded-xl border border-[#e0d9cb]">
+                    <div className="font-bold text-[#20271f] mb-1">最遠開放預約天數 (Horizon)</div>
+                    <div className="text-[#657061] mb-2 leading-relaxed">
+                      農友最遠可預約 <span className="font-bold text-[#173820]">T+{config.booking_horizon_days}</span>（預設為 30 天內）。
                     </div>
-                    <div>
-                      <label className="font-semibold text-[#374151] block mb-1">原因說明 (選填)</label>
+                    <div className="flex items-center gap-2">
                       <input
-                        type="text"
-                        placeholder="例：站所年度盤點、國定假日"
-                        value={exReason}
-                        onChange={(e) => setExReason(e.target.value)}
-                        className="w-full p-2 border border-[#bfb8aa] rounded-lg bg-white"
+                        type="number"
+                        min="7"
+                        max="90"
+                        value={config.booking_horizon_days}
+                        onChange={(e) => setConfig({ ...config, booking_horizon_days: parseInt(e.target.value, 10) || 30 })}
+                        className="w-20 p-1.5 border border-[#bfb8aa] rounded-lg text-xs"
                       />
+                      <span className="text-[#657061]">天</span>
                     </div>
                   </div>
-
-                  {/* 即時衝突檢查反饋 (Case L) */}
-                  {checkingConflict && (
-                    <div className="text-xs text-[#657061] flex items-center gap-1.5 py-1">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2a5937]" />
-                      <span>正在檢查目標日期排程衝突狀況...</span>
-                    </div>
-                  )}
-
-                  {conflictWarning && (
-                    <div className="bg-[#fffbeb] border border-[#fde68a] p-3 rounded-xl text-xs space-y-2">
-                      <div className="flex items-start gap-2 text-[#b45309]">
-                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-bold">⚠️ 時段衝突警示 (Case L 保護機制)</div>
-                          <div className="leading-relaxed mt-0.5">{conflictWarning.warning}</div>
-                        </div>
-                      </div>
-                      <div className="bg-white/80 rounded-lg p-2 border border-[#fef3c7] space-y-1">
-                        <div className="font-bold text-[#92400e] text-[11px]">受影響既有預約清單 ({conflictWarning.count} 筆)：</div>
-                        {conflictWarning.conflicts.map((c: any) => (
-                          <div key={c.reservation_id} className="text-[11px] text-[#4b5563] flex justify-between">
-                            <span>• {c.contact_name} ({c.phone}) - {c.service_type}</span>
-                            <span className="font-mono text-[#065f46] font-bold">{c.scheduled_start_time} ({getTimeSlotText(c.slot_code)})</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="submit"
-                      disabled={settingsSaving || !exDate}
-                      className="px-4 py-2 bg-[#2a5937] hover:bg-[#173820] text-white text-xs font-bold rounded-xl shadow transition disabled:opacity-50 flex items-center gap-1.5"
-                    >
-                      {settingsSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                      <span>確認新增封鎖</span>
-                    </button>
-                  </div>
-                </form>
-
-                {/* 現有公休例外清單 */}
-                <div className="space-y-2">
-                  <div className="text-xs font-bold text-[#20271f]">現有公休封鎖清單 ({exceptions.length} 筆)</div>
-                  {exceptions.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-[#9ca3af] bg-[#faf8f3] rounded-xl border border-dashed border-[#e0d9cb]">
-                      目前無任何特定公休例外
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-[#eee9dc] border border-[#e0d9cb] rounded-xl overflow-hidden bg-white">
-                      {exceptions.map((ex) => (
-                        <div key={ex.id} className="p-3 flex items-center justify-between text-xs hover:bg-[#faf8f3] transition">
-                          <div>
-                            <div className="font-bold text-[#20271f] flex items-center gap-2">
-                              <span>{ex.exception_date}</span>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]">
-                                {ex.slot_code === 'all' ? '全天封鎖' : ex.slot_code === 'morning' ? '上午封鎖' : '下午封鎖'}
-                              </span>
-                            </div>
-                            <div className="text-[#657061] mt-0.5 text-[11px]">
-                              原因：{ex.reason || '服務站暫停服務'}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteException(ex.id, ex.exception_date)}
-                            className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg border border-red-200 transition"
-                            title="解除封鎖"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
+
+                {config.mode === 'legacy' && (
+                  <div className="bg-[#fefce8] p-3 rounded-xl border border-[#fef08a] flex items-start gap-2 text-xs text-[#854d0e]">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-[#ca8a04] mt-0.5" />
+                    <div>
+                      <span className="font-bold">目前系統處於相容模式 (Legacy)：</span>
+                      <span> 只要日期非公休，預設週一至週日全時段皆開放。儲存上方的每週規則後，系統將自動平滑切換至「管制模式 (Managed)」，嚴格遵循您自訂的每週營業矩陣。</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
