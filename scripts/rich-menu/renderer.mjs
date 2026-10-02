@@ -276,24 +276,19 @@ export function generateAdminMenuSvg(menuSpec) {
       letter-spacing: 1px;
     }
     .btn-badge {
-      font-size: 32px;
+      font-size: 34px;
       font-weight: 800;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
     }
     .btn-title {
-      font-size: 92px;
+      font-size: 116px;
       font-weight: 900;
-      letter-spacing: 3px;
+      letter-spacing: 4px;
     }
     .btn-sub {
-      font-size: 40px;
+      font-size: 44px;
       font-weight: 700;
       letter-spacing: 1px;
-    }
-    .btn-desc {
-      font-size: 32px;
-      font-weight: 500;
-      letter-spacing: 0.5px;
     }
   </style>
 
@@ -319,20 +314,19 @@ export function generateAdminMenuSvg(menuSpec) {
     <path d="M 0 48 Q 0 0 48 0 L 1062 0 Q 1110 0 1110 48 L 1110 60 L 0 60 Z" fill="#1e532b" />
     
     <!-- Category Badge -->
-    <rect x="70" y="90" width="220" height="68" rx="34" fill="#e2f0e0" />
-    <text x="180" y="137" class="font-base btn-badge" fill="#1e532b" text-anchor="middle">新單進線</text>
+    <rect x="65" y="80" width="220" height="64" rx="32" fill="#e2f0e0" />
+    <text x="175" y="125" class="font-base btn-badge" fill="#1e532b" text-anchor="middle">新單進線</text>
 
-    <!-- Large Icon Area (320x320) -->
-    <rect x="70" y="195" width="320" height="320" rx="48" fill="#d8ebd5" />
-    <circle cx="230" cy="355" r="120" fill="#173820" filter="url(#adminIconShadow)" />
-    <g transform="translate(170, 295) scale(5)" fill="#ffffff">
+    <!-- Super Large Icon Area (370x370) -->
+    <rect x="65" y="175" width="370" height="370" rx="52" fill="#d8ebd5" />
+    <circle cx="250" cy="360" r="145" fill="#173820" filter="url(#adminIconShadow)" />
+    <g transform="translate(178, 288) scale(6)" fill="#ffffff">
       <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
     </g>
 
-    <!-- Prominent Title & Descriptions -->
-    <text x="430" y="270" class="font-base btn-title" fill="#173820">${escapeXml(b1.title)}</text>
-    <text x="430" y="365" class="font-base btn-sub" fill="#31633a">${escapeXml(b1.subtitle)}</text>
-    <text x="430" y="445" class="font-base btn-desc" fill="#5c7a5a">致電農民敲定施作時段與派工細節</text>
+    <!-- Prominent Giant Title & Subtitle (Moved Down) -->
+    <text x="475" y="325" class="font-base btn-title" fill="#173820">${escapeXml(b1.title)}</text>
+    <text x="480" y="425" class="font-base btn-sub" fill="#31633a">${escapeXml(b1.subtitle)}</text>
   </g>
 
   <!-- ================= GRID 2: 施工排程 [1290, 270, 1110, 640] ================= -->
@@ -341,20 +335,19 @@ export function generateAdminMenuSvg(menuSpec) {
     <path d="M 0 48 Q 0 0 48 0 L 1062 0 Q 1110 0 1110 48 L 1110 60 L 0 60 Z" fill="#1d567a" />
 
     <!-- Category Badge -->
-    <rect x="70" y="90" width="220" height="68" rx="34" fill="#e0eff8" />
-    <text x="180" y="137" class="font-base btn-badge" fill="#1d567a" text-anchor="middle">工班出車</text>
+    <rect x="65" y="80" width="220" height="64" rx="32" fill="#e0eff8" />
+    <text x="175" y="125" class="font-base btn-badge" fill="#1d567a" text-anchor="middle">工班出車</text>
 
-    <!-- Large Icon Area (320x320) -->
-    <rect x="70" y="195" width="320" height="320" rx="48" fill="#d4e9f5" />
-    <circle cx="230" cy="355" r="120" fill="#1d567a" filter="url(#adminIconShadow)" />
-    <g transform="translate(170, 295) scale(5)" fill="#ffffff">
+    <!-- Super Large Icon Area (370x370) -->
+    <rect x="65" y="175" width="370" height="370" rx="52" fill="#d4e9f5" />
+    <circle cx="250" cy="360" r="145" fill="#1d567a" filter="url(#adminIconShadow)" />
+    <g transform="translate(178, 288) scale(6)" fill="#ffffff">
       <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z"/>
     </g>
 
-    <!-- Prominent Title & Descriptions -->
-    <text x="430" y="270" class="font-base btn-title" fill="#143f5a">${escapeXml(b2.title)}</text>
-    <text x="430" y="365" class="font-base btn-sub" fill="#275b7e">${escapeXml(b2.subtitle)}</text>
-    <text x="430" y="445" class="font-base btn-desc" fill="#507894">本日施作名冊與機具派工調度導航</text>
+    <!-- Prominent Giant Title & Subtitle (Moved Down) -->
+    <text x="475" y="325" class="font-base btn-title" fill="#143f5a">${escapeXml(b2.title)}</text>
+    <text x="480" y="425" class="font-base btn-sub" fill="#275b7e">${escapeXml(b2.subtitle)}</text>
   </g>
 
   <!-- ================= GRID 3: 休假預定 [100, 970, 1110, 640] ================= -->
@@ -363,20 +356,19 @@ export function generateAdminMenuSvg(menuSpec) {
     <path d="M 0 48 Q 0 0 48 0 L 1062 0 Q 1110 0 1110 48 L 1110 60 L 0 60 Z" fill="#992b23" />
 
     <!-- Category Badge -->
-    <rect x="70" y="90" width="220" height="68" rx="34" fill="#fae8e6" />
-    <text x="180" y="137" class="font-base btn-badge" fill="#992b23" text-anchor="middle">規則管理</text>
+    <rect x="65" y="80" width="220" height="64" rx="32" fill="#fae8e6" />
+    <text x="175" y="125" class="font-base btn-badge" fill="#992b23" text-anchor="middle">規則管理</text>
 
-    <!-- Large Icon Area (320x320) -->
-    <rect x="70" y="195" width="320" height="320" rx="48" fill="#f8dfdc" />
-    <circle cx="230" cy="355" r="120" fill="#992b23" filter="url(#adminIconShadow)" />
-    <g transform="translate(170, 295) scale(5)" fill="#ffffff">
+    <!-- Super Large Icon Area (370x370) -->
+    <rect x="65" y="175" width="370" height="370" rx="52" fill="#f8dfdc" />
+    <circle cx="250" cy="360" r="145" fill="#992b23" filter="url(#adminIconShadow)" />
+    <g transform="translate(178, 288) scale(6)" fill="#ffffff">
       <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
     </g>
 
-    <!-- Prominent Title & Descriptions -->
-    <text x="430" y="270" class="font-base btn-title" fill="#691a14">${escapeXml(b3.title)}</text>
-    <text x="430" y="365" class="font-base btn-sub" fill="#8f3028">${escapeXml(b3.subtitle)}</text>
-    <text x="430" y="445" class="font-base btn-desc" fill="#98534d">天候豪雨暫停受理、週公休時段設定</text>
+    <!-- Prominent Giant Title & Subtitle (Moved Down) -->
+    <text x="475" y="325" class="font-base btn-title" fill="#691a14">${escapeXml(b3.title)}</text>
+    <text x="480" y="425" class="font-base btn-sub" fill="#8f3028">${escapeXml(b3.subtitle)}</text>
   </g>
 
   <!-- ================= GRID 4: 代客排單 [1290, 970, 1110, 640] ================= -->
@@ -385,20 +377,19 @@ export function generateAdminMenuSvg(menuSpec) {
     <path d="M 0 48 Q 0 0 48 0 L 1062 0 Q 1110 0 1110 48 L 1110 60 L 0 60 Z" fill="#844129" />
 
     <!-- Category Badge -->
-    <rect x="70" y="90" width="220" height="68" rx="34" fill="#fbe5dc" />
-    <text x="180" y="137" class="font-base btn-badge" fill="#844129" text-anchor="middle">電話來電</text>
+    <rect x="65" y="80" width="220" height="64" rx="32" fill="#fbe5dc" />
+    <text x="175" y="125" class="font-base btn-badge" fill="#844129" text-anchor="middle">電話來電</text>
 
-    <!-- Large Icon Area (320x320) -->
-    <rect x="70" y="195" width="320" height="320" rx="48" fill="#f5ded5" />
-    <circle cx="230" cy="355" r="120" fill="#844129" filter="url(#adminIconShadow)" />
-    <g transform="translate(170, 295) scale(5)" fill="#ffffff">
+    <!-- Super Large Icon Area (370x370) -->
+    <rect x="65" y="175" width="370" height="370" rx="52" fill="#f5ded5" />
+    <circle cx="250" cy="360" r="145" fill="#844129" filter="url(#adminIconShadow)" />
+    <g transform="translate(178, 288) scale(6)" fill="#ffffff">
       <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
     </g>
 
-    <!-- Prominent Title & Descriptions -->
-    <text x="430" y="270" class="font-base btn-title" fill="#542514">${escapeXml(b4.title)}</text>
-    <text x="430" y="365" class="font-base btn-sub" fill="#78351e">${escapeXml(b4.subtitle)}</text>
-    <text x="430" y="445" class="font-base btn-desc" fill="#8a5342">老農來電叫工、幹部現場快速登打入庫</text>
+    <!-- Prominent Giant Title & Subtitle (Moved Down) -->
+    <text x="475" y="325" class="font-base btn-title" fill="#542514">${escapeXml(b4.title)}</text>
+    <text x="480" y="425" class="font-base btn-sub" fill="#78351e">${escapeXml(b4.subtitle)}</text>
   </g>
 </svg>`;
 }
