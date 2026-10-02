@@ -10,9 +10,9 @@ export const CANVAS_WIDTH = 2500;
 export const CANVAS_HEIGHT = 1686;
 
 export const DEFAULT_THEME = {
-  primaryColor: '#166534',   // 深綠色 (預約主色)
-  secondaryColor: '#1e293b', // 深深灰/海軍藍 (查詢主色)
-  textColor: '#ffffff'       // 純白文字
+  primaryColor: '#173820',   // 森林深綠 (預約主色)
+  secondaryColor: '#854d0e', // 暖大地金棕 (查詢主色)
+  textColor: '#20271f'       // 深炭自然黑
 };
 
 /**
