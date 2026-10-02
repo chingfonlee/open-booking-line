@@ -21,19 +21,19 @@ const mockTargets = {
   }
 };
 
-test('Ep02-Admin: Admin Dual-Hub 6-Action Rich Menu Test Suite', async (t) => {
+test('Ep02-Admin: Admin 4-Grid Rich Menu Test Suite', async (t) => {
   const adminSpec = buildAdminMenuSpec(mockTargets);
 
-  await t.test('1. should build valid Admin Spec with 6 non-overlapping actions across 2 hubs', () => {
+  await t.test('1. should build valid Admin Spec with 4 non-overlapping actions in 2x2 grid', () => {
     assert.equal(adminSpec.type, 'admin');
-    assert.equal(adminSpec.buttons.length, 6);
+    assert.equal(adminSpec.buttons.length, 4);
     assert.ok(adminSpec.chatBarText.length <= 14);
 
     const lineObj = toLineRichMenuObject(adminSpec);
     assert.doesNotThrow(() => validateLineRichMenuObject(lineObj));
-    assert.equal(lineObj.areas.length, 6);
+    assert.equal(lineObj.areas.length, 4);
 
-    // Verify all 6 action URLs contain admin routing parameters
+    // Verify all 4 action URLs contain admin routing parameters
     const toContact = adminSpec.buttons.find(b => b.id === 'admin_to_contact');
     assert.ok(toContact.action.uri.includes('filter=to_contact'));
 
@@ -43,8 +43,8 @@ test('Ep02-Admin: Admin Dual-Hub 6-Action Rich Menu Test Suite', async (t) => {
     const settings = adminSpec.buttons.find(b => b.id === 'admin_settings');
     assert.ok(settings.action.uri.includes('tab=settings'));
 
-    const history = adminSpec.buttons.find(b => b.id === 'admin_history');
-    assert.ok(history.action.uri.includes('filter=all'));
+    const manual = adminSpec.buttons.find(b => b.id === 'admin_manual_booking');
+    assert.ok(manual.action.uri.includes('mode=manual'));
   });
 
   await t.test('2. should render exact 2500x1686 admin image under 1MB limit deterministically', async () => {
@@ -56,8 +56,11 @@ test('Ep02-Admin: Admin Dual-Hub 6-Action Rich Menu Test Suite', async (t) => {
     assert.ok(sizeBytes <= MAX_FILE_SIZE);
 
     assert.ok(svg.includes('高雄服務站'));
-    assert.ok(svg.includes('現場業務與即時調度'));
-    assert.ok(svg.includes('站所管理與設定工具'));
+    assert.ok(svg.includes('幹部調度工作台'));
+    assert.ok(svg.includes('1. 待審確認'));
+    assert.ok(svg.includes('2. 施工排程'));
+    assert.ok(svg.includes('3. 休假預定'));
+    assert.ok(svg.includes('4. 代客排單'));
 
     // Verify sharp metadata
     const meta = await sharp(buffer).metadata();

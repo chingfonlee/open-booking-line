@@ -201,79 +201,56 @@ export function buildAdminMenuSpec(targets, options = {}) {
   }
 
   const buttons = [
-    // Left Card: 現場業務與即時調度 (B1, B2, B3)
+    // Grid 1 (Top-Left): 待審確認 [100, 270, 1110, 640]
     {
       id: 'admin_to_contact',
-      title: '待審案件與排程確認',
-      subtitle: '新單審核 · 致電敲定施作時段',
+      title: '1. 待審確認',
+      subtitle: '新單審核 · 施作時段敲定',
       category: 'operations',
       icon: 'clipboard',
-      bounds: { x: 125, y: 450, width: 1030, height: 330 },
+      bounds: { x: 100, y: 270, width: 1110, height: 640 },
       action: {
         type: 'uri',
         uri: `${liffUrl}?view=admin&filter=to_contact`
       }
     },
+    // Grid 2 (Top-Right): 施工排程 [1290, 270, 1110, 640]
     {
       id: 'admin_confirmed',
-      title: '今日施工與工班出車',
-      subtitle: '本日排程 · 田區位置與聯絡導航',
+      title: '2. 施工排程',
+      subtitle: '今日施工 · 田區與聯絡導航',
       category: 'operations',
       icon: 'calendar',
-      bounds: { x: 125, y: 825, width: 1030, height: 330 },
+      bounds: { x: 1290, y: 270, width: 1110, height: 640 },
       action: {
         type: 'uri',
         uri: `${liffUrl}?view=admin&filter=confirmed`
       }
     },
-    {
-      id: 'admin_manual_booking',
-      title: '站所電話代客登記',
-      subtitle: '老農來電 · 現場快速代填掛單',
-      category: 'operations',
-      icon: 'phone-edit',
-      bounds: { x: 125, y: 1200, width: 1030, height: 330 },
-      action: {
-        type: 'uri',
-        uri: `${liffUrl}?view=apply&mode=manual`
-      }
-    },
-
-    // Right Card: 站所管理與設定工具 (B4, B5, B6)
+    // Grid 3 (Bottom-Left): 休假預定 [100, 970, 1110, 640]
     {
       id: 'admin_settings',
-      title: '產能限制與公休封鎖',
-      subtitle: '氣候下雨 · 機具保養暫停受理',
+      title: '3. 休假預定',
+      subtitle: '公休封鎖 · 產能時段設定',
       category: 'management',
       icon: 'lock-calendar',
-      bounds: { x: 1345, y: 450, width: 1030, height: 330 },
+      bounds: { x: 100, y: 970, width: 1110, height: 640 },
       action: {
         type: 'uri',
         uri: `${liffUrl}?view=admin&tab=settings`
       }
     },
+    // Grid 4 (Bottom-Right): 代客排單 [1290, 970, 1110, 640]
     {
-      id: 'admin_history',
-      title: '歷史案件檢索與查詢',
-      subtitle: '農友姓名 · 施作履歷與備註反查',
-      category: 'management',
-      icon: 'search-history',
-      bounds: { x: 1345, y: 825, width: 1030, height: 330 },
+      id: 'admin_manual_booking',
+      title: '4. 代客排單',
+      subtitle: '老農來電 · 站所代填掛單',
+      category: 'operations',
+      icon: 'phone-edit',
+      bounds: { x: 1290, y: 970, width: 1110, height: 640 },
       action: {
         type: 'uri',
-        uri: `${liffUrl}?view=admin&filter=all`
-      }
-    },
-    {
-      id: 'admin_demo',
-      title: '顧客預約視角展示',
-      subtitle: '農民手機畫面 · 產銷班推廣示範',
-      category: 'management',
-      icon: 'farmer-view',
-      bounds: { x: 1345, y: 1200, width: 1030, height: 330 },
-      action: {
-        type: 'uri',
-        uri: `${liffUrl}?view=apply`
+        uri: `${liffUrl}?view=apply&mode=manual`
       }
     }
   ];
