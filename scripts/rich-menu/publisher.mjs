@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { verifyApproval, SPEC_PATH, PREVIEW_PATH, APPROVAL_PATH, RICH_MENU_DIR } from './approval.mjs';
+import { verifyApproval, verifyAdminApproval, SPEC_PATH, PREVIEW_PATH, APPROVAL_PATH, ADMIN_SPEC_PATH, ADMIN_PREVIEW_PATH, ADMIN_APPROVAL_PATH, RICH_MENU_DIR } from './approval.mjs';
 import { toLineRichMenuObject, validateLineRichMenuObject } from './builder.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -137,6 +137,46 @@ export async function getRemoteRichMenu(token, richMenuId, customFetch = lineFet
     throw new Error(`LINE_GET_MENU_FAILED: HTTP ${res.status} - ${errorText}`);
   }
   return await res.json();
+}
+
+export async function linkRemoteUserRichMenu(token, userId, richMenuId, customFetch = lineFetch) {
+  const res = await customFetch(`/user/${userId}/richmenu/${richMenuId}`, token, {
+    method: 'POST'
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`LINE_LINK_USER_MENU_FAILED: HTTP ${res.status} - ${errorText}`);
+  }
+  return true;
+}
+
+export async function unlinkRemoteUserRichMenu(token, userId, customFetch = lineFetch) {
+  const res = await customFetch(`/user/${userId}/richmenu`, token, {
+    method: 'DELETE'
+  });
+
+  if (!res.ok && res.status !== 404) {
+    const errorText = await res.text();
+    throw new Error(`LINE_UNLINK_USER_MENU_FAILED: HTTP ${res.status} - ${errorText}`);
+  }
+  return true;
+}
+
+export async function getRemoteUserRichMenu(token, userId, customFetch = lineFetch) {
+  const res = await customFetch(`/user/${userId}/richmenu`, token, {
+    method: 'GET'
+  });
+
+  if (res.status === 200) {
+    const data = await res.json();
+    return data.richMenuId || null;
+  }
+  if (res.status === 404) {
+    return null;
+  }
+  const errorText = await res.text();
+  throw new Error(`LINE_GET_USER_MENU_FAILED: HTTP ${res.status} - ${errorText}`);
 }
 
 /**
@@ -349,17 +389,153 @@ export async function runPublisher(options = {}) {
   }
 }
 
+/**
+ * Admin Per-User Menu Publisher Execution
+ */
+export async function runAdminPublisher(options = {}) {
+  const token = options.token || process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) {
+    throw new Error('OPERATION_TOKEN_REQUIRED: LINE_CHANNEL_ACCESS_TOKEN must be provided to run admin publisher.');
+  }
+
+  const customFetch = options.customFetch || lineFetch;
+  const dryRun = Boolean(options.dryRun);
+
+  // Step 1: Verify Admin Approval Gate
+  const approval = verifyAdminApproval({
+    approvalPath: options.approvalPath || ADMIN_APPROVAL_PATH,
+    specPath: options.specPath || ADMIN_SPEC_PATH,
+    previewPath: options.previewPath || ADMIN_PREVIEW_PATH
+  });
+
+  const spec = JSON.parse(fs.readFileSync(options.specPath || ADMIN_SPEC_PATH, 'utf8'));
+  const imageBuffer = fs.readFileSync(options.previewPath || ADMIN_PREVIEW_PATH);
+  const lineObj = toLineRichMenuObject(spec);
+
+  // Step 2: Validate Remote Object against LINE API validator
+  await validateRemoteRichMenu(token, lineObj, customFetch);
+
+  // Target Admin Users to link (from options.userIds, or process.env.ADMIN_LINE_IDS)
+  const targetUserIds = options.userIds || [
+    ...(process.env.ADMIN_LINE_IDS ? process.env.ADMIN_LINE_IDS.split(',').map(s => s.trim()) : []),
+    process.env.ADMIN_NOTIFY_USER_ID
+  ].filter(Boolean);
+
+  if (dryRun) {
+    return {
+      success: true,
+      mode: 'admin-dry-run',
+      approval,
+      targetUserIds,
+      lineObj,
+      message: 'Admin dry-run preflight validated successfully. No remote resources created.'
+    };
+  }
+
+  const managedPath = options.managedPath || MANAGED_PATH;
+
+  // Step 3: Atomic Creation of Remote Admin Menu
+  const adminRichMenuId = await createRemoteRichMenu(token, lineObj, customFetch);
+
+  try {
+    // Step 4: Upload Image
+    const isJpeg = imageBuffer.length >= 3 && imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 && imageBuffer[2] === 0xFF;
+    const isPng = imageBuffer.length >= 8 && imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E && imageBuffer[3] === 0x47;
+    const mimeType = isJpeg ? 'image/jpeg' : isPng ? 'image/png' : 'image/png';
+
+    await uploadRemoteRichMenuImage(token, adminRichMenuId, imageBuffer, mimeType, customFetch);
+    await getRemoteRichMenu(token, adminRichMenuId, customFetch);
+
+    // Step 5: Link to target Admin Users (if any provided)
+    const linkedUsers = [];
+    for (const uid of targetUserIds) {
+      await linkRemoteUserRichMenu(token, uid, adminRichMenuId, customFetch);
+      linkedUsers.push(uid);
+    }
+
+    // Step 6: Record Managed Metadata
+    let existingManaged = {};
+    if (fs.existsSync(managedPath)) {
+      try {
+        existingManaged = JSON.parse(fs.readFileSync(managedPath, 'utf8'));
+      } catch {}
+    }
+
+    const ownedMenuIds = Array.from(new Set([...(existingManaged.ownedMenuIds || []), adminRichMenuId]));
+
+    const updatedManaged = {
+      ...existingManaged,
+      adminMenuId: adminRichMenuId,
+      linkedAdminUserIds: linkedUsers,
+      ownedMenuIds,
+      adminMenuName: spec.name,
+      adminChatBarText: spec.chatBarText,
+      adminSpecHash: approval.specHash,
+      adminImageHash: approval.imageHash,
+      adminDeployedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(managedPath, JSON.stringify(updatedManaged, null, 2), 'utf8');
+
+    return {
+      success: true,
+      mode: 'admin-published',
+      adminRichMenuId,
+      linkedUsers,
+      managedData: updatedManaged
+    };
+  } catch (err) {
+    try {
+      await deleteRemoteRichMenu(token, adminRichMenuId, customFetch);
+    } catch {}
+    throw err;
+  }
+}
+
 // Allow CLI execution directly
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const isDryRun = process.argv.includes('--dry-run');
+  const isAdmin = process.argv.includes('--admin');
 
-  runPublisher({ dryRun: isDryRun })
-    .then((res) => {
-      console.log('Publisher Execution Result:');
-      console.log(JSON.stringify(res, null, 2));
-    })
-    .catch((err) => {
-      console.error('Publisher Error:', err.message);
+  // Parse optional --uid
+  let targetUserIds = null;
+  const uidIdx = process.argv.indexOf('--uid');
+  if (uidIdx !== -1 && process.argv[uidIdx + 1]) {
+    targetUserIds = [process.argv[uidIdx + 1]];
+  }
+
+  const isUnlink = process.argv.includes('--unlink');
+  if (isUnlink) {
+    if (!targetUserIds || targetUserIds.length === 0) {
+      console.error('Error: --unlink requires --uid <USER_ID>');
       process.exit(1);
-    });
+    }
+    const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (!token) {
+      console.error('Error: LINE_CHANNEL_ACCESS_TOKEN must be provided.');
+      process.exit(1);
+    }
+    unlinkRemoteUserRichMenu(token, targetUserIds[0])
+      .then(() => {
+        console.log(`Successfully unlinked user ${targetUserIds[0]} from custom rich menu (reverts to default)`);
+      })
+      .catch((err) => {
+        console.error('Unlink error:', err.message);
+        process.exit(1);
+      });
+  } else {
+    const runPromise = isAdmin
+      ? runAdminPublisher({ dryRun: isDryRun, userIds: targetUserIds })
+      : runPublisher({ dryRun: isDryRun });
+
+    runPromise
+      .then((res) => {
+        console.log('Publisher Execution Result:');
+        console.log(JSON.stringify(res, null, 2));
+      })
+      .catch((err) => {
+        console.error('Publisher Error:', err.message);
+        process.exit(1);
+      });
+  }
 }

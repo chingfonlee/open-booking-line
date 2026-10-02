@@ -180,6 +180,124 @@ export function buildMenuSpec(targets, options = {}) {
 }
 
 /**
+ * Builds deterministic Admin Per-User Menu Spec (Dual-Hub 6-Action layout)
+ */
+export function buildAdminMenuSpec(targets, options = {}) {
+  const stationName = options.stationName || targets.station?.name || '服務站';
+  const name = options.name || `管理幹部選單 - ${stationName}`;
+  const chatBarText = options.chatBarText || '管理工作台';
+
+  if (chatBarText.length > 14) {
+    throw new Error(`SPEC_VALIDATION_ERROR: chatBarText "${chatBarText}" exceeds maximum length of 14 characters (length: ${chatBarText.length})`);
+  }
+
+  if (name.length > 300) {
+    throw new Error(`SPEC_VALIDATION_ERROR: name exceeds maximum length of 300 characters (length: ${name.length})`);
+  }
+
+  const liffUrl = targets.booking?.target || options.liffUrl;
+  if (!liffUrl) {
+    throw new Error('SPEC_BUILD_ERROR: targets must contain booking.target (LIFF URL)');
+  }
+
+  const buttons = [
+    // Left Card: 現場業務與即時調度 (B1, B2, B3)
+    {
+      id: 'admin_to_contact',
+      title: '待審案件與排程確認',
+      subtitle: '新單審核 · 致電敲定施作時段',
+      category: 'operations',
+      icon: 'clipboard',
+      bounds: { x: 125, y: 450, width: 1030, height: 330 },
+      action: {
+        type: 'uri',
+        uri: `${liffUrl}?view=admin&filter=to_contact`
+      }
+    },
+    {
+      id: 'admin_confirmed',
+      title: '今日施工與工班出車',
+      subtitle: '本日排程 · 田區位置與聯絡導航',
+      category: 'operations',
+      icon: 'calendar',
+      bounds: { x: 125, y: 825, width: 1030, height: 330 },
+      action: {
+        type: 'uri',
+        uri: `${liffUrl}?view=admin&filter=confirmed`
+      }
+    },
+    {
+      id: 'admin_manual_booking',
+      title: '站所電話代客登記',
+      subtitle: '老農來電 · 現場快速代填掛單',
+      category: 'operations',
+      icon: 'phone-edit',
+      bounds: { x: 125, y: 1200, width: 1030, height: 330 },
+      action: {
+        type: 'uri',
+        uri: `${liffUrl}?view=apply&mode=manual`
+      }
+    },
+
+    // Right Card: 站所管理與設定工具 (B4, B5, B6)
+    {
+      id: 'admin_settings',
+      title: '產能限制與公休封鎖',
+      subtitle: '氣候下雨 · 機具保養暫停受理',
+      category: 'management',
+      icon: 'lock-calendar',
+      bounds: { x: 1345, y: 450, width: 1030, height: 330 },
+      action: {
+        type: 'uri',
+        uri: `${liffUrl}?view=admin&tab=settings`
+      }
+    },
+    {
+      id: 'admin_history',
+      title: '歷史案件檢索與查詢',
+      subtitle: '農友姓名 · 施作履歷與備註反查',
+      category: 'management',
+      icon: 'search-history',
+      bounds: { x: 1345, y: 825, width: 1030, height: 330 },
+      action: {
+        type: 'uri',
+        uri: `${liffUrl}?view=admin&filter=all`
+      }
+    },
+    {
+      id: 'admin_demo',
+      title: '顧客預約視角展示',
+      subtitle: '農民手機畫面 · 產銷班推廣示範',
+      category: 'management',
+      icon: 'farmer-view',
+      bounds: { x: 1345, y: 1200, width: 1030, height: 330 },
+      action: {
+        type: 'uri',
+        uri: `${liffUrl}?view=apply`
+      }
+    }
+  ];
+
+  const spec = {
+    schemaVersion: 1,
+    type: 'admin',
+    canvas: {
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT
+    },
+    name,
+    chatBarText,
+    stationName,
+    buttons
+  };
+
+  const lineObj = toLineRichMenuObject(spec);
+  validateLineRichMenuObject(lineObj);
+
+  return spec;
+}
+
+/**
  * Converts Menu Spec to official LINE Rich Menu API object
  */
 export function toLineRichMenuObject(menuSpec) {
