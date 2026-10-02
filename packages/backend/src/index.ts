@@ -1364,7 +1364,13 @@ app.post('/api/line/webhook', async (c) => {
             's.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time, s.notes as customer_notice ' +
             'FROM service_requests r ' +
             "LEFT JOIN slot_reservations s ON r.id = s.request_id AND s.status = 'active' " +
-            'WHERE r.line_user_id = ? ORDER BY r.created_at DESC LIMIT 5'
+            'WHERE r.line_user_id = ? ' +
+            'ORDER BY ' +
+            "  CASE WHEN r.status IN ('confirmed', 'processing') THEN 1 WHEN r.status = 'to_contact' THEN 2 ELSE 3 END ASC, " +
+            "  CASE WHEN r.status IN ('confirmed', 'processing') THEN s.booking_date END ASC, " +
+            "  CASE WHEN r.status IN ('confirmed', 'processing') THEN s.scheduled_start_time END ASC, " +
+            '  r.created_at DESC ' +
+            'LIMIT 10'
           ).bind(userId).all();
         }
 
@@ -1448,7 +1454,13 @@ app.get('/api/admin/debug/test-card', async (c) => {
     's.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time, s.notes as customer_notice ' +
     'FROM service_requests r ' +
     "LEFT JOIN slot_reservations s ON r.id = s.request_id AND s.status = 'active' " +
-    'WHERE r.line_user_id = ? ORDER BY r.created_at DESC LIMIT 5'
+    'WHERE r.line_user_id = ? ' +
+    'ORDER BY ' +
+    "  CASE WHEN r.status IN ('confirmed', 'processing') THEN 1 WHEN r.status = 'to_contact' THEN 2 ELSE 3 END ASC, " +
+    "  CASE WHEN r.status IN ('confirmed', 'processing') THEN s.booking_date END ASC, " +
+    "  CASE WHEN r.status IN ('confirmed', 'processing') THEN s.scheduled_start_time END ASC, " +
+    '  r.created_at DESC ' +
+    'LIMIT 10'
   ).bind(userId).all();
 
   const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID, c.env.STATION_NAME);

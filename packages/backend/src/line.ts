@@ -413,9 +413,214 @@ export function generateWelcomeGuideFlex(liffId?: string, stationName?: string) 
   };
 }
 
+function createProgressQueryBubble(
+  item: any,
+  index: number,
+  total: number,
+  activeLiffId: string,
+  station: string
+) {
+  const slotMap: Record<string, string> = {
+    morning: '上午',
+    afternoon: '下午',
+    any: '皆可'
+  };
+  const slotText = slotMap[item.preferred_time_slot] || item.preferred_time_slot;
+
+  let statusBadgeColor = '#856200';
+  let statusBadgeBg = '#fef3c7';
+  let statusText = '🟡 待聯絡 (服務站已受理，專人排程中)';
+  let statusNote = '服務人員已收到您的申請，將儘速致電確認確切施工排程。';
+
+  const dateRowTitle = (item.status === 'confirmed' || item.status === 'processing') && item.scheduled_date ? '確認日期' : '希望日期';
+  const displayedDate = item.scheduled_date || item.preferred_date;
+  const displayedSlotText = item.scheduled_slot_code ? (slotMap[item.scheduled_slot_code] || item.scheduled_slot_code) : slotText;
+
+  if (item.status === 'confirmed') {
+    statusBadgeColor = '#15803d';
+    statusBadgeBg = '#dcfce7';
+    statusText = '🟢 已確認排程 (服務日期已排定)';
+    statusNote = item.scheduled_start_time
+      ? `已確認於 ${displayedDate} (${displayedSlotText}) ${item.scheduled_start_time} 開工，請保持電話暢通。`
+      : `已確認於 ${displayedDate} (${displayedSlotText}) 提供服務，請保持電話暢通。`;
+  } else if (item.status === 'processing') {
+    statusBadgeColor = '#1e40af';
+    statusBadgeBg = '#dbeafe';
+    statusText = '🔵 施工處理中 (機具與工班調度施作中)';
+    statusNote = '站所已與您聯繫確認，目前正調配機具與人員準備施作。';
+  } else if (item.status === 'closed') {
+    statusBadgeColor = '#334155';
+    statusBadgeBg = '#f1f5f9';
+    statusText = '⚪ 已結案 (服務已完成)';
+    statusNote = '本筆預約已順利施工完成，感謝您的支持！';
+  } else if (item.status === 'cancelled') {
+    statusBadgeColor = '#b91c1c';
+    statusBadgeBg = '#fee2e2';
+    statusText = '🔴 已取消 (預約已終止)';
+    statusNote = '本筆預約已取消。若有其他需求，歡迎重新線上預約。';
+  }
+
+  const bodyContents: any[] = [
+    {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: statusBadgeBg,
+      cornerRadius: '8px',
+      paddingAll: '10px',
+      contents: [
+        { type: 'text', text: statusText, size: 'xs', weight: 'bold', color: statusBadgeColor, wrap: true }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      margin: 'md',
+      contents: [
+        { type: 'text', text: '預約單號', size: 'xs', color: '#64748b', flex: 2 },
+        { type: 'text', text: item.id, size: 'xs', color: '#0f172a', weight: 'bold', flex: 5 }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '服務項目', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: item.service_type, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '作物 / 面積', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: item.crop_type + ' · ' + item.area_size + (item.branch_volume ? ' (' + item.branch_volume + ')' : ''), size: 'sm', color: '#0f172a', flex: 5 }
+      ]
+    },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: dateRowTitle, size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: displayedDate + ' (' + displayedSlotText + ')', size: 'sm', color: '#15803d', weight: 'bold', flex: 5, wrap: true }
+      ]
+    }
+  ];
+
+  if (item.scheduled_start_time) {
+    bodyContents.push({
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '開工時間', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: item.scheduled_start_time + ' 準時抵達', size: 'sm', color: '#15803d', weight: 'bold', flex: 5 }
+      ]
+    });
+  }
+
+  bodyContents.push({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      { type: 'text', text: '施作地點', size: 'sm', color: '#64748b', flex: 2 },
+      { type: 'text', text: item.location_area + ' ' + (item.location_address || ''), size: 'sm', color: '#0f172a', flex: 5, wrap: true }
+    ]
+  });
+
+  // 安全隱私防護：admin_memo 為站所內部紀錄 (僅站所可見)，絕不可對外洩漏給客戶。
+  bodyContents.push({
+    type: 'box',
+    layout: 'vertical',
+    margin: 'md',
+    backgroundColor: '#faf8f3',
+    cornerRadius: '8px',
+    paddingAll: '10px',
+    contents: [
+      { type: 'text', text: '💬 ' + statusNote, size: 'xs', color: '#657061', wrap: true }
+    ]
+  });
+
+  // 服務站重要叮嚀 (若站所排程時有特別註明 customer_notice 提醒農友)
+  const noticeText = item.customer_notice || item.notes;
+  if (noticeText && (item.status === 'confirmed' || item.status === 'processing')) {
+    bodyContents.push({
+      type: 'box',
+      layout: 'vertical',
+      margin: 'md',
+      backgroundColor: '#fefce8',
+      borderColor: '#fde047',
+      borderWidth: '1px',
+      cornerRadius: '8px',
+      paddingAll: '10px',
+      contents: [
+        {
+          type: 'text',
+          text: '📢 服務站重要叮嚀：',
+          size: 'xs',
+          weight: 'bold',
+          color: '#854d0e'
+        },
+        {
+          type: 'text',
+          text: noticeText,
+          size: 'xs',
+          color: '#713f12',
+          wrap: true,
+          margin: 'xs'
+        }
+      ]
+    });
+  }
+
+  const headerSubtitle = total > 1
+    ? `📋 預約進度 (第 ${index + 1} / ${total} 筆)`
+    : '📋 您的服務預約進度';
+
+  return {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: '#173820',
+      paddingAll: '18px',
+      contents: [
+        { type: 'text', text: '🌱 ' + station, color: '#bbf7d0', size: 'xs', weight: 'bold' },
+        { type: 'text', text: headerSubtitle, color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
+      ]
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      paddingAll: '16px',
+      contents: bodyContents
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      paddingAll: '16px',
+      contents: [
+        {
+          type: 'button',
+          action: {
+            type: 'uri',
+            label: '🌱 填寫新預約申請',
+            uri: 'https://liff.line.me/' + activeLiffId
+          },
+          style: 'primary',
+          color: '#173820'
+        }
+      ]
+    }
+  };
+}
+
 export function generateProgressQueryFlex(requests: any[], liffId?: string, stationName?: string) {
   const activeLiffId = liffId || '';
   const station = stationName || '預約服務站';
+
+  // 1. 查無任何預約紀錄
   if (!requests || requests.length === 0) {
     return {
       type: 'flex',
@@ -463,199 +668,30 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string, stat
     };
   }
 
-  const latest = requests[0];
-  const slotMap: Record<string, string> = {
-    morning: '上午',
-    afternoon: '下午',
-    any: '皆可'
-  };
-  const slotText = slotMap[latest.preferred_time_slot] || latest.preferred_time_slot;
+  // LINE 官方限制單一 Carousel 上限 12 筆，系統取前 10 筆
+  const items = requests.slice(0, 10);
 
-  let statusBadgeColor = '#856200';
-  let statusBadgeBg = '#fef3c7';
-  let statusText = '🟡 待聯絡 (服務站已受理，專人排程中)';
-  let statusNote = '服務人員已收到您的申請，將儘速致電確認確切施工排程。';
-
-  const dateRowTitle = (latest.status === 'confirmed' || latest.status === 'processing') && latest.scheduled_date ? '確認日期' : '希望日期';
-  const displayedDate = latest.scheduled_date || latest.preferred_date;
-  const displayedSlotText = latest.scheduled_slot_code ? (slotMap[latest.scheduled_slot_code] || latest.scheduled_slot_code) : slotText;
-
-  if (latest.status === 'confirmed') {
-    statusBadgeColor = '#15803d';
-    statusBadgeBg = '#dcfce7';
-    statusText = '🟢 已確認排程 (服務日期已排定)';
-    statusNote = latest.scheduled_start_time
-      ? `已確認於 ${displayedDate} (${displayedSlotText}) ${latest.scheduled_start_time} 開工，請保持電話暢通。`
-      : `已確認於 ${displayedDate} (${displayedSlotText}) 提供服務，請保持電話暢通。`;
-  } else if (latest.status === 'processing') {
-    statusBadgeColor = '#1e40af';
-    statusBadgeBg = '#dbeafe';
-    statusText = '🔵 施工處理中 (機具與工班調度施作中)';
-    statusNote = '站所已與您聯繫確認，目前正調配機具與人員準備施作。';
-  } else if (latest.status === 'closed') {
-    statusBadgeColor = '#334155';
-    statusBadgeBg = '#f1f5f9';
-    statusText = '⚪ 已結案 (服務已完成)';
-    statusNote = '本筆預約已順利施工完成，感謝您的支持！';
-  } else if (latest.status === 'cancelled') {
-    statusBadgeColor = '#b91c1c';
-    statusBadgeBg = '#fee2e2';
-    statusText = '🔴 已取消 (預約已終止)';
-    statusNote = '本筆預約已取消。若有其他需求，歡迎重新線上預約。';
+  // 2. 單筆紀錄時，維持單一 Bubble（俐落直接）
+  if (items.length === 1) {
+    const bubble = createProgressQueryBubble(items[0], 0, 1, activeLiffId, station);
+    return {
+      type: 'flex',
+      altText: `【預約進度】${items[0].service_type} - 單號：${items[0].id}`,
+      contents: bubble
+    };
   }
 
-  const bodyContents: any[] = [
-    {
-      type: 'box',
-      layout: 'vertical',
-      backgroundColor: statusBadgeBg,
-      cornerRadius: '8px',
-      paddingAll: '10px',
-      contents: [
-        { type: 'text', text: statusText, size: 'xs', weight: 'bold', color: statusBadgeColor, wrap: true }
-      ]
-    },
-    {
-      type: 'box',
-      layout: 'horizontal',
-      margin: 'md',
-      contents: [
-        { type: 'text', text: '預約單號', size: 'xs', color: '#64748b', flex: 2 },
-        { type: 'text', text: latest.id, size: 'xs', color: '#0f172a', weight: 'bold', flex: 5 }
-      ]
-    },
-    {
-      type: 'box',
-      layout: 'horizontal',
-      contents: [
-        { type: 'text', text: '服務項目', size: 'sm', color: '#64748b', flex: 2 },
-        { type: 'text', text: latest.service_type, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
-      ]
-    },
-    {
-      type: 'box',
-      layout: 'horizontal',
-      contents: [
-        { type: 'text', text: '作物 / 面積', size: 'sm', color: '#64748b', flex: 2 },
-        { type: 'text', text: latest.crop_type + ' · ' + latest.area_size + (latest.branch_volume ? ' (' + latest.branch_volume + ')' : ''), size: 'sm', color: '#0f172a', flex: 5 }
-      ]
-    },
-    {
-      type: 'box',
-      layout: 'horizontal',
-      contents: [
-        { type: 'text', text: dateRowTitle, size: 'sm', color: '#64748b', flex: 2 },
-        { type: 'text', text: displayedDate + ' (' + displayedSlotText + ')', size: 'sm', color: '#15803d', weight: 'bold', flex: 5, wrap: true }
-      ]
-    }
-  ];
-
-  if (latest.scheduled_start_time) {
-    bodyContents.push({
-      type: 'box',
-      layout: 'horizontal',
-      contents: [
-        { type: 'text', text: '開工時間', size: 'sm', color: '#64748b', flex: 2 },
-        { type: 'text', text: latest.scheduled_start_time + ' 準時抵達', size: 'sm', color: '#15803d', weight: 'bold', flex: 5 }
-      ]
-    });
-  }
-
-  bodyContents.push({
-    type: 'box',
-    layout: 'horizontal',
-    contents: [
-      { type: 'text', text: '施作地點', size: 'sm', color: '#64748b', flex: 2 },
-      { type: 'text', text: latest.location_area + ' ' + (latest.location_address || ''), size: 'sm', color: '#0f172a', flex: 5, wrap: true }
-    ]
-  });
-
-  // 安全隱私防護：admin_memo 為站所內部紀錄 (僅站所可見)，絕不可對外洩漏給客戶。
-  // 對客戶查詢進度，統一顯示結構化、客製化之官方處理狀態說明 (statusNote)。
-  bodyContents.push({
-    type: 'box',
-    layout: 'vertical',
-    margin: 'md',
-    backgroundColor: '#faf8f3',
-    cornerRadius: '8px',
-    paddingAll: '10px',
-    contents: [
-      { type: 'text', text: '💬 ' + statusNote, size: 'xs', color: '#657061', wrap: true }
-    ]
-  });
-
-  // 服務站重要叮嚀 (若站所排程時有特別註明 customer_notice 提醒農友)
-  const noticeText = latest.customer_notice || latest.notes;
-  if (noticeText && (latest.status === 'confirmed' || latest.status === 'processing')) {
-    bodyContents.push({
-      type: 'box',
-      layout: 'vertical',
-      margin: 'md',
-      backgroundColor: '#fefce8',
-      borderColor: '#fde047',
-      borderWidth: '1px',
-      cornerRadius: '8px',
-      paddingAll: '10px',
-      contents: [
-        {
-          type: 'text',
-          text: '📢 服務站重要叮嚀：',
-          size: 'xs',
-          weight: 'bold',
-          color: '#854d0e'
-        },
-        {
-          type: 'text',
-          text: noticeText,
-          size: 'xs',
-          color: '#713f12',
-          wrap: true,
-          margin: 'xs'
-        }
-      ]
-    });
-  }
+  // 3. 多筆紀錄時，組合為橫向輪播 Carousel
+  const bubbles = items.map((item, idx) =>
+    createProgressQueryBubble(item, idx, items.length, activeLiffId, station)
+  );
 
   return {
     type: 'flex',
-    altText: '【預約進度】' + latest.service_type + ' - ' + statusText,
+    altText: `【預約進度】您有 ${items.length} 筆預約申請紀錄，請向左滑動查看`,
     contents: {
-      type: 'bubble',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#173820',
-        paddingAll: '18px',
-        contents: [
-          { type: 'text', text: '🌱 ' + station, color: '#bbf7d0', size: 'xs', weight: 'bold' },
-          { type: 'text', text: '📋 您的服務預約進度', color: '#ffffff', size: 'lg', weight: 'bold', margin: 'xs' }
-        ]
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        paddingAll: '16px',
-        contents: bodyContents
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        paddingAll: '16px',
-        contents: [
-          {
-            type: 'button',
-            action: {
-              type: 'uri',
-              label: '🌱 填寫新預約申請',
-              uri: 'https://liff.line.me/' + activeLiffId
-            },
-            style: 'primary',
-            color: '#173820'
-          }
-        ]
-      }
+      type: 'carousel',
+      contents: bubbles
     }
   };
 }
