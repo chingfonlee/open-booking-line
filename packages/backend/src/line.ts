@@ -269,9 +269,18 @@ function sanitizeToken(token?: string): string {
   return token.replace(/[^\x21-\x7E]/g, '').trim();
 }
 
-export async function pushLineMessage(token: string, targetId: string, flexMessage: any) {
+export async function pushLineMessage(token: string, targetId: string, flexMessage: any, db?: any) {
   const cleanToken = sanitizeToken(token);
-  if (!cleanToken || !targetId) return;
+  if (!cleanToken || !targetId) {
+    if (db) {
+      try {
+        const logId = crypto.randomUUID();
+        await db.prepare('INSERT INTO system_push_logs (id, target_id, status, response_text, created_at) VALUES (?, ?, ?, ?, ?)')
+          .bind(logId, targetId || 'EMPTY', 0, 'Missing cleanToken or targetId', new Date().toISOString()).run();
+      } catch {}
+    }
+    return;
+  }
   try {
     const res = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',
@@ -284,14 +293,32 @@ export async function pushLineMessage(token: string, targetId: string, flexMessa
         messages: [flexMessage]
       })
     });
+    const errText = await res.text();
+    const maskedTarget = targetId && targetId.length > 8 ? targetId.slice(0, 4) + '***' + targetId.slice(-4) : '***';
     if (!res.ok) {
-      const err = await res.text();
-      const maskedTarget = targetId && targetId.length > 8 ? targetId.slice(0, 4) + '***' + targetId.slice(-4) : '***';
-      console.error('Failed to push LINE message to ' + maskedTarget + ':', res.status, err);
+      console.error('Failed to push LINE message to ' + maskedTarget + ':', res.status, errText);
+    } else {
+      console.log('Successfully pushed LINE message to ' + maskedTarget + ':', res.status);
     }
-  } catch (err) {
+    if (db) {
+      try {
+        const logId = crypto.randomUUID();
+        await db.prepare('INSERT INTO system_push_logs (id, target_id, status, response_text, created_at) VALUES (?, ?, ?, ?, ?)')
+          .bind(logId, targetId, res.status, errText, new Date().toISOString()).run();
+      } catch (dbErr) {
+        console.error('Failed to write system_push_logs:', dbErr);
+      }
+    }
+  } catch (err: any) {
     const maskedTarget = targetId && targetId.length > 8 ? targetId.slice(0, 4) + '***' + targetId.slice(-4) : '***';
     console.error('Failed to push LINE message to ' + maskedTarget + ':', err);
+    if (db) {
+      try {
+        const logId = crypto.randomUUID();
+        await db.prepare('INSERT INTO system_push_logs (id, target_id, status, response_text, created_at) VALUES (?, ?, ?, ?, ?)')
+          .bind(logId, targetId, 500, String(err?.message || err), new Date().toISOString()).run();
+      } catch {}
+    }
   }
 }
 

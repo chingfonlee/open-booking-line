@@ -387,7 +387,7 @@ app.post(
           id
         }, c.env.LIFF_ID, c.env.STATION_NAME);
         c.executionCtx.waitUntil(
-          pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg)
+          pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, c.env.ADMIN_NOTIFY_USER_ID, adminFlexMsg, c.env.DB)
         );
       }
 
@@ -399,7 +399,7 @@ app.post(
           id
         }, c.env.LIFF_ID, c.env.STATION_NAME);
         c.executionCtx.waitUntil(
-          pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg)
+          pushLineMessage(c.env.LINE_CHANNEL_ACCESS_TOKEN, verifiedLineUserId, customerFlexMsg, c.env.DB)
         );
       }
 
@@ -1435,12 +1435,16 @@ app.get('/api/admin/debug/test-card', async (c) => {
   ).bind(userId).all();
 
   const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID, c.env.STATION_NAME);
-  await pushLineMessage(token, userId, flexMsg);
+  await pushLineMessage(token, userId, flexMsg, c.env.DB);
+
+  // 取得最新一筆 push log
+  const lastLog = await c.env.DB.prepare('SELECT * FROM system_push_logs ORDER BY created_at DESC LIMIT 1').first<any>();
 
   return c.json({
     success: true,
-    message: 'Test card pushed successfully',
-    recordsCount: records.results?.length || 0
+    message: 'Test card push executed',
+    recordsCount: records.results?.length || 0,
+    pushResult: lastLog
   });
 });
 
