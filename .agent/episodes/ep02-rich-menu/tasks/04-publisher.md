@@ -6,8 +6,8 @@
 ---
 
 ## Must Read (必讀文件)
-- [`AGENTS.md`](../../../AGENTS.md)
-- [`.agent/AGENT-RULES.md`](../../AGENT-RULES.md)
+- [`AGENTS.md`](../../../../AGENTS.md)
+- [`.agent/AGENT-RULES.md`](../../../AGENT-RULES.md)
 - [`.agent/episodes/ep02-rich-menu/PLAN.md`](../PLAN.md)
 - [`.agent/episodes/ep02-rich-menu/STATUS.md`](../STATUS.md)
 - [`.agent/episodes/ep02-rich-menu/DECISIONS.md`](../DECISIONS.md)（特別是 ADR-EP02-005）

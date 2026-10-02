@@ -8,9 +8,9 @@
 
 | 集數 | 標題 | 狀態 | 文件 |
 | :--- | :--- | :--- | :--- |
-| Episode 01 | 基礎 LINE 預約系統 | 🟢 完成 | 參閱 `README.md`、`BEGINNER_GUIDE.md` |
-| Episode 02 | LINE Rich Menu 整合 | 🟢 完成 | 參閱 `docs/episodes/ep02-rich-menu/README.md` |
-| Episode 03 | Availability & Confirmation | 🔵 Planned | 待建立 |
+| Episode 01 | 基礎 LINE 預約系統 | 🟢 完成 | [`docs/episodes/ep01-basic-booking/README.md`](../episodes/ep01-basic-booking/README.md)（另見 [`BEGINNER_GUIDE.md`](../../BEGINNER_GUIDE.md)） |
+| Episode 02 | LINE Rich Menu 整合 | 🟢 完成 | [`docs/episodes/ep02-rich-menu/README.md`](../episodes/ep02-rich-menu/README.md) |
+| Episode 03 | Availability & Confirmation | 🟢 完成 | [`docs/episodes/ep03-availability/README.md`](../episodes/ep03-availability/README.md) |
 | Episode 04 | Service Catalog | 🔵 Planned | 待建立 |
 | Episode 05 | Notification & Broadcast | 🔵 Planned | 待建立 |
 
@@ -21,11 +21,14 @@
 每支影片對應一個 Git Tag。要取得特定影片使用的程式碼版本：
 
 ```bash
-# 取得 Episode 01 的程式碼
-git checkout v1.0.1
+# 取得 Episode 01 的程式碼快照
+git checkout ep01-wizard-form   # 或初版 ep01-basic-booking
 
-# 取得 Episode 02 的程式碼（發布後）
-git checkout v0.2-rich-menu
+# 取得 Episode 02 的程式碼快照
+git checkout ep02-admin-4grid   # 或初版 ep02-rich-menu
+
+# 取得 Episode 03 的程式碼快照
+git checkout ep03-admin-settings-top # 或初版 ep03-availability
 ```
 
 ---
