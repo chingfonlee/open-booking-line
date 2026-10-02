@@ -12,13 +12,16 @@ import {
   TimeSlot,
   AvailabilityResponse
 } from '../../../shared/types';
-import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock } from 'lucide-react';
+import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock, PhoneCall } from 'lucide-react';
 import { API_BASE } from '../config';
+import { getLiffSearchParams } from '../utils/liffUrl';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '預約服務站';
 
 export const ApplyForm: React.FC = () => {
+  const isManualMode = getLiffSearchParams().get('mode') === 'manual';
+
   const isInLineClient = () => {
     if (!LIFF_ID) return false;
     try {
@@ -327,6 +330,15 @@ export const ApplyForm: React.FC = () => {
       </header>
 
       <main className="max-w-xl mx-auto px-4 mt-4">
+        {isManualMode && (
+          <div className="flex items-center gap-2.5 px-4 py-3 bg-[#eef4f8] border border-[#a6c8e0] rounded-2xl text-xs text-[#1e4a6d] font-medium mb-3 shadow-xs">
+            <PhoneCall className="w-5 h-5 text-[#2b6cb0] shrink-0" />
+            <div>
+              <strong className="font-bold text-[#1e4a6d] block text-sm">📞 站所代客電話登記模式</strong>
+              目前為幹部代填掛單作業，請向來電農友確認田區與需求後送出。
+            </div>
+          </div>
+        )}
         {lineProfile && (
           <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#e8f3e5] border border-[#b8d6ae] rounded-2xl text-xs text-[#173820] font-medium mb-3 shadow-xs">
             {lineProfile.pictureUrl ? (

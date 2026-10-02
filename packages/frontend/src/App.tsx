@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ApplyForm } from './components/ApplyForm';
 import { AdminDashboard } from './components/AdminDashboard';
+import { getLiffSearchParams } from './utils/liffUrl';
 
 export const App: React.FC = () => {
   const [view, setView] = useState<'apply' | 'admin'>('apply');
   const [showDemoNav, setShowDemoNav] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = getLiffSearchParams();
     if (params.get('view') === 'admin' || window.location.pathname.startsWith('/admin')) {
       setView('admin');
     } else {

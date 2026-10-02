@@ -3,6 +3,7 @@ import liff from '@line/liff';
 import { ServiceRequest, RequestStatus, AvailabilityRule, AvailabilityException } from '../../../shared/types';
 import { Phone, CheckCircle2, RefreshCw, X, MapPin, LogOut, Loader2, ShieldCheck, ShieldAlert, Calendar, Clock, AlertTriangle, Settings, Plus, Trash2, Check, AlertCircle } from 'lucide-react';
 import { API_BASE } from '../config';
+import { getLiffSearchParams } from '../utils/liffUrl';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const ADMIN_TOKEN_KEY = 'open_booking_admin_token';
@@ -27,7 +28,16 @@ export const AdminDashboard: React.FC = () => {
 
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [selectedReq, setSelectedReq] = useState<ServiceRequest | null>(null);
-  const [currentFilter, setCurrentFilter] = useState<RequestStatus | 'all'>('to_contact');
+  
+  // 支援由 LINE 幹部選單帶入 ?filter=to_contact / confirmed / all
+  const [currentFilter, setCurrentFilter] = useState<RequestStatus | 'all'>(() => {
+    const params = getLiffSearchParams();
+    const f = params.get('filter');
+    if (f === 'confirmed' || f === 'processing' || f === 'closed' || f === 'cancelled' || f === 'all') {
+      return f;
+    }
+    return 'to_contact';
+  });
   const [counts, setCounts] = useState({ to_contact: 0, confirmed: 0, processing: 0, closed: 0, cancelled: 0, total: 0 });
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,7 +49,11 @@ export const AdminDashboard: React.FC = () => {
   const [confirmNotice, setConfirmNotice] = useState('');
 
   // 頁籤導覽模式：requests (預約管理) | settings (時段與公休設定)
-  const [activeTab, setActiveTab] = useState<'requests' | 'settings'>('requests');
+  // 支援由 LINE 幹部選單帶入 ?tab=settings
+  const [activeTab, setActiveTab] = useState<'requests' | 'settings'>(() => {
+    const params = getLiffSearchParams();
+    return params.get('tab') === 'settings' ? 'settings' : 'requests';
+  });
 
   // Ep03-5 時段規則與公休設定狀態
   const [settingsLoading, setSettingsLoading] = useState(false);
