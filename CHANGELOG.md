@@ -7,9 +7,41 @@
 ## [Unreleased]
 
 ### 規劃中 (Planned)
-- **Episode 03 — Service Catalog**：多服務項目與動態服務類別管理。
-- **Episode 04 — Admin Scheduling**：管理端時段排程與封鎖日控管。
-- **Episode 05 — Notification & Broadcast**：多渠道通知與分眾推播加固。
+- **Episode 04 — Service Catalog**：多服務項目與動態服務類別管理。
+- **Episode 05 — Notification & Broadcast**：多渠道通知與排程提醒加固。
+
+---
+
+## [1.2.0] - Episode 03 — Availability & Confirmation Scheduling (2026-10-02)
+
+快照標籤：[`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability)  
+能力登錄：`booking-availability` (Verified)
+
+### Added (新增能力)
+- **Request ≠ Reservation 領域分離架構**：
+  - 農友端僅能提出寬鬆偏好時段（上午 / 下午 / 都可以），未經確認前絕不占用時段（Pending 不鎖時段）。
+  - 管理端電話確認後指定正式日期、正式 broad slot 與白名單開工時間，建立正式 `slot_reservations` 並原子鎖定。
+- **後端 Availability 計算引擎 (`availability.ts`)**：
+  - 核心公式：`Weekly Rules - Exceptions - Active Reservations - Past Dates = Selectable Broad Slots`。
+  - 支援 `Legacy`（相容舊全週開放）與 `Managed`（嚴格營業規則矩陣）漸進切換。
+  - 統一業務時區為 `Asia/Taipei`（UTC+8），精確定義農友預約閉區間 $[T+1, T+30]$ 與管理員排程視窗 $[T, T+60]$。
+- **D1 資料庫健全性架構 (Migration 0002)**：
+  - 外鍵約束級聯保護、午休禁令（12:00/12:30）CHECK 約束。
+  - 部分唯一索引 `idx_uniq_active_slot`（同一時段僅 1 筆 active）與 `idx_uniq_active_req`（同一案件僅 1 筆 active）。
+  - 單一真實來源 (SSOT) 雙向觸發器同步消除幽靈封鎖。
+  - 隔離回滾腳本 `0002_rollback_ep03.sql` 與災難復原手冊 `RECOVERY.md`。
+- **生命週期專用端點與 Bypass 阻斷**：
+  - 實作確認排程 (`/confirm`)、開始施工 (`/start-work`)、結案 (`/complete`)、改期 (`/reschedule`) 與取消 (`/cancel`) 端點。
+  - 通用 `PATCH /api/admin/requests/:id` 禁止更新 status（Case R 防繞過）。
+  - 改期碰撞原子回滾（Case P/I，保留原預約有效）。
+  - 舊 `processing` 案件過渡補建排程機制。
+- **合作社營業時段與特定公休管理 UI (`AdminDashboard.tsx`)**：
+  - 每週 14 個區間營業開放矩陣，Fail-Closed 全關防呆阻斷（Case U）。
+  - 特定日期公休例外維護，即時時段衝突檢測與預約保全（Case L 不破壞既有預約）。
+- **即時排程確認卡片推播與跨端顯示一致性**：
+  - 正式確認與改期 LINE Flex 卡片推播（包含白名單開工時間與「準時抵達」說明）。
+  - LINE 官方帳號查詢進度 Webhook 與管理端儀表板全面左連接 `slot_reservations`，統一顯示正式日期與開工時間。
+  - 推播失敗非同步隔離（ADR-EP03-008，通知失敗絕不回滾預約）。
 
 ---
 

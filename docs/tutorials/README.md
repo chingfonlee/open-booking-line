@@ -9,10 +9,10 @@
 | 集數 | 標題 | 狀態 | 文件 |
 | :--- | :--- | :--- | :--- |
 | Episode 01 | 基礎 LINE 預約系統 | 🟢 完成 | 參閱 `README.md`、`BEGINNER_GUIDE.md` |
-| Episode 02 | LINE Rich Menu 整合 | 🔵 Planned | 待建立 |
-| Episode 03 | Service Catalog | 🔵 Planned | 待建立 |
-| Episode 04 | Frontend Customization | 🔵 Planned | 待建立 |
-| Episode 05 | Database Customization | 🔵 Planned | 待建立 |
+| Episode 02 | LINE Rich Menu 整合 | 🟢 完成 | 參閱 `docs/episodes/ep02-rich-menu/README.md` |
+| Episode 03 | Availability & Confirmation | 🔵 Planned | 待建立 |
+| Episode 04 | Service Catalog | 🔵 Planned | 待建立 |
+| Episode 05 | Notification & Broadcast | 🔵 Planned | 待建立 |
 
 ---
 

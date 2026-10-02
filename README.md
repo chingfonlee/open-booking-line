@@ -13,6 +13,13 @@
 
 * ✓ **LINE 原生流暢預約 (LIFF)**：支援在 LINE 官方帳號內開啟前端預約表單，自動帶入顧客 LINE 暱稱。
 * ✓ **LINE Rich Menu 圖文選單**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 品牌選單，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
+* ✓ **時段可用性與確認排程 (Availability & Confirmation)**：
+  * **Request ≠ Reservation 領域分離**：農友端僅能選擇寬鬆偏好時段（上午/下午/都可以），Pending 絕不占用時段。
+  * **Availability 計算引擎**：支援 `Weekly Rules - Exceptions - Active Reservations - Past Dates`，具備 Legacy/Managed 漸進模式轉換。
+  * **管理端電話確認排程**：指定正式日期與開工時間白名單（排除 12:00/12:30 午休），原子建立 `slot_reservations` 並排程防衝突。
+  * **原子改期與取消釋放**：改期碰撞安全回滾（保全原預約），取消案件自動釋出時段。
+  * **合作社營業矩陣與公休管理**：週一至週日 14 區間開放矩陣、Fail-Closed 防呆阻斷，特定日期公休例外維護與衝突警示保全。
+  * **即時排程確認推播與跨端顯示一致**：正式確認與改期推播專屬 LINE Flex 卡片，所有查詢 Webhook 與後台皆以 Reservation 為權威來源。
 * ✓ **極低成本 Serverless 後端**：基於 Cloudflare Workers + Hono 框架，提供低延遲、高並發之預約處理與時段排程 API。
 * ✓ **無伺服器關聯資料庫 (Cloudflare D1)**：以 SQLite 儲存預約單與時段封鎖紀錄，免除資料庫維護負擔。
 * ✓ **LINE Flex Message 即時推播**：新預約送出時，即時推播通知站所幹部，支援一鍵撥號與後台跳轉。
@@ -33,9 +40,9 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
 | **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-rich-menu) |
-| **Ep03** | Service Catalog (多服務項目) | **Planned** (規劃中) | — | — |
-| **Ep04** | Admin Scheduling (排程與封鎖) | **Planned** (規劃中) | — | — |
-| **Ep05** | Notification & Broadcast (推播加固) | **Planned** (規劃中) | — | — |
+| **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/README.md) | [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
+| **Ep04** | Service Catalog (服務項目目錄與客製欄位) | **Planned** (規劃中) | — | — |
+| **Ep05** | Notification & Broadcast (推播加固與排程提醒) | **Planned** (規劃中) | — | — |
 
 > 📌 **說明**：
 > 1. 新使用者預設直接 Clone 最新 `main` 分支即可。

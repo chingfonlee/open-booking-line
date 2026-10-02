@@ -1,0 +1,12 @@
+{
+  "id": "ep03-availability",
+  "title": "Availability & Confirmation Scheduling",
+  "requires": [
+    "booking-core",
+    "rich-menu"
+  ],
+  "provides": [
+    "booking-availability"
+  ],
+  "status": "in_progress"
+}

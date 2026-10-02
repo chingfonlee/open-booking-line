@@ -1,4 +1,5 @@
-export type RequestStatus = 'to_contact' | 'processing' | 'closed';
+export type RequestStatus = 'to_contact' | 'confirmed' | 'processing' | 'closed' | 'cancelled';
+export type BroadSlot = 'morning' | 'afternoon';
 export type TimeSlot = 'morning' | 'afternoon' | 'any';
 export type BranchVolume = '少量' | '中量' | '大量' | '不確定';
 export type DateFlexibility = '僅此日期方便' | '前後 3 天皆可' | '日期可以再與我聯絡確認';
@@ -25,6 +26,9 @@ export interface ServiceRequest {
   status: RequestStatus;
   admin_memo?: string;
   line_user_id?: string;
+  scheduled_date?: string;
+  scheduled_slot_code?: BroadSlot;
+  scheduled_start_time?: string;
 }
 
 export interface CreateServiceRequestDto {
@@ -89,3 +93,74 @@ export const KAOHSIUNG_DISTRICTS = [
   '美濃區',
   '六龜區'
 ] as const;
+
+// Ep03 Availability & Confirmation Scheduling Types
+export interface SlotReservation {
+  id: string;
+  request_id: string;
+  booking_date: string;
+  slot_code: BroadSlot;
+  scheduled_start_time: string;
+  status: 'active' | 'released';
+  created_at: string;
+  released_at?: string | null;
+  notes?: string | null;
+}
+
+export type SlotUnavailableReason = 
+  | 'weekly_closed' 
+  | 'blocked' 
+  | 'reserved' 
+  | 'past' 
+  | 'lead_time' 
+  | 'outside_horizon';
+
+export interface DateAvailability {
+  date: string;
+  selectable: boolean;
+  slots: {
+    morning: boolean;
+    afternoon: boolean;
+    any: boolean;
+  };
+  reasons: {
+    morning?: SlotUnavailableReason | null;
+    afternoon?: SlotUnavailableReason | null;
+  };
+}
+
+export interface AvailabilityConfig {
+  mode: 'legacy' | 'managed';
+  lead_time_days: number;
+  booking_horizon_days: number;
+}
+
+export interface AvailabilityResponse {
+  mode: 'legacy' | 'managed';
+  timezone: 'Asia/Taipei';
+  today: string;
+  lead_time_days: number;
+  booking_horizon_days: number;
+  window: {
+    earliest: string;
+    latest: string;
+  };
+  dates: Record<string, DateAvailability>;
+}
+
+export interface AvailabilityRule {
+  id: string;
+  day_of_week: number; // 0 (週日) ~ 6 (週六)
+  slot_code: BroadSlot;
+  is_enabled: number; // 0 or 1
+  updated_at: string;
+}
+
+export interface AvailabilityException {
+  id: string;
+  exception_date: string;
+  slot_code: 'all' | 'morning' | 'afternoon';
+  reason?: string | null;
+  created_at: string;
+}
+

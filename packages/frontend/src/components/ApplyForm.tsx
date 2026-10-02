@@ -9,7 +9,8 @@ import {
   AREA_UNIT_OPTIONS,
   AreaUnit,
   CreateServiceRequestDto, 
-  TimeSlot 
+  TimeSlot,
+  AvailabilityResponse
 } from '../../../shared/types';
 import { CheckCircle2, Calendar, MapPin, User, Phone, Sprout, Clock, Layers, CalendarClock } from 'lucide-react';
 import { API_BASE } from '../config';
@@ -56,20 +57,37 @@ export const ApplyForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
   const [lineProfile, setLineProfile] = useState<{ displayName: string; pictureUrl?: string; userId: string } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
   const turnstileContainerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 1. 抓取額滿黑名單
-    fetch(`${API_BASE}/api/config/blocked-dates`)
+    // 1. 抓取 Ep03 可用性資料 (含時段鎖定與預約視窗)
+    fetch(`${API_BASE}/api/availability`)
       .then(res => res.json())
       .then(res => {
-        if (res.success && Array.isArray(res.data)) {
-          setBlockedDates(res.data.map((item: any) => item.date));
+        if (res.success && res.data) {
+          setAvailability(res.data);
+          if (res.data.dates) {
+            const blocked = Object.values(res.data.dates)
+              .filter((d: any) => !d.selectable)
+              .map((d: any) => d.date);
+            setBlockedDates(blocked);
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // 降級回退：若 availability 端點異常，回退抓取舊 blocked-dates
+        fetch(`${API_BASE}/api/config/blocked-dates`)
+          .then(res => res.json())
+          .then(res => {
+            if (res.success && Array.isArray(res.data)) {
+              setBlockedDates(res.data.map((item: any) => item.date));
+            }
+          })
+          .catch(() => {});
+      });
 
     // 2. 初始化 LIFF SDK
     if (LIFF_ID) {
@@ -149,7 +167,27 @@ export const ApplyForm: React.FC = () => {
       return;
     }
 
-    if (blockedDates.includes(formData.preferred_date)) {
+    if (availability && formData.preferred_date) {
+      const dayAvail = availability.dates?.[formData.preferred_date];
+      if (dayAvail) {
+        if (!dayAvail.selectable) {
+          alert('您選擇的希望施工日期目前服務站已額滿或暫停排程，請選擇其他日期！');
+          return;
+        }
+        if (formData.preferred_time_slot === 'morning' && !dayAvail.slots.morning) {
+          alert('您選擇的希望施工日期上午時段目前不可預約，請選擇下午或更換日期！');
+          return;
+        }
+        if (formData.preferred_time_slot === 'afternoon' && !dayAvail.slots.afternoon) {
+          alert('您選擇的希望施工日期下午時段目前不可預約，請選擇上午或更換日期！');
+          return;
+        }
+        if (formData.preferred_time_slot === 'any' && !dayAvail.slots.any) {
+          alert('您選擇的希望施工日期目前無可用時段，請選擇其他日期！');
+          return;
+        }
+      }
+    } else if (blockedDates.includes(formData.preferred_date)) {
       alert('您選擇的希望施工日期目前服務站已額滿或暫停排程，請選擇其他日期！');
       return;
     }
@@ -221,6 +259,8 @@ export const ApplyForm: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const selectedDateAvailability = formData.preferred_date && availability?.dates ? availability.dates[formData.preferred_date] : null;
 
   if (submittedId) {
     return (
@@ -451,15 +491,34 @@ export const ApplyForm: React.FC = () => {
               </label>
               <input
                 type="date"
-                min={new Date().toISOString().slice(0, 10)}
+                min={availability?.window?.earliest || ''}
+                max={availability?.window?.latest || ''}
                 value={formData.preferred_date}
-                onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setFormData(prev => {
+                    const dayAvail = availability?.dates?.[newDate];
+                    let newSlot = prev.preferred_time_slot;
+                    if (dayAvail) {
+                      if (newSlot === 'morning' && !dayAvail.slots.morning) {
+                        newSlot = dayAvail.slots.afternoon ? 'afternoon' : 'any';
+                      } else if (newSlot === 'afternoon' && !dayAvail.slots.afternoon) {
+                        newSlot = dayAvail.slots.morning ? 'morning' : 'any';
+                      }
+                    }
+                    return { ...prev, preferred_date: newDate, preferred_time_slot: newSlot };
+                  });
+                }}
                 className="w-full mt-1.5 px-3.5 py-2.5 border border-[#bfb8aa] rounded-xl focus:ring-2 focus:ring-[#2a5937] focus:border-[#2a5937] focus:outline-none text-sm font-medium bg-white text-[#20271f]"
                 required
               />
-              <p className="text-xs text-[#657061] mt-1">實際施工日期仍需由合作社致電確認。</p>
-              {formData.preferred_date && blockedDates.includes(formData.preferred_date) && (
-                <p className="text-xs text-red-600 font-bold mt-1">⚠️ 此日期服務站目前已額滿或調配中，請更換其他希望日期。</p>
+              <p className="text-xs text-[#2a5937] font-medium mt-1">
+                ℹ️ 此為希望服務時段，實際服務日期與開工時間將由服務站聯絡確認。
+              </p>
+              {formData.preferred_date && selectedDateAvailability && !selectedDateAvailability.selectable && (
+                <p className="text-xs text-red-600 font-bold mt-1">
+                  ⚠️ 此日期服務站目前未開放或已額滿，請選擇其他希望日期。
+                </p>
               )}
             </div>
 
@@ -496,27 +555,55 @@ export const ApplyForm: React.FC = () => {
             <div>
               <label className="flex items-center gap-1.5 text-xs font-semibold text-[#657061] mb-1.5">
                 <Clock className="w-3.5 h-3.5 text-[#2a5937]" />
-                偏好時段
+                偏好時段（上午／下午／都可以）
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: 'morning', label: '上午' },
-                  { value: 'afternoon', label: '下午' },
-                  { value: 'any', label: '皆可配合' }
-                ].map((slot) => (
-                  <button
-                    type="button"
-                    key={slot.value}
-                    onClick={() => setFormData({ ...formData, preferred_time_slot: slot.value as TimeSlot })}
-                    className={'py-2 px-2 text-xs font-semibold rounded-lg border transition ' + (
-                      formData.preferred_time_slot === slot.value
-                        ? 'bg-[#2a5937] text-white border-[#2a5937] font-bold shadow-sm'
-                        : 'border-[#d8d1c3] bg-white text-[#20271f] hover:bg-[#f8f3e7]'
-                    )}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
+                  {
+                    value: 'morning',
+                    label: '上午',
+                    disabled: selectedDateAvailability ? !selectedDateAvailability.slots.morning : false,
+                    badge: selectedDateAvailability && !selectedDateAvailability.slots.morning
+                      ? (selectedDateAvailability.reasons.morning === 'reserved' ? '已預約' : '額滿')
+                      : null
+                  },
+                  {
+                    value: 'afternoon',
+                    label: '下午',
+                    disabled: selectedDateAvailability ? !selectedDateAvailability.slots.afternoon : false,
+                    badge: selectedDateAvailability && !selectedDateAvailability.slots.afternoon
+                      ? (selectedDateAvailability.reasons.afternoon === 'reserved' ? '已預約' : '額滿')
+                      : null
+                  },
+                  {
+                    value: 'any',
+                    label: '都可以',
+                    disabled: selectedDateAvailability ? !selectedDateAvailability.slots.any : false,
+                    badge: selectedDateAvailability && !selectedDateAvailability.slots.any ? '不可選' : null
+                  }
+                ].map((slot) => {
+                  const isSelected = formData.preferred_time_slot === slot.value;
+                  return (
+                    <button
+                      type="button"
+                      key={slot.value}
+                      disabled={slot.disabled}
+                      onClick={() => setFormData({ ...formData, preferred_time_slot: slot.value as TimeSlot })}
+                      className={'py-2 px-1 text-xs font-semibold rounded-lg border transition flex flex-col items-center justify-center ' + (
+                        slot.disabled
+                          ? 'border-[#e0d9cb] bg-[#f3efe6] text-[#9ca3af] cursor-not-allowed opacity-60'
+                          : isSelected
+                            ? 'bg-[#2a5937] text-white border-[#2a5937] font-bold shadow-sm'
+                            : 'border-[#d8d1c3] bg-white text-[#20271f] hover:bg-[#f8f3e7]'
+                      )}
+                    >
+                      <span>{slot.label}</span>
+                      {slot.badge && (
+                        <span className="text-[10px] text-red-500 font-normal">({slot.badge})</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

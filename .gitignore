@@ -28,6 +28,7 @@ wrangler.local.toml
 !.booking/project-state.json.example
 !.booking/project-state.schema.json
 .booking/rich-menu/
+.booking/audits/
 
 # Operation Secrets (Temporary Agent files)
 operation-secrets/

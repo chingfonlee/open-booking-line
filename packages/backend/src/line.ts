@@ -449,16 +449,32 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string, stat
   let statusText = '🟡 待聯絡 (服務站已受理，專人排程中)';
   let statusNote = '服務人員已收到您的申請，將儘速致電確認確切施工排程。';
 
-  if (latest.status === 'processing') {
+  const dateRowTitle = (latest.status === 'confirmed' || latest.status === 'processing') && latest.scheduled_date ? '確認日期' : '希望日期';
+  const displayedDate = latest.scheduled_date || latest.preferred_date;
+  const displayedSlotText = latest.scheduled_slot_code ? (slotMap[latest.scheduled_slot_code] || latest.scheduled_slot_code) : slotText;
+
+  if (latest.status === 'confirmed') {
+    statusBadgeColor = '#15803d';
+    statusBadgeBg = '#dcfce7';
+    statusText = '🟢 已確認排程 (服務日期已排定)';
+    statusNote = latest.scheduled_start_time
+      ? `已確認於 ${displayedDate} (${displayedSlotText}) ${latest.scheduled_start_time} 開工，請保持電話暢通。`
+      : `已確認於 ${displayedDate} (${displayedSlotText}) 提供服務，請保持電話暢通。`;
+  } else if (latest.status === 'processing') {
     statusBadgeColor = '#1e40af';
     statusBadgeBg = '#dbeafe';
-    statusText = '🔵 處理中 (已聯繫確認，安排施工中)';
+    statusText = '🔵 施工處理中 (機具與工班調度施作中)';
     statusNote = '站所已與您聯繫確認，目前正調配機具與人員準備施作。';
   } else if (latest.status === 'closed') {
     statusBadgeColor = '#334155';
     statusBadgeBg = '#f1f5f9';
     statusText = '⚪ 已結案 (服務已完成)';
     statusNote = '本筆預約已順利施工完成，感謝您的支持！';
+  } else if (latest.status === 'cancelled') {
+    statusBadgeColor = '#b91c1c';
+    statusBadgeBg = '#fee2e2';
+    statusText = '🔴 已取消 (預約已終止)';
+    statusNote = '本筆預約已取消。若有其他需求，歡迎重新線上預約。';
   }
 
   const bodyContents: any[] = [
@@ -501,19 +517,31 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string, stat
       type: 'box',
       layout: 'horizontal',
       contents: [
-        { type: 'text', text: '希望日期', size: 'sm', color: '#64748b', flex: 2 },
-        { type: 'text', text: latest.preferred_date + ' (' + slotText + ')', size: 'sm', color: '#15803d', weight: 'bold', flex: 5, wrap: true }
-      ]
-    },
-    {
-      type: 'box',
-      layout: 'horizontal',
-      contents: [
-        { type: 'text', text: '施作地點', size: 'sm', color: '#64748b', flex: 2 },
-        { type: 'text', text: latest.location_area + ' ' + (latest.location_address || ''), size: 'sm', color: '#0f172a', flex: 5, wrap: true }
+        { type: 'text', text: dateRowTitle, size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: displayedDate + ' (' + displayedSlotText + ')', size: 'sm', color: '#15803d', weight: 'bold', flex: 5, wrap: true }
       ]
     }
   ];
+
+  if (latest.scheduled_start_time) {
+    bodyContents.push({
+      type: 'box',
+      layout: 'horizontal',
+      contents: [
+        { type: 'text', text: '開工時間', size: 'sm', color: '#64748b', flex: 2 },
+        { type: 'text', text: latest.scheduled_start_time + ' 準時抵達', size: 'sm', color: '#15803d', weight: 'bold', flex: 5 }
+      ]
+    });
+  }
+
+  bodyContents.push({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      { type: 'text', text: '施作地點', size: 'sm', color: '#64748b', flex: 2 },
+      { type: 'text', text: latest.location_area + ' ' + (latest.location_address || ''), size: 'sm', color: '#0f172a', flex: 5, wrap: true }
+    ]
+  });
 
   // 安全隱私防護：admin_memo 為站所內部紀錄 (僅站所可見)，絕不可對外洩漏給客戶。
   // 對客戶查詢進度，統一顯示結構化、客製化之官方處理狀態說明 (statusNote)。
@@ -714,3 +742,156 @@ export function generateAdminPortalFlex(liffId?: string, stationName?: string) {
     }
   };
 }
+
+/**
+ * Ep03: 產生正式預約確認推播卡片 (包含正式服務日期與精確開工時間)
+ */
+export function generateScheduledConfirmationFlex(
+  request: any,
+  reservation: { booking_date: string; slot_code: string; scheduled_start_time: string },
+  liffId?: string,
+  stationName?: string,
+  isReschedule: boolean = false
+) {
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
+  const slotMap: Record<string, string> = {
+    morning: '上午',
+    afternoon: '下午'
+  };
+  const slotText = slotMap[reservation.slot_code] || reservation.slot_code;
+
+  const headerTitle = isReschedule ? '📅 預約排程已更新 (改期)' : '🎉 預約排程已正式確認';
+  const altPrefix = isReschedule ? '【服務排程已改期】' : '【服務排程已確認】';
+
+  return {
+    type: 'flex',
+    altText: altPrefix + '單號：' + request.id + '，排定日期：' + reservation.booking_date + ' ' + reservation.scheduled_start_time,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#15803d',
+        paddingAll: '18px',
+        contents: [
+          {
+            type: 'text',
+            text: '🌱 ' + station,
+            color: '#bbf7d0',
+            size: 'xs',
+            weight: 'bold'
+          },
+          {
+            type: 'text',
+            text: headerTitle,
+            color: '#ffffff',
+            size: 'xl',
+            weight: 'bold',
+            margin: 'xs'
+          },
+          {
+            type: 'text',
+            text: '單號：' + request.id,
+            color: '#dcebd6',
+            size: 'xs',
+            margin: 'sm',
+            weight: 'bold'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '預約單號', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: request.id, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '服務項目', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: request.service_type, size: 'sm', color: '#0f172a', weight: 'bold', flex: 5 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '作物 / 面積', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: request.crop_type + ' · ' + request.area_size + (request.branch_volume ? ' (' + request.branch_volume + ')' : ''), size: 'sm', color: '#0f172a', flex: 5 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '確認日期', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: reservation.booking_date + ' (' + slotText + ')', size: 'sm', color: '#15803d', weight: 'bold', flex: 5, wrap: true }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '開工時間', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: reservation.scheduled_start_time + ' 準時抵達', size: 'sm', color: '#15803d', weight: 'bold', flex: 5 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '施作地點', size: 'sm', color: '#64748b', flex: 2 },
+              { type: 'text', text: request.location_area + ' ' + (request.location_address || ''), size: 'sm', color: '#0f172a', flex: 5, wrap: true }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            margin: 'md',
+            backgroundColor: '#f8f3e7',
+            cornerRadius: '10px',
+            paddingAll: '12px',
+            contents: [
+              {
+                type: 'text',
+                text: '🌾 服務站已安排工班與機具，請您於約定時間保持電話暢通。感謝您的配合！',
+                size: 'xs',
+                color: '#657061',
+                wrap: true
+              }
+            ]
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '📋 查詢預約進度',
+              uri: 'https://liff.line.me/' + activeLiffId
+            },
+            style: 'primary',
+            color: '#15803d'
+          }
+        ]
+      }
+    }
+  };
+}
+

@@ -13,8 +13,9 @@
     "deploy:backend": "npm --prefix packages/backend run deploy",
     "setup:turnstile": "node scripts/setup-turnstile.js",
     "export:opensource": "node scripts/export-opensource.js",
-    "test": "node --test tests/rich-menu/*.test.mjs",
-    "test:rich-menu": "node --test tests/rich-menu/*.test.mjs"
+    "test": "node --test tests/rich-menu/*.test.mjs tests/availability/*.test.mjs",
+    "test:rich-menu": "node --test tests/rich-menu/*.test.mjs",
+    "test:availability": "node --test tests/availability/*.test.mjs"
   },
   "devDependencies": {
     "sharp": "^0.35.4"

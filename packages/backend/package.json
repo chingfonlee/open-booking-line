@@ -1,6 +1,7 @@
 {
   "name": "line-bot-farm-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Cloudflare Workers + Hono Backend for XingNong Farm Service Request",
   "main": "src/index.ts",
   "scripts": {
