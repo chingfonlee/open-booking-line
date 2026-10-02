@@ -22,7 +22,7 @@
   * **Availability 計算引擎**：支援 `Weekly Rules - Exceptions - Active Reservations - Past Dates`，具備 Legacy/Managed 漸進模式轉換。
   * **管理端電話確認排程**：指定正式日期與開工時間白名單（排除 12:00/12:30 午休），原子建立 `slot_reservations` 並排程防衝突。
   * **原子改期與取消釋放**：改期碰撞安全回滾（保全原預約），取消案件自動釋出時段。
-  * **合作社營業矩陣與公休管理**：週一至週日 14 區間開放矩陣、Fail-Closed 防呆阻斷，特定日期公休例外維護與衝突警示保全。
+  * **合作社營業矩陣與公休管理**：公休例外封鎖卡片置頂（支援天候豪雨/臨時機具維修快速登打與 LINE 幹部選單【休假預定】深層直達）、週一至週日 14 區間開放矩陣、Fail-Closed 防呆阻斷、特定日期公休例外維護與衝突警示保全。
   * **即時排程確認推播與跨端顯示一致**：正式確認與改期推播專屬 LINE Flex 卡片，所有查詢 Webhook 與後台皆以 Reservation 為權威來源。
 * ✓ **極低成本 Serverless 後端**：基於 Cloudflare Workers + Hono 框架，提供低延遲、高並發之預約處理與時段排程 API。
 * ✓ **無伺服器關聯資料庫 (Cloudflare D1)**：以 SQLite 儲存預約單與時段封鎖紀錄，免除資料庫維護負擔。
@@ -44,7 +44,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **Ep01** | Basic Booking (預約核心) | **Stable** (已驗證) | [Ep01 Guide](docs/episodes/ep01-basic-booking/README.md) | [`ep01-wizard-form`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-wizard-form) / [`ep01-basic-booking`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-basic-booking) |
 | **Ep02** | LINE Rich Menu (圖文選單) | **Stable** (已驗證) | [Ep02 Guide](docs/episodes/ep02-rich-menu/README.md) | [`ep02-admin-4grid`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-4grid) / [`ep02-admin-rich-menu`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep02-admin-rich-menu) |
-| **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/README.md) | [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
+| **Ep03** | Availability & Confirmation (時段可用性與確認排程) | **Stable** (已驗證) | [Ep03 Guide](docs/episodes/ep03-availability/README.md) | [`ep03-admin-settings-top`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-admin-settings-top) / [`ep03-availability`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep03-availability) |
 | **Ep04** | Service Catalog (服務項目目錄與客製欄位) | **Planned** (規劃中) | — | — |
 | **Ep05** | Notification & Broadcast (推播加固與排程提醒) | **Planned** (規劃中) | — | — |
 
