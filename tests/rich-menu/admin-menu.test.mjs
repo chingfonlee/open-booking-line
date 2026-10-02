@@ -57,10 +57,10 @@ test('Ep02-Admin: Admin 4-Grid Rich Menu Test Suite', async (t) => {
 
     assert.ok(svg.includes('高雄服務站'));
     assert.ok(svg.includes('幹部調度工作台'));
-    assert.ok(svg.includes('1. 待審確認'));
-    assert.ok(svg.includes('2. 施工排程'));
-    assert.ok(svg.includes('3. 休假預定'));
-    assert.ok(svg.includes('4. 代客排單'));
+    assert.ok(svg.includes('待審確認'));
+    assert.ok(svg.includes('施工排程'));
+    assert.ok(svg.includes('休假預定'));
+    assert.ok(svg.includes('代客排單'));
 
     // Verify sharp metadata
     const meta = await sharp(buffer).metadata();

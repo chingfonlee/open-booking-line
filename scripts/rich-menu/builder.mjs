@@ -204,7 +204,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
     // Grid 1 (Top-Left): 待審確認 [100, 270, 1110, 640]
     {
       id: 'admin_to_contact',
-      title: '1. 待審確認',
+      title: '待審確認',
       subtitle: '新單審核 · 施作時段敲定',
       category: 'operations',
       icon: 'clipboard',
@@ -217,7 +217,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
     // Grid 2 (Top-Right): 施工排程 [1290, 270, 1110, 640]
     {
       id: 'admin_confirmed',
-      title: '2. 施工排程',
+      title: '施工排程',
       subtitle: '今日施工 · 田區與聯絡導航',
       category: 'operations',
       icon: 'calendar',
@@ -230,7 +230,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
     // Grid 3 (Bottom-Left): 休假預定 [100, 970, 1110, 640]
     {
       id: 'admin_settings',
-      title: '3. 休假預定',
+      title: '休假預定',
       subtitle: '公休封鎖 · 產能時段設定',
       category: 'management',
       icon: 'lock-calendar',
@@ -243,7 +243,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
     // Grid 4 (Bottom-Right): 代客排單 [1290, 970, 1110, 640]
     {
       id: 'admin_manual_booking',
-      title: '4. 代客排單',
+      title: '代客排單',
       subtitle: '老農來電 · 站所代填掛單',
       category: 'operations',
       icon: 'phone-edit',
