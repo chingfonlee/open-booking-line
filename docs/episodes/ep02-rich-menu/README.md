@@ -67,16 +67,61 @@ git status
 
 ---
 
-## Start (如何開始執行)
+## Start (如何開始執行 — Agent 引導與提示詞)
 
-取得更新後，直接對您的 AI Coding Agent 發出指令：
+在取得本集更新後，您可以透過以下 **3 個標準步驟** 指引 AI Coding Agent 完成圖文選單的建立、審核與發布：
 
-> 「請檢查我目前的專案狀態，並在目前專案安裝 Episode 02 rich-menu 能力。」
+### 📋 完整作業流程（3 階段推進）
 
-Agent 會自動：
-1. 檢核前置 `booking-core` 是否已就緒。
-2. 讀取 `.agent/episodes/ep02-rich-menu/TASK.md` 執行 SOP。
-3. 完成圖文選單建立、驗證，並在通過後於 `.booking/project-state.json` 註冊 `capabilities.rich-menu`。
+```text
+[步驟 1：探索與生成預覽] ➔ [步驟 2：人類檢閱與授權鎖定 (Approval Gate)] ➔ [步驟 3：安全發布至 LINE 官方]
+```
+
+---
+
+### 階段一：探索與生成圖文選單預覽 (Discovery & Preview)
+
+Agent 會自動分析目前專案環境（LIFF ID、站所名稱、查詢關鍵字），透過確定性向量渲染引擎產出選單預覽圖與規格。
+
+#### 🤖 使用者提示詞（複製給 Agent）：
+> **「請幫我執行 EP02 圖文選單的前置檢查與規格生成，產出選單預覽圖（Preview），讓我確認畫面配置與按鈕設計。」**
+
+*Agent 執行工作*：
+1. 讀取 `.booking/project-state.json` 確認 `booking-core` 已就緒。
+2. 執行目標探索（`node scripts/rich-menu/discovery.mjs`），抓取 LIFF 預約網址與查詢進度關鍵字。
+3. 建立幾何佈局並本地渲染輸出 2500×1686 預覽圖檔至 `.booking/rich-menu/preview.png`。
+4. 向使用者展示預覽圖檔路徑，並提示核對按鈕位置、文字及品牌色。
+
+---
+
+### 階段二：人類檢閱與授權鎖定 (Review & Approval Gate)
+
+> 🛡️ **重要安全原則 (Approval Gate)**：為落實「人類核准前零發布」，系統要求使用者明確檢視圖片後輸入確認，Agent 會計算 SHA-256 雜湊值並寫入門禁授權檔（`approval.json`）。若無授權檔或檔案遭改動，發布器將嚴格拒絕執行。
+
+#### 🤖 使用者提示詞（複製給 Agent）：
+> **「我已經看過 `.booking/rich-menu/preview.png`，確認畫面與按鈕文字無誤，請幫我寫入授權門禁鎖（Approval Gate），鎖定此版本準備發布。」**
+
+*Agent 執行工作*：
+1. 呼叫 `node scripts/rich-menu/approval.mjs --approve`。
+2. 雙向計算選單規格與圖檔之 SHA-256 Hash。
+3. 寫入 `.booking/rich-menu/approval.json` 門禁授權檔。
+
+---
+
+### 階段三：安全發布至 LINE 官方帳號 (Safe Publish)
+
+在具備 `LINE_CHANNEL_ACCESS_TOKEN` 環境下，執行乾跑預檢與原子發布。若發布過程異常，系統具備自動回滾（Rollback）機制保護既有選單。
+
+#### 🤖 使用者提示詞（複製給 Agent）：
+> **「我的 `LINE_CHANNEL_ACCESS_TOKEN` 已備妥，請先執行 Dry-Run 模擬預檢，確認遠端驗證通過後，正式發布圖文選單並設為官方帳號的預設選單。」**
+
+*Agent 執行工作*：
+1. 執行 `node scripts/rich-menu/publisher.mjs --dry-run` 進行零寫入模擬檢驗。
+2. 乾跑通過後，正式呼叫 `node scripts/rich-menu/publisher.mjs`：
+   - 建立遠端選單物件 ➔ 上傳渲染圖檔 ➔ 設為全體農友預設選單。
+   - 記錄遠端 ID 於 `.booking/rich-menu/managed.json`。
+3. 在 `.booking/project-state.json` 登錄 `rich-menu: verified`。
+4. 提示使用者開啟手機 LINE 官方帳號進行實機點擊驗收。
 
 ---
 
