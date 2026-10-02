@@ -67,61 +67,54 @@ git status
 
 ---
 
-## Start (如何開始執行 — Agent 引導與提示詞)
+## Start (如何開始執行 — 一鍵提示詞與互動流程)
 
-在取得本集更新後，您可以透過以下 **3 個標準步驟** 指引 AI Coding Agent 完成圖文選單的建立、審核與發布：
+為了讓不熟悉電腦指令的使用者也能輕鬆完成，您**不需要分段複製多個提示詞**。
 
-### 📋 完整作業流程（3 階段推進）
+只需將下方這段 **「一鍵完成 EP02 圖文選單」提示詞** 完整複製並貼給您的 AI Coding Agent。Agent 將會自動執行前置作業，並在需要您確認或提供資料時**主動逐步詢問您**：
+
+---
+
+### 📋 一鍵複製專用提示詞 (Copy & Paste Once)
+
+> 複製下方整段內容，一次貼給 AI Agent 即可：
 
 ```text
-[步驟 1：探索與生成預覽] ➔ [步驟 2：人類檢閱與授權鎖定 (Approval Gate)] ➔ [步驟 3：安全發布至 LINE 官方]
+請協助我在目前專案中安裝並發布 EP02 的 LINE 圖文選單（Rich Menu）。
+
+請依循以下 3 階段進行，並在每個關鍵節點主動停下來詢問我，不要讓我手動找指令執行：
+
+【第 1 階段：前置探索與生成預覽】
+1. 檢查我的專案設定（LIFF 預約網址、站所名稱、查詢關鍵字）。
+2. 使用本地渲染引擎產出 2500x1686 的圖文選單預覽圖（.booking/rich-menu/preview.png）。
+3. 產生完成後，請停下來「展示預覽圖路徑」並詢問我：「請確認選單畫面與按鈕文字是否滿意？確認後請回覆『確認通過』或告訴我想修改的地方。」
+
+【第 2 階段：授權門禁鎖定 (Approval Gate)】
+當我回覆確認通過後：
+1. 請自動執行審批腳本（node scripts/rich-menu/approval.mjs --approve），計算圖檔與規格的防偽 SHA-256 雜湊值並寫入門禁鎖。
+2. 完成鎖定後，若環境中缺少 LINE 權杖，請主動詢問並提醒我提供：LINE Messaging API 的 Channel Access Token。
+
+【第 3 階段：安全發布至 LINE 官方帳號】
+當金鑰就緒後：
+1. 請先自動執行 Dry-Run 模擬預檢，確認遠端驗證通過。
+2. 正式將圖文選單發布至 LINE 官方並設為全體農友預設選單。
+3. 更新專案狀態，並引導我如何用手機開啟 LINE 官方帳號進行實機點擊驗收。
+
+現在請直接從【第 1 階段】開始執行！
 ```
 
 ---
 
-### 階段一：探索與生成圖文選單預覽 (Discovery & Preview)
+### 💡 互動過程說明（使用者只會遇到這兩個提問）
 
-Agent 會自動分析目前專案環境（LIFF ID、站所名稱、查詢關鍵字），透過確定性向量渲染引擎產出選單預覽圖與規格。
+貼上上述提示詞後，您只需要在對話視窗中輕鬆回答 AI 的兩次提問：
 
-#### 🤖 使用者提示詞（複製給 Agent）：
-> **「請幫我執行 EP02 圖文選單的前置檢查與規格生成，產出選單預覽圖（Preview），讓我確認畫面配置與按鈕設計。」**
-
-*Agent 執行工作*：
-1. 讀取 `.booking/project-state.json` 確認 `booking-core` 已就緒。
-2. 執行目標探索（`node scripts/rich-menu/discovery.mjs`），抓取 LIFF 預約網址與查詢進度關鍵字。
-3. 建立幾何佈局並本地渲染輸出 2500×1686 預覽圖檔至 `.booking/rich-menu/preview.png`。
-4. 向使用者展示預覽圖檔路徑，並提示核對按鈕位置、文字及品牌色。
-
----
-
-### 階段二：人類檢閱與授權鎖定 (Review & Approval Gate)
-
-> 🛡️ **重要安全原則 (Approval Gate)**：為落實「人類核准前零發布」，系統要求使用者明確檢視圖片後輸入確認，Agent 會計算 SHA-256 雜湊值並寫入門禁授權檔（`approval.json`）。若無授權檔或檔案遭改動，發布器將嚴格拒絕執行。
-
-#### 🤖 使用者提示詞（複製給 Agent）：
-> **「我已經看過 `.booking/rich-menu/preview.png`，確認畫面與按鈕文字無誤，請幫我寫入授權門禁鎖（Approval Gate），鎖定此版本準備發布。」**
-
-*Agent 執行工作*：
-1. 呼叫 `node scripts/rich-menu/approval.mjs --approve`。
-2. 雙向計算選單規格與圖檔之 SHA-256 Hash。
-3. 寫入 `.booking/rich-menu/approval.json` 門禁授權檔。
-
----
-
-### 階段三：安全發布至 LINE 官方帳號 (Safe Publish)
-
-在具備 `LINE_CHANNEL_ACCESS_TOKEN` 環境下，執行乾跑預檢與原子發布。若發布過程異常，系統具備自動回滾（Rollback）機制保護既有選單。
-
-#### 🤖 使用者提示詞（複製給 Agent）：
-> **「我的 `LINE_CHANNEL_ACCESS_TOKEN` 已備妥，請先執行 Dry-Run 模擬預檢，確認遠端驗證通過後，正式發布圖文選單並設為官方帳號的預設選單。」**
-
-*Agent 執行工作*：
-1. 執行 `node scripts/rich-menu/publisher.mjs --dry-run` 進行零寫入模擬檢驗。
-2. 乾跑通過後，正式呼叫 `node scripts/rich-menu/publisher.mjs`：
-   - 建立遠端選單物件 ➔ 上傳渲染圖檔 ➔ 設為全體農友預設選單。
-   - 記錄遠端 ID 於 `.booking/rich-menu/managed.json`。
-3. 在 `.booking/project-state.json` 登錄 `rich-menu: verified`。
-4. 提示使用者開啟手機 LINE 官方帳號進行實機點擊驗收。
+1. **第一次提問（看圖確認）**：
+   - AI 會產出 `.booking/rich-menu/preview.png`，並問您圖案好不好看。
+   - 您只要直接回覆：**「確認通過」**。
+2. **第二次提問（提供金鑰）**：
+   - AI 會詢問您的 LINE Token。
+   - 您只要將 LINE Developers 後台複製下來的 **Channel Access Token** 貼給 AI，AI 就會自動安全發布並完成所有設定！
 
 ---
 
