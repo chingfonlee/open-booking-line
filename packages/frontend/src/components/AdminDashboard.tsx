@@ -36,6 +36,7 @@ export const AdminDashboard: React.FC = () => {
   const [confirmDate, setConfirmDate] = useState('');
   const [confirmSlot, setConfirmSlot] = useState<'morning' | 'afternoon'>('morning');
   const [confirmTime, setConfirmTime] = useState('08:00');
+  const [confirmNotice, setConfirmNotice] = useState('');
 
   // 頁籤導覽模式：requests (預約管理) | settings (時段與公休設定)
   const [activeTab, setActiveTab] = useState<'requests' | 'settings'>('requests');
@@ -64,6 +65,7 @@ export const AdminDashboard: React.FC = () => {
   const [rescheduleSlot, setRescheduleSlot] = useState<'morning' | 'afternoon'>('morning');
   const [rescheduleTime, setRescheduleTime] = useState('08:00');
   const [rescheduleReason, setRescheduleReason] = useState('');
+  const [rescheduleNotice, setRescheduleNotice] = useState('');
 
   // 當 selectedReq 改變時，初始化排程表單預設值
   useEffect(() => {
@@ -72,12 +74,14 @@ export const AdminDashboard: React.FC = () => {
       setConfirmDate(selectedReq.preferred_date || '');
       setConfirmSlot(defaultSlot);
       setConfirmTime(defaultSlot === 'morning' ? '08:00' : '13:00');
+      setConfirmNotice(selectedReq.customer_notice || '');
 
       setRescheduleDate(selectedReq.scheduled_date || selectedReq.preferred_date || '');
       const curSlot = selectedReq.scheduled_slot_code || defaultSlot;
       setRescheduleSlot(curSlot);
       setRescheduleTime(selectedReq.scheduled_start_time || (curSlot === 'morning' ? '08:00' : '13:00'));
       setRescheduleReason('');
+      setRescheduleNotice(selectedReq.customer_notice || '');
       setShowRescheduleModal(false);
     }
   }, [selectedReq]);
@@ -439,7 +443,8 @@ export const AdminDashboard: React.FC = () => {
           booking_date: confirmDate,
           slot_code: confirmSlot,
           scheduled_start_time: confirmTime,
-          admin_memo: selectedReq?.admin_memo
+          admin_memo: selectedReq?.admin_memo,
+          customer_notice: confirmNotice.trim() || undefined
         })
       });
       const data = await res.json();
@@ -531,7 +536,8 @@ export const AdminDashboard: React.FC = () => {
           booking_date: rescheduleDate,
           slot_code: rescheduleSlot,
           scheduled_start_time: rescheduleTime,
-          reason: rescheduleReason
+          reason: rescheduleReason,
+          customer_notice: rescheduleNotice.trim() || undefined
         })
       });
       const data = await res.json();
@@ -939,6 +945,13 @@ export const AdminDashboard: React.FC = () => {
                       <MapPin className="w-3.5 h-3.5 text-[#2a5937]" />
                       <span>{req.location_area} {req.location_address}</span>
                     </div>
+
+                    {req.customer_notice && (
+                      <div className="flex items-start gap-1.5 bg-[#fefce8] p-1.5 rounded-lg border border-[#fde047] text-[#854d0e]">
+                        <span className="font-bold shrink-0">📢 叮嚀：</span>
+                        <span className="text-[11px] truncate">{req.customer_notice}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-[#f0eae0] flex items-center justify-between">
@@ -1368,6 +1381,19 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
 
+                      <div>
+                        <label className="text-[11px] font-bold text-[#374151] block mb-1">
+                          📢 提醒農友注意事項 / 施工叮嚀 (選填，將顯示於 LINE 卡片)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={confirmNotice}
+                          onChange={(e) => setConfirmNotice(e.target.value)}
+                          placeholder="例：若遇雨天順延；現場需備妥 220V 電源與水源..."
+                          className="w-full text-xs p-2 border border-[#d1d5db] rounded-lg bg-white resize-none text-[#1f2937]"
+                        />
+                      </div>
+
                     <button
                       type="button"
                       disabled={actionLoading}
@@ -1390,6 +1416,13 @@ export const AdminDashboard: React.FC = () => {
                         {selectedReq.scheduled_date} {selectedReq.scheduled_start_time}
                       </span>
                     </div>
+
+                    {selectedReq.customer_notice && (
+                      <div className="bg-[#fefce8] border border-[#fde047] rounded-lg p-2.5 text-xs text-[#713f12]">
+                        <span className="font-bold">📢 農友提醒事項：</span>
+                        <p className="mt-0.5 whitespace-pre-wrap">{selectedReq.customer_notice}</p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -1426,6 +1459,13 @@ export const AdminDashboard: React.FC = () => {
                       <Loader2 className="w-4 h-4 animate-spin text-[#2563eb]" />
                       <span>施工處理中</span>
                     </div>
+
+                    {selectedReq.customer_notice && (
+                      <div className="bg-[#fefce8] border border-[#fde047] rounded-lg p-2.5 text-xs text-[#713f12]">
+                        <span className="font-bold">📢 農友提醒事項：</span>
+                        <p className="mt-0.5 whitespace-pre-wrap">{selectedReq.customer_notice}</p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -1549,6 +1589,17 @@ export const AdminDashboard: React.FC = () => {
                 value={rescheduleReason}
                 onChange={(e) => setRescheduleReason(e.target.value)}
                 className="w-full text-xs p-2 border border-[#d1d5db] rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-[#374151] block mb-1">📢 提醒農友注意事項 / 施工叮嚀 (選填，將顯示於 LINE 卡片)</label>
+              <textarea
+                rows={2}
+                placeholder="例如：若遇雨天順延；現場需備妥 220V 電源與水源..."
+                value={rescheduleNotice}
+                onChange={(e) => setRescheduleNotice(e.target.value)}
+                className="w-full text-xs p-2 border border-[#d1d5db] rounded-lg resize-none text-[#1f2937]"
               />
             </div>
 

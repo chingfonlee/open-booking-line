@@ -584,6 +584,38 @@ export function generateProgressQueryFlex(requests: any[], liffId?: string, stat
     ]
   });
 
+  // 服務站重要叮嚀 (若站所排程時有特別註明 customer_notice 提醒農友)
+  const noticeText = latest.customer_notice || latest.notes;
+  if (noticeText && (latest.status === 'confirmed' || latest.status === 'processing')) {
+    bodyContents.push({
+      type: 'box',
+      layout: 'vertical',
+      margin: 'md',
+      backgroundColor: '#fefce8',
+      borderColor: '#fde047',
+      borderWidth: '1px',
+      cornerRadius: '8px',
+      paddingAll: '10px',
+      contents: [
+        {
+          type: 'text',
+          text: '📢 服務站重要叮嚀：',
+          size: 'xs',
+          weight: 'bold',
+          color: '#854d0e'
+        },
+        {
+          type: 'text',
+          text: noticeText,
+          size: 'xs',
+          color: '#713f12',
+          wrap: true,
+          margin: 'xs'
+        }
+      ]
+    });
+  }
+
   return {
     type: 'flex',
     altText: '【預約進度】' + latest.service_type + ' - ' + statusText,
@@ -775,7 +807,7 @@ export function generateAdminPortalFlex(liffId?: string, stationName?: string) {
  */
 export function generateScheduledConfirmationFlex(
   request: any,
-  reservation: { booking_date: string; slot_code: string; scheduled_start_time: string },
+  reservation: { booking_date: string; slot_code: string; scheduled_start_time: string; notes?: string },
   liffId?: string,
   stationName?: string,
   isReschedule: boolean = false
@@ -885,16 +917,26 @@ export function generateScheduledConfirmationFlex(
             type: 'box',
             layout: 'vertical',
             margin: 'md',
-            backgroundColor: '#f8f3e7',
+            backgroundColor: reservation.notes ? '#fefce8' : '#f8f3e7',
+            borderColor: reservation.notes ? '#fde047' : '#f0eae0',
+            borderWidth: reservation.notes ? '1px' : '0px',
             cornerRadius: '10px',
             paddingAll: '12px',
             contents: [
               {
                 type: 'text',
-                text: '🌾 服務站已安排工班與機具，請您於約定時間保持電話暢通。感謝您的配合！',
+                text: reservation.notes ? '📢 服務站重要叮嚀：' : '🌾 服務站貼心叮嚀：',
                 size: 'xs',
-                color: '#657061',
-                wrap: true
+                weight: 'bold',
+                color: reservation.notes ? '#854d0e' : '#2a5937'
+              },
+              {
+                type: 'text',
+                text: reservation.notes || '服務站已安排工班與機具，請您於約定時間保持電話暢通。感謝您的配合！',
+                size: 'xs',
+                color: reservation.notes ? '#713f12' : '#657061',
+                wrap: true,
+                margin: 'xs'
               }
             ]
           }

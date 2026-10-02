@@ -488,7 +488,7 @@ app.use('/api/admin/*', async (c, next) => {
 app.get('/api/admin/requests', async (c) => {
   try {
     const status = c.req.query('status') as RequestStatus | undefined;
-    let query = 'SELECT r.*, s.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time ' +
+    let query = 'SELECT r.*, s.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time, s.notes as customer_notice ' +
       'FROM service_requests r ' +
       "LEFT JOIN slot_reservations s ON r.id = s.request_id AND s.status = 'active'";
     const params: any[] = [];
@@ -590,9 +590,10 @@ app.post('/api/admin/requests/:id/confirm', async (c) => {
       slot_code: 'morning' | 'afternoon';
       scheduled_start_time: string;
       admin_memo?: string;
+      customer_notice?: string;
     }>().catch(() => ({} as any));
 
-    const { booking_date, slot_code, scheduled_start_time, admin_memo } = body;
+    const { booking_date, slot_code, scheduled_start_time, admin_memo, customer_notice } = body;
 
     if (!booking_date || !/^\d{4}-\d{2}-\d{2}$/.test(booking_date)) {
       return c.json({ success: false, message: '請指定有效的正式服務日期 (YYYY-MM-DD)' }, 400);
@@ -646,6 +647,7 @@ app.post('/api/admin/requests/:id/confirm', async (c) => {
 
     const reservationId = 'RSV-' + booking_date.replace(/-/g, '') + '-' + crypto.randomUUID().slice(0, 8);
     const nowIso = new Date().toISOString();
+    const cleanCustomerNotice = customer_notice && customer_notice.trim() ? customer_notice.trim() : null;
 
     // D1 Batch / 條件式更新 (Anti-Orphan Protection)
     const updateReqStmt = c.env.DB.prepare(`
@@ -660,9 +662,9 @@ app.post('/api/admin/requests/:id/confirm', async (c) => {
     `).bind(admin_memo ?? null, nowIso, id, id);
 
     const insertRsvStmt = c.env.DB.prepare(`
-      INSERT INTO slot_reservations (id, request_id, booking_date, slot_code, scheduled_start_time, status, created_at)
-      VALUES (?, ?, ?, ?, ?, 'active', ?)
-    `).bind(reservationId, id, booking_date, slot_code, scheduled_start_time, nowIso);
+      INSERT INTO slot_reservations (id, request_id, booking_date, slot_code, scheduled_start_time, status, created_at, notes)
+      VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+    `).bind(reservationId, id, booking_date, slot_code, scheduled_start_time, nowIso, cleanCustomerNotice);
 
     try {
       const batchRes = await c.env.DB.batch([updateReqStmt, insertRsvStmt]);
@@ -689,7 +691,7 @@ app.post('/api/admin/requests/:id/confirm', async (c) => {
       try {
         const card = generateScheduledConfirmationFlex(
           req,
-          { booking_date, slot_code, scheduled_start_time },
+          { booking_date, slot_code, scheduled_start_time, notes: cleanCustomerNotice || undefined },
           c.env.LIFF_ID,
           c.env.STATION_NAME
         );
@@ -711,6 +713,7 @@ app.post('/api/admin/requests/:id/confirm', async (c) => {
         slot_code,
         scheduled_start_time,
         status: 'confirmed',
+        customer_notice: cleanCustomerNotice,
         notification_sent: linePushSent
       }
     });
@@ -798,9 +801,10 @@ app.post('/api/admin/requests/:id/reschedule', async (c) => {
       slot_code: 'morning' | 'afternoon';
       scheduled_start_time: string;
       reason?: string;
+      customer_notice?: string;
     }>().catch(() => ({} as any));
 
-    const { booking_date, slot_code, scheduled_start_time, reason } = body;
+    const { booking_date, slot_code, scheduled_start_time, reason, customer_notice } = body;
 
     if (!booking_date || !/^\d{4}-\d{2}-\d{2}$/.test(booking_date)) {
       return c.json({ success: false, message: '請指定有效的改期日期 (YYYY-MM-DD)' }, 400);
@@ -852,6 +856,7 @@ app.post('/api/admin/requests/:id/reschedule', async (c) => {
 
     const newReservationId = 'RSV-' + booking_date.replace(/-/g, '') + '-' + crypto.randomUUID().slice(0, 8);
     const nowIso = new Date().toISOString();
+    const cleanCustomerNotice = customer_notice && customer_notice.trim() ? customer_notice.trim() : null;
 
     // D1 Batch 原子改期：
     // 1. 將舊預約標記為 released
@@ -864,9 +869,9 @@ app.post('/api/admin/requests/:id/reschedule', async (c) => {
     `).bind(nowIso, reason ? `改期釋出: ${reason}` : '改期釋出', currentRsv.id);
 
     const insertNewStmt = c.env.DB.prepare(`
-      INSERT INTO slot_reservations (id, request_id, booking_date, slot_code, scheduled_start_time, status, created_at)
-      VALUES (?, ?, ?, ?, ?, 'active', ?)
-    `).bind(newReservationId, id, booking_date, slot_code, scheduled_start_time, nowIso);
+      INSERT INTO slot_reservations (id, request_id, booking_date, slot_code, scheduled_start_time, status, created_at, notes)
+      VALUES (?, ?, ?, ?, ?, 'active', ?, ?)
+    `).bind(newReservationId, id, booking_date, slot_code, scheduled_start_time, nowIso, cleanCustomerNotice);
 
     const updateReqStmt = c.env.DB.prepare(`
       UPDATE service_requests SET updated_at = ? WHERE id = ? AND status = 'confirmed'
@@ -896,7 +901,7 @@ app.post('/api/admin/requests/:id/reschedule', async (c) => {
       try {
         const card = generateScheduledConfirmationFlex(
           req,
-          { booking_date, slot_code, scheduled_start_time },
+          { booking_date, slot_code, scheduled_start_time, notes: cleanCustomerNotice || undefined },
           c.env.LIFF_ID,
           c.env.STATION_NAME,
           true
@@ -917,7 +922,8 @@ app.post('/api/admin/requests/:id/reschedule', async (c) => {
         new_reservation_id: newReservationId,
         booking_date,
         slot_code,
-        scheduled_start_time
+        scheduled_start_time,
+        customer_notice: cleanCustomerNotice
       }
     });
   } catch (err: any) {
@@ -1355,7 +1361,7 @@ app.post('/api/line/webhook', async (c) => {
           records = await c.env.DB.prepare(
             'SELECT r.id, r.created_at, r.updated_at, r.contact_name, r.service_type, r.crop_type, r.area_size, r.branch_volume, ' +
             'r.location_area, r.location_address, r.preferred_date, r.preferred_time_slot, r.date_flexibility, r.status, ' +
-            's.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time ' +
+            's.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time, s.notes as customer_notice ' +
             'FROM service_requests r ' +
             "LEFT JOIN slot_reservations s ON r.id = s.request_id AND s.status = 'active' " +
             'WHERE r.line_user_id = ? ORDER BY r.created_at DESC LIMIT 5'
@@ -1437,8 +1443,12 @@ app.get('/api/admin/debug/test-card', async (c) => {
 
   // 安全防護：僅查詢卡片必要顯示欄位，排除內部敏感備註 (admin_memo 等)
   const records = await c.env.DB.prepare(
-    'SELECT id, created_at, updated_at, contact_name, service_type, crop_type, area_size, branch_volume, location_area, location_address, preferred_date, preferred_time_slot, date_flexibility, status ' +
-    'FROM service_requests WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 5'
+    'SELECT r.id, r.created_at, r.updated_at, r.contact_name, r.service_type, r.crop_type, r.area_size, r.branch_volume, ' +
+    'r.location_area, r.location_address, r.preferred_date, r.preferred_time_slot, r.date_flexibility, r.status, ' +
+    's.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time, s.notes as customer_notice ' +
+    'FROM service_requests r ' +
+    "LEFT JOIN slot_reservations s ON r.id = s.request_id AND s.status = 'active' " +
+    'WHERE r.line_user_id = ? ORDER BY r.created_at DESC LIMIT 5'
   ).bind(userId).all();
 
   const flexMsg = generateProgressQueryFlex(records.results || [], c.env.LIFF_ID, c.env.STATION_NAME);

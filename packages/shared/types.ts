@@ -25,6 +25,7 @@ export interface ServiceRequest {
   notes?: string;
   status: RequestStatus;
   admin_memo?: string;
+  customer_notice?: string;
   line_user_id?: string;
   scheduled_date?: string;
   scheduled_slot_code?: BroadSlot;
