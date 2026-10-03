@@ -19,7 +19,7 @@
     * **長者與 WCAG 無障礙友善**：支援雙指自由縮放（移除禁止縮放限縮）、全按鈕熱區 $\ge 48\text{px}$、輸入框字級 $\ge 16\text{px}$（防 iOS 聚焦自動放大破版）、換步焦點自動移至標題、驗證失敗自動聚焦首個錯誤欄位，並完整標註 `aria-current="step"`、`role="progressbar"` 與 `aria-live` 狀態朗讀。
     * **返回鍵與防跳步保護**：支援 URL Hash 與 History API，手機/LINE 原生返回鍵退回上一步不退頁；防跳步守衛自動阻斷未填前置步驟之直接跳轉。
   * **Cloudflare Workers 後端 API**：輕量高並發 Hono 框架，負責全欄位重驗、時段即時可用性預檢、複合頻率限制與推播調度。
-  * **Cloudflare D1 資料庫**：無伺服器 SQLite 儲存預約單 (`service_requests`) 與排程設定 (`blocked_dates`)。
+  * **Cloudflare D1 資料庫與智慧引導**：無伺服器 SQLite 儲存預約單 (`service_requests`) 與排程設定 (`blocked_dates`)；支援 `npm run setup:db` 智慧配置，自動探測帳號既有資料庫，引導建立獨立 DB（防多官方帳號混雜）並主動檢核 `LIFF_ID` 前綴一致性。
   * **LINE 官方即時推播**：新預約送出即發送 LINE Flex Message 通知站所幹部，支援一鍵撥號確認。
   * **Zero-Password 零密碼管理後台**：透過 LINE ID Token 白名單驗證，無靜態密碼洩漏風險。
   * **Cloudflare Turnstile 防護**：智慧真人檢驗防禦惡意機器人洗單，支援過期自動重設取權杖與重試上限保護。

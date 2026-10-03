@@ -58,9 +58,19 @@ Agent 在執行部署前，必須引導使用者提供或自本地讀取以下�
    - `VITE_API_BASE_URL=` (由 Pages Functions 反向代理或 Workers 網址)
 2. 建立或更新本地 Worker 設定（`wrangler.local.toml` 或透過環境變數傳入）。
 
-### Step 4.3: 初始化 Cloudflare D1 資料庫
-1. 執行 `npx wrangler d1 create <db-name>` 建立資料庫。
-2. 執行 `npx wrangler d1 execute <db-name> --file=packages/backend/schema.sql` 建立資料表。
+### Step 4.3: 智慧初始化 Cloudflare D1 資料庫與多帳號隔離防呆
+1. 執行智慧資料庫配置腳本：
+   ```bash
+   npm run setup:db
+   ```
+2. 腳本自動執行多帳號防呆與環境預檢：
+   - **既有資料庫檢測與確認**：若帳號內已存在其他 D1 資料庫（例如已有其他官方帳號的 DB），主動詢問使用者：
+     - `[1] 建立全新獨立資料庫`（推薦：不同店家/官方帳號資料徹底隔離，防資料混雜）。
+     - `[2] 沿用現有資料庫`（同店家重新部署或修復）。
+   - **設定檔自動綁定**：自動更新 `packages/backend/wrangler.toml` 之 `database_name` 與 `database_id`。
+   - **資料表自動建置**：自動對目標資料庫套用 `schema.sql` 建立 `service_requests` 與 `blocked_dates`。
+   - **LINE 關鍵防呆預檢**：自動比對 `LIFF_ID` 前 10 碼是否等於 `LINE_LOGIN_CHANNEL_ID`。若不一致則立即警告阻斷，杜絕送單身分驗證失敗與無法查詢。
+   - **Worker 覆蓋預檢**：檢查 Worker 名稱是否與線上既有服務站衝突。
 
 ### Step 4.4: 注入 Runtime Secrets
 透過 Wrangler CLI 將敏感密鑰注入 Worker：
@@ -69,6 +79,7 @@ npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
 npx wrangler secret put LINE_CHANNEL_SECRET
 npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
+*(提示：亦可執行 `npm run setup:turnstile` 一鍵自動配置 Turnstile)*
 
 ### Step 4.5: 執行自動化測試
 執行全套單元測試，確保 4 步驟表單驗證、草稿防護與後端可用性計算 100% 通過：

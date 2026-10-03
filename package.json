@@ -11,12 +11,14 @@
     "build:frontend": "npm --prefix packages/frontend run build",
     "login": "npm --prefix packages/backend exec wrangler login",
     "deploy:backend": "npm --prefix packages/backend run deploy",
+    "setup:db": "node scripts/setup-db.js",
     "setup:turnstile": "node scripts/setup-turnstile.js",
     "export:opensource": "node scripts/export-opensource.js",
-    "test": "node --test tests/rich-menu/*.test.mjs tests/availability/*.test.mjs tests/apply-form/*.test.mjs",
+    "test": "node --test tests/rich-menu/*.test.mjs tests/availability/*.test.mjs tests/apply-form/*.test.mjs tests/setup-db/*.test.mjs",
     "test:rich-menu": "node --test tests/rich-menu/*.test.mjs",
     "test:availability": "node --test tests/availability/*.test.mjs",
-    "test:apply-form": "node --test tests/apply-form/*.test.mjs"
+    "test:apply-form": "node --test tests/apply-form/*.test.mjs",
+    "test:setup-db": "node --test tests/setup-db/*.test.mjs"
   },
   "devDependencies": {
     "sharp": "^0.35.4"
