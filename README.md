@@ -15,7 +15,7 @@
 
 以下為目前主幹分支（`main`）經實機端對端驗收通過之穩定功能：
 
-* ✓ **LINE 原生流暢預約 (LIFF 4 步驟導覽精靈)**：全面採用 4 步驟分段導覽（需求項目 ➔ 地點時段 ➔ 聯絡資料 ➔ 核對送出），依農友思考順序直覺引導；支援農家共用手機隱私草稿保護（自最後修改保留 7 天、開啟時詢問還原）、WCAG 無障礙雙指縮放、全按鈕觸控大熱區（$\ge 48\text{px}$）、返回鍵與防跳步保護，並自動帶入 LINE 暱稱。
+* ✓ **LINE 原生流暢預約 (LIFF 4 步驟導覽精靈)**：全面採用 4 步驟分段導覽（需求項目 ➔ 地點時段 ➔ 聯絡資料 ➔ 核對送出），依農友思考順序直覺引導；支援農家共用手機隱私草稿保護（自最後修改保留 7 天、開啟時詢問還原）、WCAG 無障礙雙指縮放、全按鈕觸控大熱區（$\ge 48\text{px}$）、返回鍵與防跳步保護，並自動帶入 LINE 暱稱；具備步驟 4 核對送出防幽靈送單機制（解耦原生 submit、React key 節點隔離、500ms 換步安全冷卻時間與全域 Enter 鍵防誤觸）。
 * ✓ **LINE Rich Menu 圖文選單體系**：支援一鍵探索、SVG + Sharp 零外部依賴本地確定性渲染 2500x1686 溫潤大地選單；支援**全體農友 2 宮格選單**與**合作社幹部專屬「4 大宮格調度工作台」（待審確認、施工排程、休假預定、代客排單，支援 LIFF 深層直達參數與 Per-User 權限隔離動態綁定）**，具備雜湊審核門禁、原子化發布、遠端校驗與安全回滾機制。
 * ✓ **時段可用性與確認排程 (Availability & Confirmation)**：
   * **Request ≠ Reservation 領域分離**：農友端僅能選擇寬鬆偏好時段（上午/下午/都可以），Pending 絕不占用時段。
@@ -25,7 +25,7 @@
   * **合作社營業矩陣與公休管理**：公休例外封鎖卡片置頂（支援天候豪雨/臨時機具維修快速登打與 LINE 幹部選單【休假預定】深層直達）、週一至週日 14 區間開放矩陣、Fail-Closed 防呆阻斷、特定日期公休例外維護與衝突警示保全。
   * **即時排程確認推播與跨端顯示一致**：正式確認與改期推播專屬 LINE Flex 卡片，所有查詢 Webhook 與後台皆以 Reservation 為權威來源。
 * ✓ **極低成本 Serverless 後端**：基於 Cloudflare Workers + Hono 框架，提供低延遲、高並發之預約處理與時段排程 API。
-* ✓ **無伺服器關聯資料庫 (Cloudflare D1)**：以 SQLite 儲存預約單與時段封鎖紀錄，免除資料庫維護負擔。
+* ✓ **無伺服器關聯資料庫 (Cloudflare D1 與智慧引導)**：以 SQLite 儲存預約單與時段封鎖紀錄，免除資料庫維護負擔；支援 `npm run setup:db` 智慧配置工具，自動探測 Cloudflare 帳號既有資料庫，主動引導建立「全新獨立資料庫 (推薦)」或「沿用既有資料庫」（徹底防範同一個 Cloudflare 帳號下多個 LINE 官方帳號共用同一個 DB 造成的資料污染），自動更新 `wrangler.toml` 並套用 `schema.sql`；內建 Pre-flight 關鍵防呆，自動核對 `LIFF_ID` 前綴與 `LINE_LOGIN_CHANNEL_ID` 一致性（防止 ID 錯位導致身分驗證失敗與查無預約）、Worker 名稱衝突檢測與 Turnstile 狀態檢查。
 * ✓ **LINE Flex Message 即時推播**：新預約送出時，即時推播通知站所幹部，支援一鍵撥號與後台跳轉。
 * ✓ **Zero-Password 零密碼管理後台**：管理端 100% 透過 LINE 官方 ID Token 驗證服務人員白名單，手機端自動免密碼登入、桌機端掃碼授權，徹底拔除靜態密碼洩漏風險。
 * ✓ **企業級安全防禦**：
@@ -147,8 +147,10 @@ open-booking-line/
 2. **本地私有配置 (受 `.gitignore` 保護)**：
    * `packages/backend/wrangler.local.toml`：本地開發或部署時指定特定店家的 `database_id`、`ADMIN_LINE_IDS`、`STATION_NAME` 等。
    * `packages/frontend/.env`：指定前端 `VITE_LIFF_ID` 與 `VITE_STATION_NAME`。
-3. **雲端敏感密鑰 (Zero-Disk 零落地託管)**：
-   * 透過 Wrangler 直接注入 Worker Secret，絕不儲存於本機檔案或 Git：
+3. **自動化輔助腳本與敏感密鑰注入**：
+   * **資料庫智慧引導與防呆**：根目錄執行 `npm run setup:db`，自動探測現有 D1、引導多店家獨立資料庫隔離，並執行 LINE ID 雙向校驗。
+   * **真人防護自動化配置**：根目錄執行 `npm run setup:turnstile`，一鍵自動建立或更新 Cloudflare Turnstile Widget。
+   * 透過 Wrangler 直接注入 Worker 雲端 Secret（Zero-Disk 零落地託管，絕不儲存於本機檔案或 Git）：
      ```bash
      cd packages/backend
      npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN

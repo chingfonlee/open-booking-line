@@ -12,6 +12,27 @@
 
 ---
 
+## [1.2.2] - Episode 01 — Smart DB Setup, Multi-Tenant Isolation & Anti-Ghost Submission (2026-10-03)
+
+能力演進：`booking-core` 資料庫智慧引導、多官方帳號隔離防呆與步驟 4 送單安全加固
+
+### Added (新增能力與工具)
+- **智慧資料庫配置與多租戶隔離腳本 (`scripts/setup-db.js`, `npm run setup:db`)**：
+  - **既有資料庫探測與互動確認**：自動呼叫 `wrangler d1 list`，當 Cloudflare 帳號內已存在其他 D1 時，主動提供「建立全新獨立 DB (推薦)」與「沿用既有 DB」選項，徹底杜絕不同店家/官方帳號共用同一個 DB 造成的資料混雜與污染。
+  - **自動化綁定與結構遷移**：自動解析資料庫 UUID 寫入 `packages/backend/wrangler.toml` 並自動套用 `schema.sql` 與 Ep03 時段表格。
+- **Pre-flight 關鍵安全與防呆檢核**：
+  - **LINE 雙重 ID 一致性檢驗**：自動比對 `LIFF_ID` 前 10 碼是否等於 `LINE_LOGIN_CHANNEL_ID`，阻斷 ID 錯位（如 431 vs 419）引發的 LINE OAuth 驗簽失敗、收不到卡片與無法查詢。
+  - **Worker 名稱覆蓋檢測**：檢查目標 Worker 是否已在 Cloudflare 運行，防範多專案部署時意外覆蓋既有服務站。
+  - **Turnstile 狀態檢查**：自動檢視 `TURNSTILE_SECRET_KEY` 配置狀態並提示建立。
+- **步驟 4 核對送出防幽靈送單與連點防護 (`canSubmitForm`)**：
+  - **解耦表單原生 Submit**：`<form onSubmit={(e) => e.preventDefault()}>`，避免瀏覽器 Enter 鍵或 IME 中文選字確認穿透引發自動送單。
+  - **React Key DOM 節點隔離**：步驟 3「下一步」（`key="btn-next-step"`）與步驟 4「確認送出」（`key="btn-submit-step"`）強制切換 DOM 節點，防止快速連點誤命中。
+  - **500ms 換步安全冷卻時間**：進入步驟 4 的 500ms 內忽略送單請求，徹底阻絕連按誤觸。
+- **單元測試體系擴充**：
+  - 新增 `tests/setup-db/setup-db.test.mjs`（7 項測試）與 `apply-form.test.mjs` 送單防護測試（6 項測試），全專案測試增至 **155/155 PASS**。
+
+---
+
 ## [1.2.1] - Episode 01 — Wizard Form & Accessibility Upgrade (2026-10-02)
 
 快照標籤：[`ep01-wizard-form`](https://github.com/chingfonlee/open-booking-line/releases/tag/ep01-wizard-form)  
