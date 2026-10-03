@@ -10,6 +10,7 @@ import {
   saveFormDraft,
   loadFormDraft,
   clearFormDraft,
+  hasMeaningfulDraftContent,
   DRAFT_STORAGE_KEY,
   DRAFT_VERSION,
   DRAFT_MAX_AGE_MS
@@ -169,6 +170,58 @@ test('ApplyForm Draft Storage & Security Suite', async (t) => {
     }
   };
   globalThis.window = mockWindow;
+
+  await t.test('hasMeaningfulDraftContent should return false for empty or default-only form', () => {
+    assert.equal(hasMeaningfulDraftContent(undefined), false);
+    assert.equal(hasMeaningfulDraftContent({}), false);
+    assert.equal(hasMeaningfulDraftContent({
+      service_type: '整枝修剪',
+      crop_type: '棗子',
+      area_unit: '分',
+      branch_volume: '中量',
+      location_area: '燕巢區',
+      preferred_time_slot: 'morning',
+      date_flexibility: '前後 3 天皆可'
+    }), false, 'Default options alone must not count as meaningful user input');
+  });
+
+  await t.test('hasMeaningfulDraftContent should return true when user inputs substantive data', () => {
+    assert.equal(hasMeaningfulDraftContent({ contact_name: '王小華' }), true);
+    assert.equal(hasMeaningfulDraftContent({ phone: '0912345678' }), true);
+    assert.equal(hasMeaningfulDraftContent({ location_address: '民生路 10 號' }), true);
+    assert.equal(hasMeaningfulDraftContent({ area_value: '2.5' }), true);
+    assert.equal(hasMeaningfulDraftContent({ preferred_date: '2026-10-15' }), true);
+    assert.equal(hasMeaningfulDraftContent({ notes: '注意有狗' }), true);
+  });
+
+  await t.test('should refuse to save draft when form has only default values without user input', () => {
+    mockStorage.clear();
+    const defaultData = {
+      service_type: '整枝修剪',
+      crop_type: '棗子',
+      area_unit: '分',
+      branch_volume: '中量',
+      location_area: '燕巢區'
+    };
+    const saved = saveFormDraft(defaultData, 1);
+    assert.equal(saved, false);
+    assert.equal(mockStorage.has(DRAFT_STORAGE_KEY), false, 'Empty default form must not be saved to localStorage');
+  });
+
+  await t.test('should automatically invalidate and clear draft when loaded payload lacks meaningful content', () => {
+    mockStorage.clear();
+    const emptyPayload = {
+      version: DRAFT_VERSION,
+      savedAt: Date.now(),
+      step: 1,
+      formData: { service_type: '整枝修剪', area_unit: '分' }
+    };
+    mockStorage.set(DRAFT_STORAGE_KEY, JSON.stringify(emptyPayload));
+
+    const loaded = loadFormDraft();
+    assert.equal(loaded, null, 'Must return null for default-only payload');
+    assert.equal(mockStorage.has(DRAFT_STORAGE_KEY), false, 'Legacy empty payload must be purged from localStorage');
+  });
 
   await t.test('should safely save draft with version and timestamp', () => {
     const sampleData = { contact_name: '李小美', phone: '0911222333' };

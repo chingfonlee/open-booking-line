@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { API_BASE } from '../config';
 import { getLiffSearchParams } from '../utils/liffUrl';
-import { saveFormDraft, loadFormDraft, clearFormDraft } from '../utils/formDraft';
+import { saveFormDraft, loadFormDraft, clearFormDraft, hasMeaningfulDraftContent } from '../utils/formDraft';
 import { validateStep1, validateStep2, validateStep3, validateAllSteps } from '../utils/formValidation';
 import { STEPS, sanitizeTargetStep, getNextStepNumber, canSubmitForm } from '../utils/formSteps';
 
@@ -157,9 +157,12 @@ export const ApplyForm: React.FC = () => {
   // 1. 初始化草稿載入：農家共用手機防洩漏，不直接填入，先詢問確認
   useEffect(() => {
     const draft = loadFormDraft();
-    if (draft && draft.formData && Object.keys(draft.formData).length > 0) {
-      // 發現有效草稿：跳出詢問彈窗，待使用者確認再填入
+    if (draft && draft.formData && hasMeaningfulDraftContent(draft.formData)) {
+      // 發現具實質使用者輸入的有效草稿：跳出詢問彈窗，待使用者確認再填入
       setPendingDraft(draft);
+    } else {
+      // 若為空資料或僅有預設值的殘留草稿，主動徹底清理
+      clearFormDraft();
     }
 
     // 首次進入一律使用 replaceState，防止返回鍵需按兩次
@@ -205,8 +208,13 @@ export const ApplyForm: React.FC = () => {
   // 2. 表單資料自動儲存草稿（自最後修改起算 7 天，try/catch 嚴格包覆）
   useEffect(() => {
     if (!submittedId && !pendingDraft) {
-      const saved = saveFormDraft(formData, currentStep);
-      setDraftSaved(saved);
+      if (hasMeaningfulDraftContent(formData)) {
+        const saved = saveFormDraft(formData, currentStep);
+        setDraftSaved(saved);
+      } else {
+        // 若使用者清空欄位或剛開啟空表單，不觸發草稿儲存
+        setDraftSaved(false);
+      }
     }
   }, [formData, currentStep, submittedId, pendingDraft]);
 
@@ -513,8 +521,10 @@ export const ApplyForm: React.FC = () => {
             <button
               type="button"
               onClick={() => {
+                clearFormDraft();
                 setSubmittedId(null);
                 setFormData(defaultFormData);
+                setDraftSaved(false);
                 navigateToStep(1);
               }}
               className={'w-full min-h-[48px] py-3.5 font-semibold text-base rounded-xl transition flex items-center justify-center ' + (
