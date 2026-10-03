@@ -39,13 +39,19 @@
 
 ## Get / Update This Episode (如何取得本集專案)
 
-若您是初次使用，直接 Clone 開源專案最新主分支即可：
-
-```bash
-git clone https://github.com/chingfonlee/open-booking-line.git
-cd open-booking-line
-npm install
-```
+* **初次使用（全新安裝）**：
+  ```bash
+  git clone https://github.com/chingfonlee/open-booking-line.git
+  cd open-booking-line
+  npm install
+  ```
+* **既有專案更新（已存在本機目錄）**：
+  ```bash
+  cd open-booking-line
+  git pull origin main
+  npm install
+  ```
+  *(💡 請確保本地專案已拉取至 `main` 最新版本，以套用最新的四步驟確認防誤送守衛與 D1 智慧配置腳本)*
 
 ---
 

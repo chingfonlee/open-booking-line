@@ -59,11 +59,19 @@
 現階段專案正式支援 **Episode-by-Episode 循序建置路線**：
 
 ### 1. 取得最新程式碼
-```bash
-git clone https://github.com/chingfonlee/open-booking-line.git
-cd open-booking-line
-npm install
-```
+* **全新安裝 (初次使用)**：
+  ```bash
+  git clone https://github.com/chingfonlee/open-booking-line.git
+  cd open-booking-line
+  npm install
+  ```
+* **既有專案更新 (已有本機資料夾)**：
+  ```bash
+  cd open-booking-line
+  git pull origin main
+  npm install
+  ```
+  *(💡 請確保工作目錄已同步至 `origin/main` 最新版本，以獲得最新的防呆安全機制與設定腳本)*
 
 ### 2. 準備前置資源
 * **LINE 官方帳號 (LINE OA)** 及 **LINE Developers** 頻道（取得 Channel Access Token、Channel Secret、Channel ID、LIFF ID）。
@@ -72,9 +80,9 @@ npm install
 
 ### 3. 交由 AI Agent 執行部署
 在專案根目錄直接對 AI 輸入：
-> 「我想在目前專案安裝 Episode 01 basic-booking 能力，請引導我完成設定與部署。」
+> 「請先幫我確認目前工作目錄受 Git 管理並已同步至最新 main 分支，然後引導我在目前專案安裝 Episode 01 basic-booking 能力。」
 
-AI 會依據 `.agent/episodes/ep01-basic-booking/TASK.md` 檢查前置條件、引導設定，並在完成實機驗收後於本地 `.booking/project-state.json` 登錄已驗證能力。
+AI 會依據 `.agent/AGENT-RULES.md` 與 `.agent/episodes/ep01-basic-booking/TASK.md` 檢查 Git 時效性與前置條件、引導設定，並在完成實機驗收後於本地 `.booking/project-state.json` 登錄已驗證能力。
 
 ---
 

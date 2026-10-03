@@ -46,6 +46,13 @@ Agent 在執行部署前，必須引導使用者提供或自本地讀取以下�
 
 ## 4. Execution Steps（執行步驟）
 
+### Step 4.0: 檢查 Git 控制與主分支同步 (Git Sync Pre-flight)
+1. **確認工作目錄**：檢查當前終端機路徑是否為目標專案根目錄，確認 `git status` 與 `git remote -v`。
+2. **時效性確認與拉取**：
+   - 執行 `git fetch origin`，確認本地是否落後於遠端 `origin/main`。
+   - 若工作區乾淨且有更新，**必須優先執行 `git pull origin main`**，確保取得最新程式碼、防呆修復（如防止幽靈送單之 `canSubmitForm`）與智慧設定腳本（`setup:db`）。
+   - 若本地有未提交修改，先向使用者報告或暫存，嚴禁在過期的舊程式碼上執行部署。
+
 ### Step 4.1: 初始化本地 Project State
 1. 檢查根目錄是否存在 `.booking/project-state.json`。
 2. 若不存在，自 `.booking/project-state.json.example` 複製並寫入店家名稱與產業類型：
