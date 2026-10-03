@@ -57,3 +57,34 @@ export function getNextStepNumber(currentStep: number, returnToReview: boolean):
   }
   return Math.min(currentStep + 1, 4);
 }
+
+/**
+ * 步驟切換至確認頁之防誤觸冷卻時間（毫秒）
+ * 防止使用者在步驟 3 連點兩次「下一步」或 Enter 鍵穿透導致誤觸送單
+ */
+export const SUBMISSION_COOLDOWN_MS = 500;
+
+/**
+ * 判斷當前是否具備合法送出表單的資格
+ * 1. 必須嚴格處於步驟 4（確認核對頁）
+ * 2. 目前不可處於送出中狀態 (isSubmitting)
+ * 3. 進入步驟 4 必須超過冷卻安全時間 (SUBMISSION_COOLDOWN_MS)
+ */
+export function canSubmitForm(
+  currentStep: number,
+  isSubmitting: boolean,
+  lastStepChangeTime: number,
+  now: number = Date.now()
+): boolean {
+  if (currentStep !== 4) {
+    return false;
+  }
+  if (isSubmitting) {
+    return false;
+  }
+  if (now - lastStepChangeTime < SUBMISSION_COOLDOWN_MS) {
+    return false;
+  }
+  return true;
+}
+

@@ -35,7 +35,7 @@ import { API_BASE } from '../config';
 import { getLiffSearchParams } from '../utils/liffUrl';
 import { saveFormDraft, loadFormDraft, clearFormDraft } from '../utils/formDraft';
 import { validateStep1, validateStep2, validateStep3, validateAllSteps } from '../utils/formValidation';
-import { STEPS, sanitizeTargetStep, getNextStepNumber } from '../utils/formSteps';
+import { STEPS, sanitizeTargetStep, getNextStepNumber, canSubmitForm } from '../utils/formSteps';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '預約服務站';
@@ -85,6 +85,7 @@ export const ApplyForm: React.FC = () => {
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const turnstileRetryCountRef = useRef<number>(0);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const lastStepChangeTimeRef = useRef<number>(Date.now());
 
   // Accessibility unique IDs
   const headingId = useId();
@@ -110,6 +111,7 @@ export const ApplyForm: React.FC = () => {
   const navigateToStep = (targetStep: number, fromReviewMode = false) => {
     const safeStep = sanitizeTargetStep(targetStep, formData, availability, blockedDates);
     setCurrentStep(safeStep);
+    lastStepChangeTimeRef.current = Date.now();
     if (!fromReviewMode) {
       setReturnToReview(false);
     }
@@ -140,6 +142,7 @@ export const ApplyForm: React.FC = () => {
       }
       const safeStep = sanitizeTargetStep(targetStep, formData, availability, blockedDates);
       setCurrentStep(safeStep);
+      lastStepChangeTimeRef.current = Date.now();
       setStepErrors({});
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => {
@@ -177,6 +180,7 @@ export const ApplyForm: React.FC = () => {
       }));
       const safeStep = sanitizeTargetStep(pendingDraft.step || 1, pendingDraft.formData, availability, blockedDates);
       setCurrentStep(safeStep);
+      lastStepChangeTimeRef.current = Date.now();
       try {
         window.history.replaceState({ step: safeStep }, '', `#step-${safeStep}`);
       } catch {}
@@ -361,8 +365,17 @@ export const ApplyForm: React.FC = () => {
   };
 
   // 最終送出申請（含前端 + 後端二次可用性驗證）
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // 嚴格送單防護：必須處於步驟 4、非送出中、且已脫離切換冷卻期
+    if (!canSubmitForm(currentStep, isSubmitting, lastStepChangeTimeRef.current)) {
+      return;
+    }
+
     setSubmitError(null);
 
     // 1. 全欄位校驗
@@ -686,12 +699,20 @@ export const ApplyForm: React.FC = () => {
         )}
 
         <form
-          onSubmit={currentStep === 4 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
           onKeyDown={(e) => {
-            // 中間步驟攔截 Enter 鍵，防止非預期直接送單
-            if (e.key === 'Enter' && currentStep < 4 && (e.target as HTMLElement).tagName === 'INPUT') {
-              e.preventDefault();
-              handleNext();
+            // 全域防止在輸入框按 Enter 觸發原生送單
+            if (e.key === 'Enter') {
+              const target = e.target as HTMLElement;
+              if (target && target.tagName === 'INPUT') {
+                e.preventDefault();
+                // 處於步驟 1~3 時按 Enter 輔助前進至下一步
+                if (currentStep < 4) {
+                  handleNext();
+                }
+              }
             }
           }}
           className="bg-[#fffdf7] rounded-2xl shadow-sm border border-[#e0d9cb] p-5 sm:p-6 space-y-6"
@@ -1331,6 +1352,7 @@ export const ApplyForm: React.FC = () => {
 
             {currentStep < 4 ? (
               <button
+                key="btn-next-step"
                 type="button"
                 onClick={handleNext}
                 className="flex-1 min-h-[48px] py-3.5 px-4 bg-[#2a5937] hover:bg-[#173820] active:scale-[0.99] text-white font-bold text-base rounded-xl transition shadow-md flex items-center justify-center gap-1.5"
@@ -1349,7 +1371,9 @@ export const ApplyForm: React.FC = () => {
               </button>
             ) : (
               <button
-                type="submit"
+                key="btn-submit-step"
+                type="button"
+                onClick={handleSubmit}
                 disabled={isSubmitting}
                 className="flex-1 min-h-[48px] py-3.5 px-4 bg-[#2a5937] hover:bg-[#173820] active:scale-[0.99] text-white font-bold text-base rounded-xl transition shadow-lg shadow-[#2a5937]/20 disabled:opacity-50 flex items-center justify-center gap-2"
               >

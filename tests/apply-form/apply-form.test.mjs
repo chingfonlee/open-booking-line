@@ -296,3 +296,63 @@ test('ApplyForm Step Navigation & Bypass Protection Suite', async (t) => {
   });
 });
 
+test('ApplyForm Submission Anti-Ghost & Double-Tap Protection Suite', async (t) => {
+  const { canSubmitForm, SUBMISSION_COOLDOWN_MS } = await import('../../packages/frontend/src/utils/formSteps.ts');
+
+  await t.test('should strictly reject submission when currentStep is not 4', () => {
+    assert.equal(canSubmitForm(1, false, 0, 10000), false, 'Step 1 must never allow submit');
+    assert.equal(canSubmitForm(2, false, 0, 10000), false, 'Step 2 must never allow submit');
+    assert.equal(canSubmitForm(3, false, 0, 10000), false, 'Step 3 must never allow submit');
+  });
+
+  await t.test('should strictly reject submission when already isSubmitting', () => {
+    assert.equal(canSubmitForm(4, true, 1000, 5000), false, 'Cannot submit while already submitting');
+  });
+
+  await t.test('should strictly reject submission during 500ms cooldown after step transition', () => {
+    const stepEnteredAt = 10000;
+    // 0ms (immediate double click from step 3)
+    assert.equal(canSubmitForm(4, false, stepEnteredAt, 10000), false, '0ms double click must be ignored');
+    // 150ms (rapid tap)
+    assert.equal(canSubmitForm(4, false, stepEnteredAt, 10150), false, '150ms tap must be ignored');
+    // 499ms (right under cooldown)
+    assert.equal(canSubmitForm(4, false, stepEnteredAt, 10000 + SUBMISSION_COOLDOWN_MS - 1), false, 'Sub-500ms must be rejected');
+  });
+
+  await t.test('should allow submission only after cooldown period has elapsed on step 4', () => {
+    const stepEnteredAt = 10000;
+    // Exactly at cooldown
+    assert.equal(canSubmitForm(4, false, stepEnteredAt, 10000 + SUBMISSION_COOLDOWN_MS), true);
+    // After cooldown
+    assert.equal(canSubmitForm(4, false, stepEnteredAt, 10000 + SUBMISSION_COOLDOWN_MS + 200), true);
+  });
+
+  await t.test('static audit: ApplyForm JSX must not use native type="submit" without decoupling', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const formCode = fs.readFileSync(
+      path.resolve(process.cwd(), 'packages/frontend/src/components/ApplyForm.tsx'),
+      'utf8'
+    );
+
+    // Form onSubmit must prevent default and not auto-trigger handleSubmit
+    assert.ok(
+      formCode.includes('onSubmit={(e) => {\n            e.preventDefault();\n          }}') ||
+      formCode.includes('onSubmit={(e) => { e.preventDefault(); }}') ||
+      formCode.includes('e.preventDefault()'),
+      'Form onSubmit must prevent default to eliminate ghost submissions'
+    );
+
+    // Confirmation button must be type="button" with onClick={handleSubmit}
+    assert.ok(
+      formCode.includes('key="btn-submit-step"'),
+      'Confirmation button must have distinct key from next step button'
+    );
+    assert.ok(
+      formCode.includes('key="btn-next-step"'),
+      'Next step button must have distinct key to avoid React DOM node reuse'
+    );
+  });
+});
+
+
