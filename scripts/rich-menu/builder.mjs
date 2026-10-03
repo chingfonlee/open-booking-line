@@ -199,6 +199,8 @@ export function buildAdminMenuSpec(targets, options = {}) {
   if (!liffUrl) {
     throw new Error('SPEC_BUILD_ERROR: targets must contain booking.target (LIFF URL)');
   }
+  const cleanLiffUrl = liffUrl.trim().replace(/[/?]+$/, '');
+  const buildUri = (params) => `${cleanLiffUrl}?${new URLSearchParams(params).toString()}`;
 
   const buttons = [
     // Grid 1 (Top-Left): 待審確認 [100, 270, 1110, 640]
@@ -211,7 +213,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
       bounds: { x: 100, y: 270, width: 1110, height: 640 },
       action: {
         type: 'uri',
-        uri: `${liffUrl}?view=admin&filter=to_contact`
+        uri: buildUri({ view: 'admin', filter: 'to_contact' })
       }
     },
     // Grid 2 (Top-Right): 施工排程 [1290, 270, 1110, 640]
@@ -224,7 +226,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
       bounds: { x: 1290, y: 270, width: 1110, height: 640 },
       action: {
         type: 'uri',
-        uri: `${liffUrl}?view=admin&filter=confirmed`
+        uri: buildUri({ view: 'admin', filter: 'confirmed' })
       }
     },
     // Grid 3 (Bottom-Left): 休假預定 [100, 970, 1110, 640]
@@ -237,7 +239,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
       bounds: { x: 100, y: 970, width: 1110, height: 640 },
       action: {
         type: 'uri',
-        uri: `${liffUrl}?view=admin&tab=settings`
+        uri: buildUri({ view: 'admin', tab: 'settings' })
       }
     },
     // Grid 4 (Bottom-Right): 代客排單 [1290, 970, 1110, 640]
@@ -250,7 +252,7 @@ export function buildAdminMenuSpec(targets, options = {}) {
       bounds: { x: 1290, y: 970, width: 1110, height: 640 },
       action: {
         type: 'uri',
-        uri: `${liffUrl}?view=apply&mode=manual`
+        uri: buildUri({ view: 'apply', mode: 'manual' })
       }
     }
   ];

@@ -3,7 +3,7 @@ import liff from '@line/liff';
 import { ServiceRequest, RequestStatus, AvailabilityRule, AvailabilityException } from '../../../shared/types';
 import { Phone, CheckCircle2, RefreshCw, X, MapPin, LogOut, Loader2, ShieldCheck, ShieldAlert, Calendar, Clock, AlertTriangle, Settings, Plus, Trash2, Check, AlertCircle } from 'lucide-react';
 import { API_BASE } from '../config';
-import { getLiffSearchParams } from '../utils/liffUrl';
+import { getLiffSearchParams, getCleanRedirectUri } from '../utils/liffUrl';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const ADMIN_TOKEN_KEY = 'open_booking_admin_token';
@@ -629,14 +629,16 @@ export const AdminDashboard: React.FC = () => {
     setIsCheckingAuth(true);
     try {
       if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: window.location.href });
+        const cleanRedirectUri = getCleanRedirectUri();
+        liff.login(cleanRedirectUri ? { redirectUri: cleanRedirectUri } : undefined);
         return;
       }
 
       // 已在 LINE 內或已登入狀態：主動提取 ID Token 進行身分驗證
       const idToken = liff.getIDToken();
       if (!idToken) {
-        liff.login({ redirectUri: window.location.href });
+        const cleanRedirectUri = getCleanRedirectUri();
+        liff.login(cleanRedirectUri ? { redirectUri: cleanRedirectUri } : undefined);
         return;
       }
 

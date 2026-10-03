@@ -159,4 +159,26 @@ test('Ep02-Admin: Admin 4-Grid Rich Menu Test Suite', async (t) => {
     assert.equal(res.mode, 'admin-dry-run');
     assert.deepEqual(res.targetUserIds, ['U_ADMIN_TEST']);
   });
+
+  await t.test('6. should sanitize redirectUri and strip liff.state / oauth params to eliminate LINE OAuth 400 error', async () => {
+    const { getCleanRedirectUri, getLiffSearchParams } = await import('../../packages/frontend/src/utils/liffUrl.ts');
+
+    // 情境 A：LINE LIFF 轉導帶有 liff.state（含前導問號）
+    const dirtyUrlA = 'https://open-booking.pages.dev/?liff.state=%3Fview%3Dadmin%26filter%3Dto_contact';
+    const cleanA = getCleanRedirectUri(dirtyUrlA);
+    assert.equal(cleanA, 'https://open-booking.pages.dev/?view=admin&filter=to_contact');
+    assert.equal(cleanA.includes('liff.state'), false, 'Must not leak liff.state into OAuth redirectUri');
+
+    // 情境 B：LINE LIFF 轉導帶有 liff.state（無前導問號）且殘留 code/state 等暫態參數
+    const dirtyUrlB = 'https://open-booking.pages.dev/?liff.state=view%3Dadmin%26tab%3Dsettings&code=abc1234&state=xyz987';
+    const cleanB = getCleanRedirectUri(dirtyUrlB);
+    assert.equal(cleanB, 'https://open-booking.pages.dev/?view=admin&tab=settings');
+    assert.equal(cleanB.includes('code'), false);
+    assert.equal(cleanB.includes('state='), false);
+
+    // 情境 C：已是標準乾淨網址
+    const cleanUrlC = 'https://open-booking.pages.dev/?view=admin&filter=confirmed';
+    const resultC = getCleanRedirectUri(cleanUrlC);
+    assert.equal(resultC, 'https://open-booking.pages.dev/?view=admin&filter=confirmed');
+  });
 });
