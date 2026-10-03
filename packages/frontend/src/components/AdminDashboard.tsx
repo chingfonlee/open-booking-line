@@ -7,6 +7,8 @@ import { getLiffSearchParams, getCleanRedirectUri } from '../utils/liffUrl';
 
 const LIFF_ID = (import.meta.env.VITE_LIFF_ID as string) || '';
 const ADMIN_TOKEN_KEY = 'open_booking_admin_token';
+const ADMIN_SESSION_CACHE_KEY = 'open_booking_admin_session_v1';
+const ADMIN_CACHE_TTL_MS = 25 * 60 * 1000; // 25 分鐘有效快取（LINE ID Token 預設有效 60 分鐘）
 const STATION_NAME = (import.meta.env.VITE_STATION_NAME as string) || '預約服務站';
 
 const START_TIME_OPTIONS = {
@@ -20,11 +22,35 @@ interface AdminUserProfile {
   pictureUrl?: string;
 }
 
+interface CachedAdminSession {
+  idToken: string;
+  user: AdminUserProfile;
+  cachedAt: number;
+}
+
+interface AuthSuccess {
+  success: true;
+  user: AdminUserProfile;
+}
+
+interface AuthFailure {
+  success: false;
+  status: number;
+  message: string;
+  expired?: boolean;
+  userId?: string;
+  displayName?: string;
+  isNetworkError?: boolean;
+}
+
+type AuthResult = AuthSuccess | AuthFailure;
+
 export const AdminDashboard: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [adminUser, setAdminUser] = useState<AdminUserProfile | null>(null);
   const [authError, setAuthError] = useState<{ message: string; userId?: string; displayName?: string } | null>(null);
+  const [loginPromptMsg, setLoginPromptMsg] = useState<string | null>(null);
 
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [selectedReq, setSelectedReq] = useState<ServiceRequest | null>(null);
@@ -100,39 +126,63 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [selectedReq]);
 
-  const authenticateWithIdToken = async (idToken: string): Promise<boolean> => {
+  const authenticateWithIdToken = async (idToken: string): Promise<AuthResult> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(`${API_BASE}/api/admin/auth/line`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_token: idToken })
+        body: JSON.stringify({ id_token: idToken }),
+        signal: controller.signal
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.success) {
         sessionStorage.setItem(ADMIN_TOKEN_KEY, idToken);
+        try {
+          const cachePayload: CachedAdminSession = {
+            idToken,
+            user: data.user,
+            cachedAt: Date.now()
+          };
+          localStorage.setItem(ADMIN_SESSION_CACHE_KEY, JSON.stringify(cachePayload));
+        } catch {}
         setAdminUser(data.user);
         setIsAuthenticated(true);
         setAuthError(null);
-        return true;
+        setLoginPromptMsg(null);
+        return { success: true, user: data.user };
       } else if (res.status === 403 && data) {
-        setAuthError({
-          message: data.message || '您非授權管理人員',
+        const err = {
+          message: data.message || '存取受限：您的 LINE 帳號不在授權服務人員白名單內。',
           userId: data.userId,
           displayName: data.displayName
-        });
-        return false;
+        };
+        setAuthError(err);
+        return { success: false, status: 403, ...err };
+      } else if (res.status === 401) {
+        // 401: Token 過期或無效，清除快取
+        try {
+          localStorage.removeItem(ADMIN_SESSION_CACHE_KEY);
+          sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+        } catch {}
+        return { success: false, status: 401, message: data?.message || 'LINE 身分憑證已過期，請重新登入', expired: true };
       } else {
         const errorMsg = data?.message || `驗證失敗 (HTTP ${res.status})`;
         console.warn('Admin auth failed:', errorMsg);
-        return false;
+        return { success: false, status: res.status, message: errorMsg };
       }
     } catch (err: any) {
-      console.error('LINE admin auth error:', err);
-      return false;
+      const isTimeout = err?.name === 'AbortError';
+      const message = isTimeout ? '連線服務站逾時（超過 8 秒），請檢查行動網路收訊' : ('網路連線異常：' + (err?.message || '伺服器無回應'));
+      console.warn('LINE admin auth error:', message);
+      return { success: false, status: 0, message, isNetworkError: true };
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
-  // 1. 初始化 LIFF 與 LINE 幹部白名單自動驗證
+  // 1. 初始化 LIFF 與 LINE 幹部白名單自動驗證（含秒開快取與防死循環機制）
   useEffect(() => {
     if (!LIFF_ID) {
       console.warn('VITE_LIFF_ID is not configured');
@@ -140,18 +190,50 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    // 檢查本地是否有有效期限內之管理員快取 session（避免每次關閉 LIFF 都全鏈等待）
+    let hasValidCache = false;
+    try {
+      const rawCache = localStorage.getItem(ADMIN_SESSION_CACHE_KEY);
+      if (rawCache) {
+        const session: CachedAdminSession = JSON.parse(rawCache);
+        if (session && session.idToken && session.user && (Date.now() - session.cachedAt < ADMIN_CACHE_TTL_MS)) {
+          sessionStorage.setItem(ADMIN_TOKEN_KEY, session.idToken);
+          setAdminUser(session.user);
+          setIsAuthenticated(true);
+          hasValidCache = true;
+        }
+      }
+    } catch {}
+
     liff.init({ liffId: LIFF_ID })
       .then(async () => {
         if (liff.isLoggedIn()) {
           const idToken = liff.getIDToken();
           if (idToken) {
-            await authenticateWithIdToken(idToken);
+            const authRes = await authenticateWithIdToken(idToken);
+            if (!authRes.success) {
+              if (authRes.status === 401) {
+                // Token 已過期：溫和提示重新登入換證
+                setIsAuthenticated(false);
+                setLoginPromptMsg('⏰ LINE 登入憑證已過期，請點擊下方按鈕重新授權換發新憑證。');
+              } else if (authRes.status === 403) {
+                setIsAuthenticated(false);
+              } else if (authRes.isNetworkError && hasValidCache) {
+                // 網路短暫抖動但有本地有效快取，允許維持登入
+                console.warn('Network glitch during background check, keeping cached session');
+              }
+            }
+          } else {
+            if (!hasValidCache) setIsAuthenticated(false);
           }
+        } else {
+          if (!hasValidCache) setIsAuthenticated(false);
         }
-        setIsCheckingAuth(false);
       })
       .catch((err) => {
         console.warn('LIFF init warning:', err);
+      })
+      .finally(() => {
         setIsCheckingAuth(false);
       });
   }, []);
@@ -627,24 +709,36 @@ export const AdminDashboard: React.FC = () => {
     }
 
     setIsCheckingAuth(true);
+    setLoginPromptMsg(null);
     try {
+      const cleanRedirectUri = getCleanRedirectUri();
+
+      // 情境 A：若尚未登入 LIFF，直接觸發 LINE 授權流程
       if (!liff.isLoggedIn()) {
-        const cleanRedirectUri = getCleanRedirectUri();
         liff.login(cleanRedirectUri ? { redirectUri: cleanRedirectUri } : undefined);
         return;
       }
 
-      // 已在 LINE 內或已登入狀態：主動提取 ID Token 進行身分驗證
+      // 情境 B：已在 LINE 登入狀態，提取 ID Token 進行後端白名單驗證
       const idToken = liff.getIDToken();
       if (!idToken) {
-        const cleanRedirectUri = getCleanRedirectUri();
         liff.login(cleanRedirectUri ? { redirectUri: cleanRedirectUri } : undefined);
         return;
       }
 
-      const success = await authenticateWithIdToken(idToken);
-      if (!success && !authError) {
-        alert('身分驗證未通過：無法確認服務人員權限，請確認您的 LINE 帳號已加入 ADMIN_LINE_IDS 白名單。');
+      const authRes = await authenticateWithIdToken(idToken);
+      if (!authRes.success) {
+        if (authRes.status === 401) {
+          // 【核心破局】：Token 已在 LINE 官方端過期！
+          // 絕不能拿過期 Token 繼續提示使用者「不在白名單」，必須強制重新換發新憑證
+          console.info('LINE ID token expired, triggering liff.login to refresh token...');
+          liff.login(cleanRedirectUri ? { redirectUri: cleanRedirectUri } : undefined);
+          return;
+        } else if (authRes.status === 403) {
+          // 非白名單由 authError 畫面統一呈現
+        } else {
+          alert(authRes.message || '登入驗證失敗，請檢查行動網路後再試。');
+        }
       }
     } catch (err: any) {
       alert('登入驗證異常：' + (err?.message || err));
@@ -655,6 +749,10 @@ export const AdminDashboard: React.FC = () => {
 
   const handleLogout = () => {
     if (confirm('確定要登出管理端嗎？')) {
+      try {
+        sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+        localStorage.removeItem(ADMIN_SESSION_CACHE_KEY);
+      } catch {}
       if (LIFF_ID) {
         try {
           if (liff.isLoggedIn()) {
@@ -662,10 +760,10 @@ export const AdminDashboard: React.FC = () => {
           }
         } catch {}
       }
-      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
       setIsAuthenticated(false);
       setAdminUser(null);
       setAuthError(null);
+      setLoginPromptMsg(null);
     }
   };
 
@@ -737,6 +835,13 @@ export const AdminDashboard: React.FC = () => {
           <p className="text-xs text-[#657061] mb-6">
             限授權服務人員存取 · 零密碼身分安全保護
           </p>
+
+          {loginPromptMsg && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-left flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+              <span>{loginPromptMsg}</span>
+            </div>
+          )}
 
           {/* 主要登入：LINE 服務人員一鍵授權登入 */}
           <button

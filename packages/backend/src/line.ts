@@ -713,7 +713,7 @@ export async function verifyLineIdToken(idToken: string, channelId?: string): Pr
       params.append('client_id', channelId);
     }
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch('https://api.line.me/oauth2/v2.1/verify', {
       method: 'POST',
