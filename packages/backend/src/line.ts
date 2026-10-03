@@ -1000,3 +1000,333 @@ export function generateScheduledConfirmationFlex(
   };
 }
 
+/**
+ * 計算台灣時區 (Asia/Taipei, UTC+8) 之目前日期與未來天數區間
+ * 解決 Serverless Worker 在 UTC 伺服器時間與台灣跨日計算之時差問題
+ */
+export function getTaiwanDateRange(daysAhead = 6): { todayStr: string; endStr: string; rangeText: string } {
+  const now = new Date();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const twNow = new Date(utc + (3600000 * 8));
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const formatDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  const todayStr = formatDate(twNow);
+  const endDay = new Date(twNow.getTime() + (daysAhead * 86400000));
+  const endStr = formatDate(endDay);
+
+  const formatDisplay = (d: Date) => `${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+  const rangeText = `${formatDisplay(twNow)} ~ ${formatDisplay(endDay)}`;
+
+  return { todayStr, endStr, rangeText };
+}
+
+/**
+ * 產生幹部「待審核」案件 Flex Message 輪播卡片 (Ep02 延伸功能)
+ * 支援一鍵撥號與直通審核介面
+ */
+export function generateAdminPendingCarousel(requests: any[], liffId?: string, stationName?: string) {
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
+
+  if (!requests || requests.length === 0) {
+    return {
+      type: 'text',
+      text: `🎉 ${station}報告：目前沒有待審核的預約申請，全部案件已處理完畢！`
+    };
+  }
+
+  const items = requests.slice(0, 10);
+  const slotMap: Record<string, string> = { morning: '上午', afternoon: '下午', any: '皆可' };
+
+  const bubbles = items.map((req, idx) => {
+    const cleanPhone = (req.phone || '').replace(/[-\s]/g, '');
+    const slotText = slotMap[req.preferred_time_slot] || req.preferred_time_slot || '彈性';
+    const liffUrl = activeLiffId ? `https://liff.line.me/${activeLiffId}?view=admin&filter=to_contact` : '';
+
+    return {
+      type: 'bubble',
+      size: 'kilo',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#856200',
+        paddingAll: '14px',
+        contents: [
+          {
+            type: 'text',
+            text: `📋 ${station} · 待審核 (${idx + 1}/${items.length})`,
+            color: '#fef3c7',
+            size: 'xxs',
+            weight: 'bold'
+          },
+          {
+            type: 'text',
+            text: `單號：${req.id}`,
+            color: '#ffffff',
+            size: 'sm',
+            weight: 'bold',
+            margin: 'xs'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '14px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '農友姓名', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: req.contact_name || '未填寫', size: 'xs', color: '#20271f', weight: 'bold', flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '聯絡電話', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: req.phone || '未提供', size: 'xs', color: '#2a5937', weight: 'bold', flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '服務項目', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: `${req.service_type || '服務'} · ${req.crop_type || ''}`, size: 'xs', color: '#20271f', weight: 'bold', flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '施作田區', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: `${req.location_area || ''} ${req.location_address || ''}`.trim() || '未填寫', size: 'xs', color: '#20271f', wrap: true, flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '希望日期', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: `${req.preferred_date || '未定'} (${slotText})`, size: 'xs', color: '#856200', weight: 'bold', flex: 7 }
+            ]
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        paddingAll: '12px',
+        contents: [
+          ...(cleanPhone ? [{
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: `📞 撥打電話 (${cleanPhone})`,
+              uri: `tel:${cleanPhone}`
+            },
+            style: 'primary',
+            color: '#2a5937',
+            height: 'sm'
+          }] : []),
+          ...(liffUrl ? [{
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '📝 前往審核排程',
+              uri: liffUrl
+            },
+            style: 'secondary',
+            height: 'sm'
+          }] : [])
+        ]
+      }
+    };
+  });
+
+  if (bubbles.length === 1) {
+    return {
+      type: 'flex',
+      altText: `【待審預約】${items[0].contact_name} - 單號：${items[0].id}`,
+      contents: bubbles[0]
+    };
+  }
+
+  return {
+    type: 'flex',
+    altText: `【待審核預約】共有 ${items.length} 筆案件待確認，請向左滑動查看`,
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    }
+  };
+}
+
+/**
+ * 產生幹部「未來一週施工排程」Flex Message 輪播卡片 (Ep02 延伸功能)
+ * 涵蓋今天起算未來 7 天內已確認施工之排程案件
+ */
+export function generateAdminScheduleCarousel(
+  requests: any[],
+  liffId?: string,
+  stationName?: string,
+  dateRangeText?: string
+) {
+  const activeLiffId = liffId || '';
+  const station = stationName || '預約服務站';
+  const rangeDesc = dateRangeText ? `（${dateRangeText}）` : '';
+
+  if (!requests || requests.length === 0) {
+    return {
+      type: 'text',
+      text: `☕ ${station}報告：未來 7 天內${rangeDesc}尚無排定施工案件，站所可持續敲定排單！`
+    };
+  }
+
+  const items = requests.slice(0, 10);
+  const slotMap: Record<string, string> = { morning: '上午', afternoon: '下午', any: '整天' };
+
+  const bubbles = items.map((req, idx) => {
+    const cleanPhone = (req.phone || '').replace(/[-\s]/g, '');
+    const slotCode = req.scheduled_slot_code || req.preferred_time_slot || 'morning';
+    const slotText = slotMap[slotCode] || '上午';
+    const timeDisplay = req.scheduled_start_time ? `${slotText} ${req.scheduled_start_time}` : slotText;
+    const liffUrl = activeLiffId ? `https://liff.line.me/${activeLiffId}?view=admin&filter=confirmed` : '';
+
+    return {
+      type: 'bubble',
+      size: 'kilo',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#173820',
+        paddingAll: '14px',
+        contents: [
+          {
+            type: 'text',
+            text: `🚜 ${station} · 施工排程 (${idx + 1}/${items.length})`,
+            color: '#dcebd6',
+            size: 'xxs',
+            weight: 'bold'
+          },
+          {
+            type: 'text',
+            text: `📅 ${req.scheduled_date || '未排定'} · ${timeDisplay}`,
+            color: '#ffffff',
+            size: 'sm',
+            weight: 'bold',
+            margin: 'xs'
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '14px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '農友姓名', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: req.contact_name || '未提供', size: 'xs', color: '#20271f', weight: 'bold', flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '聯絡電話', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: req.phone || '未提供', size: 'xs', color: '#2a5937', weight: 'bold', flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '作物面積', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: `${req.crop_type || ''} ${req.area_size || ''}`.trim() || '未填寫', size: 'xs', color: '#20271f', weight: 'bold', flex: 7 }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: '施工地點', size: 'xs', color: '#657061', flex: 3 },
+              { type: 'text', text: `${req.location_area || ''} ${req.location_address || ''}`.trim() || '未填寫', size: 'xs', color: '#20271f', wrap: true, flex: 7 }
+            ]
+          },
+          ...(req.customer_notice ? [{
+            type: 'box',
+            layout: 'vertical',
+            margin: 'sm',
+            backgroundColor: '#fefce8',
+            borderColor: '#fde047',
+            borderWidth: '1px',
+            cornerRadius: '8px',
+            paddingAll: '8px',
+            contents: [
+              { type: 'text', text: `📝 備註：${req.customer_notice}`, size: 'xxs', color: '#713f12', wrap: true }
+            ]
+          }] : [])
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        paddingAll: '12px',
+        contents: [
+          ...(cleanPhone ? [{
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: `📞 聯絡農友 (${cleanPhone})`,
+              uri: `tel:${cleanPhone}`
+            },
+            style: 'primary',
+            color: '#173820',
+            height: 'sm'
+          }] : []),
+          ...(liffUrl ? [{
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '🛠️ 查看完整排程',
+              uri: liffUrl
+            },
+            style: 'secondary',
+            height: 'sm'
+          }] : [])
+        ]
+      }
+    };
+  });
+
+  if (bubbles.length === 1) {
+    return {
+      type: 'flex',
+      altText: `【施工排程】${items[0].scheduled_date} ${items[0].contact_name}`,
+      contents: bubbles[0]
+    };
+  }
+
+  return {
+    type: 'flex',
+    altText: `【未來一週施工排程】共 ${items.length} 筆案件，請向左滑動查看`,
+    contents: {
+      type: 'carousel',
+      contents: bubbles
+    }
+  };
+}
+
+

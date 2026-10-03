@@ -8,6 +8,9 @@ import {
   generateProgressQueryFlex,
   generateWelcomeGuideFlex,
   generateAdminPortalFlex,
+  getTaiwanDateRange,
+  generateAdminPendingCarousel,
+  generateAdminScheduleCarousel,
   pushLineMessage,
   replyLineMessage,
   verifyLineIdToken,
@@ -1297,11 +1300,17 @@ app.post('/api/line/webhook', async (c) => {
       let isQuery = false;
       let isBooking = false;
       let isAdminCmd = false;
+      let isAdminPendingCmd = false;
+      let isAdminScheduleCmd = false;
 
       if (event.type === 'message' && event.message?.type === 'text') {
         const text = (event.message.text || '').trim();
 
-        if (/^(管理|後台|管理後台|站所管理|幹部管理|admin|dashboard)$/i.test(text) || text === '管理' || text === '後台') {
+        if (/^(待審|審核|待確認|未確認|待聯絡)$/i.test(text) || text === '待審' || text.includes('待審') || text.includes('待聯絡')) {
+          isAdminPendingCmd = true;
+        } else if (/^(施工|今日施工|今天施工|今日排程|今天排程|本週施工|未來施工|施工排程)$/i.test(text) || text === '施工' || text.includes('施工') || text.includes('排程')) {
+          isAdminScheduleCmd = true;
+        } else if (/^(管理|後台|管理後台|站所管理|幹部管理|admin|dashboard)$/i.test(text) || text === '管理' || text === '後台') {
           isAdminCmd = true;
         } else if (
           text.includes('查') ||
@@ -1321,28 +1330,80 @@ app.post('/api/line/webhook', async (c) => {
         ) {
           isBooking = true;
         }
-        const intent = isAdminCmd ? 'admin' : isQuery ? 'query' : isBooking ? 'booking' : 'guide';
+        const intent = isAdminPendingCmd ? 'admin_pending' : isAdminScheduleCmd ? 'admin_schedule' : isAdminCmd ? 'admin' : isQuery ? 'query' : isBooking ? 'booking' : 'guide';
         console.log('[LINE User Message] intent matched:', intent, 'length:', text.length);
       } else if (event.type === 'postback') {
         const data = event.postback?.data || '';
-        if (data.includes('admin')) {
+        if (data.includes('admin_pending') || data === 'action=admin_pending') {
+          isAdminPendingCmd = true;
+        } else if (data.includes('admin_schedule') || data === 'action=admin_schedule') {
+          isAdminScheduleCmd = true;
+        } else if (data.includes('admin')) {
           isAdminCmd = true;
         } else if (data.includes('query')) {
           isQuery = true;
         } else if (data.includes('book')) {
           isBooking = true;
         }
-        const postbackAction = isAdminCmd ? 'admin' : isQuery ? 'query' : isBooking ? 'booking' : 'other';
+        const postbackAction = isAdminPendingCmd ? 'admin_pending' : isAdminScheduleCmd ? 'admin_schedule' : isAdminCmd ? 'admin' : isQuery ? 'query' : isBooking ? 'booking' : 'other';
         console.log('[LINE Postback] action matched:', postbackAction);
       }
 
-      if (isAdminCmd) {
-        const allowedAdminIds = [
-          ...(c.env.ADMIN_LINE_IDS ? c.env.ADMIN_LINE_IDS.split(',').map((s: string) => s.trim()) : []),
-          c.env.ADMIN_NOTIFY_USER_ID
-        ].filter(Boolean);
+      const allowedAdminIds = [
+        ...(c.env.ADMIN_LINE_IDS ? c.env.ADMIN_LINE_IDS.split(',').map((s: string) => s.trim()) : []),
+        c.env.ADMIN_NOTIFY_USER_ID
+      ].filter(Boolean);
+      const isUserAdmin = Boolean(userId && allowedAdminIds.includes(userId));
 
-        if (userId && allowedAdminIds.includes(userId)) {
+      if (isAdminPendingCmd) {
+        if (!isUserAdmin) {
+          const denyCard = {
+            type: 'text',
+            text: '🔒 您好，此管理指令僅供站所授權服務人員使用。若您有果樹枝條粉碎或代耕預約需求，歡迎點擊下方選單進行線上預約！'
+          };
+          await replyLineMessage(token, replyToken, [denyCard]);
+        } else {
+          // 幹部快速查詢：待審核案件 (to_contact)
+          const pendingRows = await c.env.DB.prepare(
+            'SELECT r.id, r.created_at, r.contact_name, r.phone, r.service_type, r.crop_type, r.area_size, r.branch_volume, ' +
+            'r.location_area, r.location_address, r.preferred_date, r.preferred_time_slot, r.date_flexibility, r.status ' +
+            'FROM service_requests r ' +
+            "WHERE r.status = 'to_contact' " +
+            'ORDER BY r.created_at ASC ' +
+            'LIMIT 10'
+          ).all();
+
+          const requests = pendingRows.results || [];
+          const card = generateAdminPendingCarousel(requests, c.env.LIFF_ID, c.env.STATION_NAME);
+          await replyLineMessage(token, replyToken, [card]);
+        }
+      } else if (isAdminScheduleCmd) {
+        if (!isUserAdmin) {
+          const denyCard = {
+            type: 'text',
+            text: '🔒 您好，此管理指令僅供站所授權服務人員使用。若您有果樹枝條粉碎或代耕預約需求，歡迎點擊下方選單進行線上預約！'
+          };
+          await replyLineMessage(token, replyToken, [denyCard]);
+        } else {
+          // 幹部快速查詢：未來一週（今天起算未來 7 天內）已確認施工排程 (confirmed)
+          const { todayStr, endStr, rangeText } = getTaiwanDateRange(6);
+          const scheduleRows = await c.env.DB.prepare(
+            'SELECT r.id, r.contact_name, r.phone, r.service_type, r.crop_type, r.area_size, ' +
+            'r.location_area, r.location_address, r.status, ' +
+            's.booking_date as scheduled_date, s.slot_code as scheduled_slot_code, s.scheduled_start_time, s.notes as customer_notice ' +
+            'FROM service_requests r ' +
+            "JOIN slot_reservations s ON r.id = s.request_id AND s.status = 'active' " +
+            "WHERE r.status = 'confirmed' AND s.booking_date >= ? AND s.booking_date <= ? " +
+            'ORDER BY s.booking_date ASC, s.scheduled_start_time ASC ' +
+            'LIMIT 10'
+          ).bind(todayStr, endStr).all();
+
+          const requests = scheduleRows.results || [];
+          const card = generateAdminScheduleCarousel(requests, c.env.LIFF_ID, c.env.STATION_NAME, rangeText);
+          await replyLineMessage(token, replyToken, [card]);
+        }
+      } else if (isAdminCmd) {
+        if (isUserAdmin) {
           const adminCard = generateAdminPortalFlex(c.env.LIFF_ID, c.env.STATION_NAME);
           await replyLineMessage(token, replyToken, [adminCard]);
         } else {
